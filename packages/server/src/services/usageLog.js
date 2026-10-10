@@ -8,12 +8,12 @@ const DAY_FILE = /^(\d{4}-\d{2}-\d{2})\.jsonl$/;
 
 // Events the teacher app may report. Server-side events (session_start,
 // student_join) are recorded directly and never accepted from clients.
-const CLIENT_EVENTS = new Set(['app_open', 'widget_add']);
+const CLIENT_EVENTS = new Set(['app_open', 'app_resume', 'widget_add']);
 const SURFACES = new Set(['web', 'desktop']);
 // Random IDs minted by the teacher app; the pattern also keeps them inert in a JSON line.
 const ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/;
-// WidgetType enum keys, e.g. POLL or TRAFFIC_LIGHT.
-const WIDGET_PATTERN = /^[A-Z][A-Z0-9_]{0,39}$/;
+// WidgetType enum keys, e.g. POLL or TRAFFIC_LIGHT: no empty underscore segments.
+const WIDGET_PATTERN = /^(?=.{1,40}$)[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$/;
 
 /**
  * Reduce a client `usage:track` payload to the fields the log stores, or

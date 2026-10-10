@@ -239,9 +239,9 @@ For Poll widgets specifically:
 
 ## Usage Events
 
-Anonymous counts for the [admin usage dashboard](./USAGE_DASHBOARD.md). Fire-and-forget: no callback, and the server silently drops malformed or rate-limited events (60 per minute per connection), or all of them when `USAGE_LOG_DIR` is unset.
+Anonymous counts for the [admin usage dashboard](./USAGE_DASHBOARD.md). Fire-and-forget: no callback, and the server silently drops malformed or rate-limited events (300 per minute per client IP, and only the first `app_open` on a connection counts), or all of them when `USAGE_LOG_DIR` is unset.
 
-*   `Teacher → Server`: `usage:track` with `{ event: 'app_open' | 'widget_add', clientId, visitId, widget?, surface? }`
+*   `Teacher → Server`: `usage:track` with `{ event: 'app_open' | 'app_resume' | 'widget_add', clientId, visitId, widget?, surface? }`
     - `clientId`, `visitId`: random IDs, 8-64 characters of `[A-Za-z0-9-]`
     - `widget`: the `WidgetType` enum key, e.g. `POLL` (required for `widget_add`)
     - `surface`: `'web'` or `'desktop'`

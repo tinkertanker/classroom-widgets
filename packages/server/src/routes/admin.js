@@ -27,8 +27,9 @@ const sameOriginOnly = (req, res, next) => {
   } catch {
     originHost = null;
   }
-  const hosts = [req.headers.host, req.headers['x-forwarded-host']].filter(Boolean);
-  if (originHost && hosts.includes(originHost)) return next();
+  // Only the Host header: nginx sets it to the public host, and a client-set
+  // X-Forwarded-Host is not trustworthy.
+  if (originHost && originHost === req.headers.host) return next();
   res.status(403).json({ success: false, error: 'Forbidden' });
 };
 

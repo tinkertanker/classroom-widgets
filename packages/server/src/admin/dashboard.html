@@ -471,7 +471,7 @@
   }
   const plural = (n, [one, many]) => `${number.format(n)} ${n === 1 ? one : many}`;
   const widgetName = (key) => WIDGET_NAMES[key]
-    || key.toLowerCase().split('_').map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
+    || key.toLowerCase().split('_').filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
   const formatDate = (key, options = { day: 'numeric', month: 'short' }) =>
     new Date(`${key}T00:00:00Z`).toLocaleDateString('en-GB', { timeZone: 'UTC', ...options });
   function relativeTime(t, now) {
@@ -522,7 +522,7 @@
 
   $('signOut').addEventListener('click', async () => {
     await api('/auth/logout', { method: 'POST', body: '{}' }).catch(() => {});
-    await start();
+    await start().catch(showStartError);
   });
 
   /* ---------- Live ---------- */
@@ -690,7 +690,7 @@
       live = await api('/api/live');
       renderLive();
     } catch (error) {
-      if (error.status === 401) return start();
+      if (error.status === 401) return start().catch(showStartError);
       $('liveDot').classList.add('stale');
       $('liveUpdated').textContent = `Could not refresh: ${error.message}`;
     }
@@ -896,7 +896,7 @@
       renderWidgets();
       renderFacts();
     } catch (error) {
-      if (error.status === 401) return start();
+      if (error.status === 401) return start().catch(showStartError);
       $('loadError').textContent = error.message;
     }
   }
@@ -939,10 +939,12 @@
     startPolling();
   }
 
-  start().catch((error) => {
+  function showStartError(error) {
     $('signIn').hidden = false;
     $('signInError').textContent = error.message;
-  });
+  }
+
+  start().catch(showStartError);
 })();
 </script>
 </body>

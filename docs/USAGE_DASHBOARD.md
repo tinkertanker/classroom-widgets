@@ -71,7 +71,7 @@ The server appends one JSON line per event to a file per day
   (`cw-usage-client-id`). The visit ID is random per page load.
 - `app_open` and `widget_add` come from the teacher app over its existing
   Socket.IO connection (`usage:track`). The server keeps only the fields above,
-  drops anything malformed, and limits each connection to 60 events a minute.
+  drops anything malformed, and limits each client IP to 300 events a minute and counts only the first `app_open` on a connection.
 - `session_start` and `student_join` are recorded by the server itself.
 - No names, IP addresses, session codes or classroom content are written.
   Clearing site data in the browser gives that browser a new device ID.
