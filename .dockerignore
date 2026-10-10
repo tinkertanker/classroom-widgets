@@ -26,6 +26,9 @@ src/secrets
 .repopromt
 .clawpatch
 .wrangler
+# Cloudflare deploy tooling (its staged teacher build, wrangler state); no
+# image copies it.
+deploy
 **/xcuserdata
 output/playwright
 .vscode

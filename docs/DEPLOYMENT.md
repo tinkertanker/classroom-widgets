@@ -2,6 +2,10 @@
 
 Complete guide for deploying Classroom Widgets to production.
 
+To host on Cloudflare instead (Workers static assets for the teacher app, one
+Cloudflare Container for the backend), see
+[`deploy/cloudflare/README.md`](../deploy/cloudflare/README.md).
+
 ## Table of Contents
 - [Quick Deploy](#quick-deploy)
 - [Docker Deployment](#docker-deployment)

@@ -1,0 +1,42 @@
+// go.tk.sg: backend Worker in front of one Cloudflare Container running
+// packages/server/Dockerfile.prod unchanged. See ../README.md.
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "classroom-widgets-backend",
+  "account_id": "b8b1032c61d9475cd00229c74db7ec72",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "go.tk.sg", "custom_domain": true }],
+  "containers": [
+    {
+      "class_name": "Backend",
+      // Paths are relative to this file; the build context is the repo root,
+      // as in docker-compose.prod.yml.
+      "image": "../../../packages/server/Dockerfile.prod",
+      "image_build_context": "../../..",
+      // 1/2 vCPU, 4 GiB. "basic" (1/4 vCPU, 1 GiB) also fits the Node
+      // process; standard-1 leaves CPU headroom for many concurrent classes.
+      "instance_type": "standard-1",
+      // In-memory sessions: exactly one container, ever.
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "BACKEND", "class_name": "Backend" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Backend"] }],
+  "vars": {
+    "CORS_ORIGINS": "https://widgets.tk.sg,https://go.tk.sg",
+    "STUDENT_APP_URL": "https://go.tk.sg/student",
+    // links.widgets.tk.sg is CNAMEd to cname.short.io
+    "SHORTIO_DOMAIN": "links.widgets.tk.sg",
+    "SHORTIO_BASE_URL": "https://api.short.io/links/public",
+    "USAGE_TIMEZONE": "UTC",
+    "USAGE_RETENTION_DAYS": "400"
+  },
+  // Secrets (wrangler secret put): SHORTIO_API_KEY, ADMIN_TOKEN,
+  // ADMIN_SESSION_SECRET. They reach the container through Backend.envVars.
+  "observability": { "enabled": true }
+}

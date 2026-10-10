@@ -1,0 +1,6 @@
+# Standalone pnpm project, kept outside the app workspace in the repo root so
+# the Cloudflare tooling has its own lockfile and never touches the app's.
+allowBuilds:
+  esbuild: true
+  workerd: true
+  sharp: false
