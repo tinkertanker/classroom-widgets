@@ -119,11 +119,19 @@ await step('student joins via polling + upgrade; teacher sees the participant', 
 await step('teacher closes the session', async () => {
   if (!teacher) return 'no teacher';
   try {
-    if (code) await withTimeout(teacher.emitWithAck('session:close', { sessionCode: code }), 5000, 'session:close');
+    if (!code) return 'no session';
+    // session:close has no acknowledgement; the server broadcasts
+    // session:closed to the session room and deletes the session.
+    const closed = new Promise((res) => teacher.once('session:closed', res));
+    teacher.emit('session:close', { sessionCode: code });
+    await withTimeout(closed, 5000, 'session:closed');
+    const res = await get(`${backend}/api/sessions/${code}/exists`, { headers: { Origin: teacherOrigin } });
+    const body = await res.json();
+    assert(body.exists === false, `session still exists: ${JSON.stringify(body)}`);
+    return 'closed';
   } finally {
     teacher.close();
   }
-  return 'closed';
 });
 
 await step('backend serves the student app at /student/', async () => {
