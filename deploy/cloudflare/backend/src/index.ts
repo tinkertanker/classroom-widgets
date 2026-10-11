@@ -85,13 +85,26 @@ export class Backend extends Container<Env> {
       .join('');
     if ((await this.ctx.storage.get<string>(ENV_FINGERPRINT_KEY)) === fingerprint) return;
 
+    // Record the new fingerprint only once the old container has exited, so a
+    // container still running with old secrets is retried on the next request.
     if (this.ctx.container?.running) {
       await this.stop();
-      for (let i = 0; i < 60 && this.ctx.container?.running; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
+      await this.waitForExit(60);
+    }
+    if (this.ctx.container?.running) {
+      await this.destroy();
+      await this.waitForExit(20);
+    }
+    if (this.ctx.container?.running) {
+      throw new Error('Container did not stop after an env change; will retry');
     }
     await this.ctx.storage.put(ENV_FINGERPRINT_KEY, fingerprint);
+  }
+
+  private async waitForExit(polls: number): Promise<void> {
+    for (let i = 0; i < polls && this.ctx.container?.running; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
   }
 }
 

@@ -22,15 +22,18 @@ jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       CLOUDFLARE_ACCOUNT_ID: b8b1032c61d9475cd00229c74db7ec72
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
     steps:
+      # The token is passed only to the steps that need it, not to install/build.
       - name: Require the Cloudflare token
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "::error::Add the CLOUDFLARE_API_TOKEN secret (see deploy/cloudflare/README.md, Token permissions)."
+            echo "::error::Add the CLOUDFLARE_API_TOKEN secret (see docs/DEPLOYMENT.md, Automated Deployment)."
             exit 1
           fi
 
@@ -66,6 +69,8 @@ jobs:
       - name: Deploy classroom-widgets-web
         if: steps.tip.outputs.stale != 'true'
         working-directory: deploy/cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: pnpm exec wrangler deploy -c web/wrangler.jsonc --message "${GITHUB_SHA::7}"
 
       - name: Verify widgets.tk.sg serves this build
@@ -74,7 +79,7 @@ jobs:
         run: |
           expected=$(grep -o '/assets/index-[^"]*\.js' web/dist/index.html | head -1)
           for _ in $(seq 1 12); do
-            live=$(curl -fsS https://widgets.tk.sg/ | grep -o '/assets/index-[^"]*\.js' | head -1 || true)
+            live=$(curl -fsS --connect-timeout 5 --max-time 15 https://widgets.tk.sg/ | grep -o '/assets/index-[^"]*\.js' | head -1 || true)
             if [ "$live" = "$expected" ]; then
               echo "widgets.tk.sg serves $expected (${GITHUB_SHA::7})"
               exit 0

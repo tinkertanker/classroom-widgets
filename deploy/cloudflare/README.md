@@ -60,7 +60,13 @@ part of the app workspace.
 
 ## Token permissions
 
-`CLOUDFLARE_API_TOKEN` needs:
+The CI token (the `CLOUDFLARE_API_TOKEN` repository secret used by
+`.github/workflows/deploy.yml`) only deploys the web Worker. Give it just:
+
+- **Account (Tinkertanker):** Workers Scripts: Edit, Account Settings: Read
+- **Zone `tk.sg`:** Workers Routes: Edit
+
+The token for manual provisioning, backend deploys and rollback needs:
 
 - **Account (Tinkertanker):**
   - Workers Scripts: Edit (this covers Durable Objects)
@@ -191,7 +197,15 @@ This leaves your IP rate-limited on the session probe for a minute.
 
 ## Rollback
 
-Point the hostnames back at the office host:
+For a bad web or backend release, roll back the Worker version and stay on
+Cloudflare: `pnpm exec wrangler rollback -c <config>` (for the container,
+redeploy the previous commit).
+
+To leave Cloudflare, first disable the `Deploy Web to Production` workflow
+(`gh workflow disable deploy.yml`) and let any running deploy finish: a later
+web deploy would otherwise reattach `widgets.tk.sg` to the Worker. Check the
+office host is running a current build, since CI no longer updates it. Then
+point the hostnames back at the office host:
 
 ```sh
 ACC=$CLOUDFLARE_ACCOUNT_ID
@@ -208,9 +222,7 @@ done
 
 This only detaches the hostnames. The Workers and the container keep running
 until `wrangler delete` (`-c backend/wrangler.jsonc` / `-c web/wrangler.jsonc`).
-To roll back a bad Worker version without leaving Cloudflare, use
-`pnpm exec wrangler rollback -c <config>`. For the container, redeploy the
-previous commit.
+Re-enable the workflow only after moving back to Cloudflare.
 
 ## Caveats
 
