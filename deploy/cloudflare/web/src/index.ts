@@ -20,6 +20,7 @@ export default {
       const headers = new Headers(request.headers);
       const clientIp = request.headers.get('cf-connecting-ip');
       if (clientIp) headers.set('x-forwarded-for', clientIp);
+      else headers.delete('x-forwarded-for');
       headers.set('x-forwarded-proto', url.protocol.replace(':', ''));
       return env.BACKEND.fetch(new Request(request, { headers }));
     }

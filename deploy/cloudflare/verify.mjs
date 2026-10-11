@@ -118,8 +118,11 @@ await step('student joins via polling + upgrade; teacher sees the participant', 
 
 await step('teacher closes the session', async () => {
   if (!teacher) return 'no teacher';
-  if (code) await withTimeout(teacher.emitWithAck('session:close', { sessionCode: code }).catch(() => null), 5000, 'close').catch(() => null);
-  teacher.close();
+  try {
+    if (code) await withTimeout(teacher.emitWithAck('session:close', { sessionCode: code }), 5000, 'session:close');
+  } finally {
+    teacher.close();
+  }
   return 'closed';
 });
 

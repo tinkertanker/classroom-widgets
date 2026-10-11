@@ -134,6 +134,7 @@ curl -s -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
   "https://api.cloudflare.com/client/v4/zones/$ZONE/dns_records/$REC"
 
 pnpm exec wrangler deploy -c backend/wrangler.jsonc --secrets-file /tmp/cw-backend.secrets
+rm -f /tmp/cw-backend.secrets
 ```
 
 `wrangler deploy` builds the image, pushes it, creates the container
@@ -155,7 +156,6 @@ curl -s -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
   "https://api.cloudflare.com/client/v4/zones/$ZONE/dns_records/$REC"
 
 pnpm exec wrangler deploy -c web/wrangler.jsonc
-rm /tmp/cw-backend.secrets
 ```
 
 ### 4. Verify
@@ -209,6 +209,7 @@ point the hostnames back at the office host:
 
 ```sh
 ACC=$CLOUDFLARE_ACCOUNT_ID
+ZONE=ea01004f470a0e8078f1b9fdef547273   # tk.sg
 for h in widgets.tk.sg go.tk.sg; do
   ID=$(curl -s -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
     "https://api.cloudflare.com/client/v4/accounts/$ACC/workers/domains?hostname=$h" | jq -r '.result[0].id')
