@@ -183,11 +183,11 @@ This leaves your IP rate-limited on the session probe for a minute.
   the env it started with, so the Worker hashes the container env and restarts
   the container on the first request after the hash changes. Expect the new
   value to apply within a couple of minutes, with live sessions dropped.
-- **Web:** `pnpm build:teacher && pnpm deploy:web`.
-
-The `Deploy Web to Production` workflow (`.github/workflows/deploy.yml`) still
-SSHes to the office host. Disable it, or point it at these commands, before the
-next push to `master`.
+- **Web:** every push to `master` runs these through the `Deploy Web to
+  Production` workflow (`.github/workflows/deploy.yml`), using the
+  `CLOUDFLARE_API_TOKEN` repository secret. To deploy by hand:
+  `pnpm build:teacher && pnpm deploy:web`. The deploy replaces the Worker's
+  static assets atomically; no cache purge is needed.
 
 ## Rollback
 

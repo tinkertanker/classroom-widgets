@@ -4,7 +4,7 @@
 //
 // Mirrors Dockerfile.prod: VITE_* values come from the environment, with the
 // production defaults below. VITE_BUILD_ID defaults to the 7-character commit
-// SHA, as the Deploy Web to Production workflow sets it.
+// SHA, as the Deploy Web to Production workflow did on the office host.
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

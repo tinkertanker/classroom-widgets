@@ -1,5 +1,10 @@
 name: Deploy Web to Production
 
+# Builds the teacher app and deploys it to the classroom-widgets-web Worker,
+# which serves widgets.tk.sg. The backend (go.tk.sg) is deployed by hand,
+# because every backend deploy restarts its container and drops live sessions.
+# See deploy/cloudflare/README.md.
+
 on:
   workflow_dispatch:
   push:
@@ -10,33 +15,71 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_ACCOUNT_ID: b8b1032c61d9475cd00229c74db7ec72
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
     steps:
-      - name: Deploy to server
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Require the Cloudflare token
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Add the CLOUDFLARE_API_TOKEN secret (see deploy/cloudflare/README.md, Token permissions)."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - name: Skip stale runs
+        id: tip
+        run: |
+          git fetch --depth=1 origin master
+          if [ "$(git rev-parse FETCH_HEAD)" != "$GITHUB_SHA" ]; then
+            echo "Skipping stale deploy: $GITHUB_SHA is not the tip of master"
+            echo "stale=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.tip.outputs.stale != 'true'
+      - uses: actions/setup-node@v4
+        if: steps.tip.outputs.stale != 'true'
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            DEPLOY_SHA="${{ github.sha }}"
-            cd ${{ secrets.DEPLOY_PATH }}
-            git fetch origin "$DEPLOY_SHA"
-            git fetch origin master
-            if [ "$(git rev-parse FETCH_HEAD)" != "$DEPLOY_SHA" ]; then
-              echo "Skipping stale deploy: $DEPLOY_SHA is not the tip of master"
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            deploy/cloudflare/pnpm-lock.yaml
+
+      - name: Build
+        if: steps.tip.outputs.stale != 'true'
+        working-directory: deploy/cloudflare
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build:teacher
+
+      - name: Deploy classroom-widgets-web
+        if: steps.tip.outputs.stale != 'true'
+        working-directory: deploy/cloudflare
+        run: pnpm exec wrangler deploy -c web/wrangler.jsonc --message "${GITHUB_SHA::7}"
+
+      - name: Verify widgets.tk.sg serves this build
+        if: steps.tip.outputs.stale != 'true'
+        working-directory: deploy/cloudflare
+        run: |
+          expected=$(grep -o '/assets/index-[^"]*\.js' web/dist/index.html | head -1)
+          for _ in $(seq 1 12); do
+            live=$(curl -fsS https://widgets.tk.sg/ | grep -o '/assets/index-[^"]*\.js' | head -1 || true)
+            if [ "$live" = "$expected" ]; then
+              echo "widgets.tk.sg serves $expected (${GITHUB_SHA::7})"
               exit 0
             fi
-            git reset --hard "$DEPLOY_SHA"
-            git clean -ffd
-            export VITE_BUILD_ID="$(printf '%.7s' "$DEPLOY_SHA")"
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up --build -d
-            echo "Deployed $DEPLOY_SHA successfully"
+            sleep 5
+          done
+          echo "::error::widgets.tk.sg serves '$live', expected '$expected'"
+          exit 1
