@@ -55,7 +55,7 @@ async function renderApp() {
 
   const [
     { default: App },
-    { HelmetProvider },
+    { Helmet, HelmetProvider },
     { BrowserRouter, Routes, Route },
   ] = await Promise.all([
     import('./app/App'),
@@ -78,9 +78,17 @@ async function renderApp() {
   const QrCodePage = React.lazy(() => import('./pages/widgets/QrCodePage'));
   const SoundEffectsPage = React.lazy(() => import('./pages/widgets/SoundEffectsPage'));
 
+  // index.html's data-rh tags are crawler defaults. Re-declare them through Helmet so
+  // page-level tags replace them instead of being appended after them.
+  const defaultMeta = Array.from(
+    document.head.querySelectorAll<HTMLMetaElement>('meta[data-rh]'),
+    (el) => (el.name ? { name: el.name, content: el.content } : { property: el.getAttribute('property')!, content: el.content }),
+  );
+
   root.render(
     <React.StrictMode>
       <HelmetProvider>
+        <Helmet meta={defaultMeta} />
         <BrowserRouter>
           <React.Suspense fallback={null}>
             <Routes>
