@@ -22,6 +22,7 @@ interface Env {
 }
 
 const INSTANCE_NAME = 'main';
+const ENV_FINGERPRINT_KEY = 'envFingerprint';
 
 export class Backend extends Container<Env> {
   defaultPort = 3001;
@@ -55,6 +56,42 @@ export class Backend extends Container<Env> {
       // Unset secrets are left out rather than passed as empty strings.
       ...Object.fromEntries(Object.entries(secrets).filter(([, v]) => v)),
     } as Record<string, string>;
+  }
+
+  // envVars only reach the container when it starts, and a running container
+  // survives Worker deploys and secret changes. So on the first request after
+  // this object (re)starts, compare a hash of envVars with the one the running
+  // container was started with, and restart the container if they differ.
+  private envCheck?: Promise<void>;
+
+  override async fetch(request: Request): Promise<Response> {
+    this.envCheck ??= this.restartIfEnvChanged().catch((error) => {
+      this.envCheck = undefined;
+      throw error;
+    });
+    await this.envCheck;
+    return super.fetch(request);
+  }
+
+  private async restartIfEnvChanged(): Promise<void> {
+    const env = this.envVars ?? {};
+    const sorted = Object.keys(env).sort().map((k) => [k, env[k]]);
+    const digest = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(JSON.stringify(sorted)),
+    );
+    const fingerprint = [...new Uint8Array(digest)]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    if ((await this.ctx.storage.get<string>(ENV_FINGERPRINT_KEY)) === fingerprint) return;
+
+    if (this.ctx.container?.running) {
+      await this.stop();
+      for (let i = 0; i < 60 && this.ctx.container?.running; i++) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+    }
+    await this.ctx.storage.put(ENV_FINGERPRINT_KEY, fingerprint);
   }
 }
 

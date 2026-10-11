@@ -178,6 +178,11 @@ This leaves your IP rate-limited on the session probe for a minute.
 - **Backend:** `pnpm deploy:backend`. Secrets persist. Every backend deploy
   restarts the container and drops all live sessions, so deploy outside class
   hours.
+- **Secrets:** `npx wrangler secret put ADMIN_TOKEN --name classroom-widgets-backend`
+  (likewise `SHORTIO_API_KEY`, `ADMIN_SESSION_SECRET`). A running container keeps
+  the env it started with, so the Worker hashes the container env and restarts
+  the container on the first request after the hash changes. Expect the new
+  value to apply within a couple of minutes, with live sessions dropped.
 - **Web:** `pnpm build:teacher && pnpm deploy:web`.
 
 The `Deploy Web to Production` workflow (`.github/workflows/deploy.yml`) still
