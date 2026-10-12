@@ -29,9 +29,7 @@ You can also browse [all releases](https://github.com/tinkertanker/classroom-wid
 
 Launching Classroom Widgets opens a searchable widget launcher. The app also stays available from the menu bar on macOS and the system tray on Windows and Linux for quick access; pick a widget straight from the menu, most used first, with its keyboard shortcut shown beside it. Launch-at-login starts quietly without opening the launcher.
 
-All three desktop apps include Randomiser, Timer, List, Task Cue, Traffic Light, Link Shortener, Text Banner, QR Code, and Sound Effects. The macOS app is signed and notarized, checks for updates, and can update itself. The Windows installer is per-user and does not require administrator access. Linux is available as a portable AppImage or a Debian/Ubuntu package.
-
-The macOS app also includes **Display**, which mirrors an extended display in a floating window so you can see and point at it from your main screen.
+All three desktop apps include Randomiser, Timer, List, Task Cue, Traffic Light, Link Shortener, Text Banner, QR Code, and Sound Effects, plus **Display**, which mirrors another connected monitor in a floating window so you can see and point at it from your main screen. The macOS app is signed and notarized, checks for updates, and can update itself. The Windows installer is per-user and does not require administrator access. Linux is available as a portable AppImage or a Debian/Ubuntu package.
 
 For platform-specific installation and usage, see the [macOS](./docs/MACOS_DISTRIBUTION.md), [Windows](./docs/WINDOWS_DISTRIBUTION.md), and [Linux](./docs/LINUX_DISTRIBUTION.md) guides.
 
