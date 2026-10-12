@@ -981,7 +981,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .applicationName: "Classroom Widgets",
             .applicationIcon: appIcon,
             .credits: NSAttributedString(
-                string: "A menu-bar launcher for floating classroom widgets.\n\nDisplay was inspired by BetterDisplay by waydabber (betterdisplay.com). The implementation uses only public Apple APIs and contains no BetterDisplay source code."
+                string: "A menu-bar launcher for floating classroom widgets."
             )
         ])
         NSApp.activate(ignoringOtherApps: true)
