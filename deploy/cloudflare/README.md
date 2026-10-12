@@ -193,9 +193,14 @@ This leaves your IP rate-limited on the session probe for a minute.
   `wrangler deploy` builds the image from `packages/server/Dockerfile.prod`,
   so it needs a running Docker daemon that builds `linux/amd64`.
 - **Backend without rebuilding the image:** if nothing the image is built from
-  (`packages/server`, `packages/shared`, `packages/student`,
-  `packages/server/Dockerfile.prod`) changed since the last image, deploy the
-  Worker against the existing image instead. Find its tag with
+  changed since the commit that built the current image, deploy the Worker
+  against that image instead. The inputs are the root `package.json`,
+  `pnpm-lock.yaml`, `pnpm-workspace.yaml` and `.dockerignore`,
+  `packages/teacher/package.json`, and `packages/server`, `packages/shared`,
+  `packages/student` and `packages/server/Dockerfile.prod` (its `COPY` lines).
+  Image tags are not commit SHAs, so put the commit in the deploy message
+  (`--message "<sha>: ..."`) and compare against it with
+  `git diff --stat <sha> HEAD -- <inputs>`. Find the image tag with
   `pnpm exec wrangler containers images list`, then deploy a temporary config:
 
   ```sh
@@ -230,18 +235,22 @@ pnpm exec wrangler whoami   # expect the Tinkertanker account
 ```
 
 Orbs have Docker installed but not running. Start the daemon as an orb
-service, so it survives the session, and open the socket to the orb user:
+service, so it survives the session, then hand the socket to the orb user.
+This is for a disposable single-user orb, where the user already has
+passwordless sudo; do not loosen the socket on shared runners or hosts.
 
 ```sh
 amp orb service start dockerd --command "sudo dockerd --host=unix:///var/run/docker.sock"
-sudo chmod 666 /var/run/docker.sock
+until [ -S /var/run/docker.sock ]; do sleep 1; done
+sudo chown "$(id -u)" /var/run/docker.sock
 docker info
 ```
 
 The orb is x86_64, so images are `linux/amd64` natively, and
-`docker build -f packages/server/Dockerfile.prod .` builds the backend image in
-about 90 seconds. `docker buildx` is not installed; a `pnpm deploy:backend`
-image build from an orb has not been tried yet.
+`docker build -f packages/server/Dockerfile.prod .`, run from the repository
+root, builds the backend image in about 90 seconds. `docker buildx` is not
+installed; a `pnpm deploy:backend` image build from an orb has not been tried
+yet.
 
 The orb token cannot purge the Cloudflare cache. A Worker deploy never needs
 it, but for other purges add **Zone → Cache Purge → Purge** for `tk.sg` to
