@@ -252,10 +252,18 @@ root, builds the backend image in about 90 seconds. `docker buildx` is not
 installed; a `pnpm deploy:backend` image build from an orb has not been tried
 yet.
 
-The orb token cannot purge the Cloudflare cache. A Worker deploy never needs
-it, but for other purges add **Zone → Cache Purge → Purge** for `tk.sg` to
-this operator token. Keep the CI token (`CLOUDFLARE_API_TOKEN` secret) limited
-to the web-deploy permissions above.
+A Worker deploy never needs a cache purge. When something else does, the orb
+token has **Zone → Cache Purge → Purge** for `tk.sg`. Purge only the affected
+hostname; other sites share the `tk.sg` zone:
+
+```sh
+curl -s -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H "Content-Type: application/json" \
+  "https://api.cloudflare.com/client/v4/zones/ea01004f470a0e8078f1b9fdef547273/purge_cache" \
+  --data '{"hosts":["widgets.tk.sg"]}'
+```
+
+Keep the CI token (`CLOUDFLARE_API_TOKEN` secret) limited to the web-deploy
+permissions above; it never purges.
 
 ## Rollback
 
