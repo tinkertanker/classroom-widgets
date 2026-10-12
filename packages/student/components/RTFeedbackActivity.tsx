@@ -16,10 +16,11 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
-  // The value the server holds for this student, or null if none was sent
-  const heldValueRef = useRef<number | null>(null);
-  const isActiveRef = useRef(isActive);
-  isActiveRef.current = isActive;
+  // The value the server holds for this student, or null if none was sent.
+  // resetEpoch is the room's clear count when the server accepted it (null
+  // until confirmed), so a value cleared by the teacher is not replayed.
+  const heldRef = useRef<{ value: number; resetEpoch: number | null } | null>(null);
+  const needsReplayRef = useRef(false);
 
   // Listen for room state changes using shared hook
   useWidgetStateChange({
@@ -28,22 +29,42 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     roomType: 'rtfeedback',
     widgetId,
     initialIsActive,
-    onStateChange: (newIsActive) => {
+    onStateChange: (newIsActive, data) => {
       const wasInactive = !isActive;
+
+      // The teacher cleared all responses (possibly while this card was offline)
+      const held = heldRef.current;
+      if (held && typeof data?.resetEpoch === 'number' && held.resetEpoch !== null && held.resetEpoch !== data.resetEpoch) {
+        heldRef.current = null;
+      }
+      // After a reconnect the server has lost our value: send it again once
+      // the current state confirms it was not cleared in the meantime
+      if (needsReplayRef.current && heldRef.current && newIsActive && !wasInactive) {
+        needsReplayRef.current = false;
+        socket.emit('session:rtfeedback:submit', {
+          sessionCode: roomCode,
+          widgetId,
+          value: heldRef.current.value
+        });
+      }
       setIsActive(newIsActive);
       
       // Reset to middle value when restarted from inactive state
       if (newIsActive && wasInactive) {
         setCurrentValue(3);
         setLastSentValue(3);
-        heldValueRef.current = null;
+        heldRef.current = null;
+        needsReplayRef.current = false;
       }
     }
   });
 
   // Handle submission response
   useEffect(() => {
-    const handleSubmitted = (data: { success: boolean; error?: string }) => {
+    const handleSubmitted = (data: { success: boolean; error?: string; resetEpoch?: number }) => {
+      if (data.success && typeof data.resetEpoch === 'number' && heldRef.current) {
+        heldRef.current = { ...heldRef.current, resetEpoch: data.resetEpoch };
+      }
       if (!data.success) {
         console.error('Failed to submit feedback:', data.error);
       }
@@ -56,23 +77,18 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     };
   }, [socket]);
 
-  // The server drops a student's feedback when their socket disconnects, so
-  // send the last value again after a reconnect to keep counting it
+  // The server drops a student's feedback when their socket disconnects.
+  // Flag the value for replay; the state reply to the reconnect request
+  // (see onStateChange) decides whether it is still wanted.
   useEffect(() => {
     const handleReconnect = () => {
-      const value = heldValueRef.current;
-      if (value === null || !isActiveRef.current) return;
-      socket.emit('session:rtfeedback:submit', {
-        sessionCode: roomCode,
-        widgetId,
-        value
-      });
+      if (heldRef.current) needsReplayRef.current = true;
     };
     socket.on('connect', handleReconnect);
     return () => {
       socket.off('connect', handleReconnect);
     };
-  }, [socket, roomCode, widgetId]);
+  }, [socket]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isActive) {
@@ -93,7 +109,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       });
 
       setLastSentValue(currentValue);
-      heldValueRef.current = currentValue;
+      heldRef.current = { value: currentValue, resetEpoch: null };
 
       // Reset sending state after a short delay
       setTimeout(() => {

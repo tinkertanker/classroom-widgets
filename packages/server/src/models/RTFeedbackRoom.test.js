@@ -79,6 +79,17 @@ describe('RTFeedbackRoom', () => {
     });
   });
 
+  describe('resetEpoch', () => {
+    it('changes each time responses are cleared, so students can drop stale values', () => {
+      const before = room.resetEpoch;
+      room.updateFeedback('s1', 4);
+      assert.equal(room.resetEpoch, before);
+
+      room.clearAllFeedback();
+      assert.notEqual(room.resetEpoch, before);
+    });
+  });
+
   describe('getAverageUnderstanding', () => {
     it('returns null with no responses (not NaN or 0)', () => {
       assert.equal(room.getAverageUnderstanding(), null);

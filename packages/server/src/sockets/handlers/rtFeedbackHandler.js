@@ -64,7 +64,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     room.updateFeedback(socket.id, data.value);
 
     // Send confirmation
-    socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createSuccessResponse());
+    socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createSuccessResponse({ resetEpoch: room.resetEpoch }));
 
     // Only the teacher consumes the aggregate; students receive confirmations.
     if (session.hostSocketId) {
@@ -100,7 +100,8 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     if (ok) {
       const stateData = {
         isActive: room.isActive,
-        widgetId: widgetId
+        widgetId: widgetId,
+        resetEpoch: room.resetEpoch
       };
 
       socket.emit(EVENTS.RT_FEEDBACK.STATE_UPDATE, stateData);
@@ -131,6 +132,13 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     const { room } = guard;
 
     room.clearAllFeedback();
+
+    // Tell students, so they stop holding a value that was just cleared
+    socket.to(`session:${session.code}`).emit(EVENTS.RT_FEEDBACK.STATE_UPDATE, {
+      isActive: room.isActive,
+      widgetId: data.widgetId,
+      resetEpoch: room.resetEpoch
+    });
 
     // The reset caller is the authorized host.
     socket.emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, {

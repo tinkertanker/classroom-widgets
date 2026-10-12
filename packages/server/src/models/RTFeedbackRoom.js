@@ -10,6 +10,7 @@ class RTFeedbackRoom extends Room {
     this.understanding = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // 9 buckets for 0.5 increments
     this.totalResponses = 0;
     this.isActive = false; // RTFeedback starts paused by default
+    this.resetEpoch = 0; // Bumped when responses are cleared, so students can drop stale ones
   }
 
   getType() {
@@ -53,6 +54,7 @@ class RTFeedbackRoom extends Room {
     this.feedbackData.clear();
     this.understanding.fill(0);
     this.totalResponses = 0;
+    this.resetEpoch++;
     this.updateActivity();
   }
 
