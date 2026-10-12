@@ -50,6 +50,17 @@
   echo mocks back, or tests of trivial wrappers, constants, or framework
   behaviour. Delete any such tests you find in code you touch.
 
+## Web and backend deploys
+
+- widgets.tk.sg and go.tk.sg run on Cloudflare Workers. Merging to `master`
+  deploys the web Worker; the GitHub SSH/office-host path is retired.
+- The backend is deployed by hand and every deploy drops live sessions. The
+  user decides when; check `go.tk.sg/health` and say how many sessions are
+  active rather than refusing.
+- Follow [`deploy/cloudflare/README.md`](deploy/cloudflare/README.md),
+  including "Deploying from an Amp orb" for the orb token, starting Docker and
+  reusing an existing backend image. Worker deploys need no cache purge.
+
 ## macOS releases
 
 - The Release workflow is configured to build, sign, notarize, and attach the
