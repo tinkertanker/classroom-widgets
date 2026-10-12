@@ -181,19 +181,81 @@ This leaves your IP rate-limited on the session probe for a minute.
 
 ### Later deploys
 
-- **Backend:** `pnpm deploy:backend`. Secrets persist. Every backend deploy
-  restarts the container and drops all live sessions, so deploy outside class
-  hours.
+- **Web:** merging to `master` deploys it. The `Deploy Web to Production`
+  workflow (`.github/workflows/deploy.yml`) builds the teacher app, deploys
+  `classroom-widgets-web` with the `CLOUDFLARE_API_TOKEN` repository secret,
+  and fails unless widgets.tk.sg then serves the new bundle. To deploy by
+  hand: `pnpm build:teacher && pnpm deploy:web`. A Worker deploy replaces its
+  static assets atomically, so no cache purge is needed.
+- **Backend:** manual, `pnpm deploy:backend`. Secrets persist. Every backend
+  deploy restarts the container and drops all live sessions; check
+  `curl -s https://go.tk.sg/health` (`stats.activeSessions`) first.
+  `wrangler deploy` builds the image from `packages/server/Dockerfile.prod`,
+  so it needs a running Docker daemon that builds `linux/amd64`.
+- **Backend without rebuilding the image:** if nothing the image is built from
+  changed since the commit that built the current image, deploy the Worker
+  against that image instead. The inputs are the root `package.json`,
+  `pnpm-lock.yaml`, `pnpm-workspace.yaml` and `.dockerignore`,
+  `packages/teacher/package.json`, and `packages/server`, `packages/shared`,
+  `packages/student` and `packages/server/Dockerfile.prod` (its `COPY` lines).
+  Image tags are not commit SHAs, so put the commit in the deploy message
+  (`--message "<sha>: ..."`) and compare against it with
+  `git diff --stat <sha> HEAD -- <inputs>`. Find the image tag with
+  `pnpm exec wrangler containers images list`, then deploy a temporary config:
+
+  ```sh
+  IMG=registry.cloudflare.com/$CLOUDFLARE_ACCOUNT_ID/classroom-widgets-backend-backend:<tag>
+  sed -e "s|\"image\": \"../../../packages/server/Dockerfile.prod\",|\"image\": \"$IMG\",|" \
+      -e '/"image_build_context"/d' backend/wrangler.jsonc > backend/wrangler.prebuilt.jsonc
+  pnpm exec wrangler deploy --dry-run -c backend/wrangler.prebuilt.jsonc
+  pnpm exec wrangler deploy -c backend/wrangler.prebuilt.jsonc
+  rm backend/wrangler.prebuilt.jsonc
+  ```
+
 - **Secrets:** `npx wrangler secret put ADMIN_TOKEN --name classroom-widgets-backend`
   (likewise `SHORTIO_API_KEY`, `ADMIN_SESSION_SECRET`). A running container keeps
   the env it started with, so the Worker hashes the container env and restarts
   the container on the first request after the hash changes. Expect the new
   value to apply within a couple of minutes, with live sessions dropped.
-- **Web:** every push to `master` runs these through the `Deploy Web to
-  Production` workflow (`.github/workflows/deploy.yml`), using the
-  `CLOUDFLARE_API_TOKEN` repository secret. To deploy by hand:
-  `pnpm build:teacher && pnpm deploy:web`. The deploy replaces the Worker's
-  static assets atomically; no cache purge is needed.
+- **Verify** after either deploy:
+  `node verify.mjs --backend https://go.tk.sg --web https://widgets.tk.sg`
+  (14 checks; it opens and closes one test session).
+- **Rollback targets:** `pnpm exec wrangler deployments list -c <config>`
+  shows the previous version ID for `wrangler rollback`.
+
+### Deploying from an Amp orb
+
+Tinkertanker project orbs carry a Cloudflare token for this account in
+`CLOUDFLARE_API_KEY_TT`. Use it without printing it:
+
+```sh
+export CLOUDFLARE_ACCOUNT_ID=b8b1032c61d9475cd00229c74db7ec72
+export CLOUDFLARE_API_TOKEN="$CLOUDFLARE_API_KEY_TT"
+pnpm exec wrangler whoami   # expect the Tinkertanker account
+```
+
+Orbs have Docker installed but not running. Start the daemon as an orb
+service, so it survives the session, then hand the socket to the orb user.
+This is for a disposable single-user orb, where the user already has
+passwordless sudo; do not loosen the socket on shared runners or hosts.
+
+```sh
+amp orb service start dockerd --command "sudo dockerd --host=unix:///var/run/docker.sock"
+until [ -S /var/run/docker.sock ]; do sleep 1; done
+sudo chown "$(id -u)" /var/run/docker.sock
+docker info
+```
+
+The orb is x86_64, so images are `linux/amd64` natively, and
+`docker build -f packages/server/Dockerfile.prod .`, run from the repository
+root, builds the backend image in about 90 seconds. `docker buildx` is not
+installed; a `pnpm deploy:backend` image build from an orb has not been tried
+yet.
+
+The orb token cannot purge the Cloudflare cache. A Worker deploy never needs
+it, but for other purges add **Zone → Cache Purge → Purge** for `tk.sg` to
+this operator token. Keep the CI token (`CLOUDFLARE_API_TOKEN` secret) limited
+to the web-deploy permissions above.
 
 ## Rollback
 
