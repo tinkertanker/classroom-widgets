@@ -2,6 +2,10 @@
 
 Complete guide for deploying Classroom Widgets to production.
 
+To host on Cloudflare instead (Workers static assets for the teacher app, one
+Cloudflare Container for the backend), see
+[`deploy/cloudflare/README.md`](../deploy/cloudflare/README.md).
+
 ## Table of Contents
 - [Quick Deploy](#quick-deploy)
 - [Docker Deployment](#docker-deployment)
@@ -13,25 +17,19 @@ Complete guide for deploying Classroom Widgets to production.
 
 Web deployments are identified by Git commit rather than by a shared product version. Every push to `master` automatically starts the **Deploy Web to Production** GitHub Actions workflow.
 
-The workflow SSHes into the production server, checks out the exact pushed commit, and rebuilds and restarts the containers. The short commit SHA is baked into the teacher app as its web build ID and appears in the UI as `Web <sha>`.
+The workflow builds the teacher app at the pushed commit and deploys it to the `classroom-widgets-web` Cloudflare Worker, which serves `widgets.tk.sg`, then checks that the site serves the new bundle. The short commit SHA is baked into the teacher app as its web build ID and appears in the UI as `Web <sha>`. A Worker deploy replaces its static assets atomically, so no cache purge is needed.
+
+The backend (`go.tk.sg`) is not deployed by CI: every backend deploy restarts its container and drops live sessions. Deploy it by hand outside class hours; see [`deploy/cloudflare/README.md`](../deploy/cloudflare/README.md).
 
 Desktop release tags (`v<version>`) do not trigger this workflow. See [Releasing](./RELEASING.md) for that process.
 
-**Required GitHub Secrets** (repo Settings → Secrets and variables → Actions):
+**Required GitHub Secret** (repo Settings → Secrets and variables → Actions):
 
 | Secret | Description |
 |--------|-------------|
-| `SSH_HOST` | Production server hostname or IP |
-| `SSH_USER` | SSH username on the server |
-| `SSH_PRIVATE_KEY` | Private key for SSH auth — use a dedicated deploy key, not your personal key |
-| `DEPLOY_PATH` | Absolute path to the repo on the server (e.g. `/home/user/classroom_widgets`) |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token for the Tinkertanker account with **Account → Workers Scripts: Edit**, **Account → Account Settings: Read** and **Zone `tk.sg` → Workers Routes: Edit**. Use a dedicated CI token. |
 
-**Generating a deploy key:**
-```bash
-ssh-keygen -t ed25519 -C "github-actions-deploy" -f ~/.ssh/deploy_key
-cat ~/.ssh/deploy_key.pub >> ~/.ssh/authorized_keys  # on the server
-cat ~/.ssh/deploy_key  # paste this into the SSH_PRIVATE_KEY secret
-```
+The Docker and Nginx sections below describe self-hosting on your own server.
 
 ## Quick Deploy
 
