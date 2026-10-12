@@ -5,7 +5,8 @@ import { WorkspaceMetadata } from '../../../store/workspaceStore';
 export function useWorkspaceManager() {
   // Selectors
   const currentWorkspaceId = useWorkspaceStore(state => state.currentWorkspaceId);
-  const workspaceList = useWorkspaceStore(state => state.workspaceList);
+  const storedWorkspaceList = useWorkspaceStore(state => state.workspaceList);
+  const currentWidgetCount = useWorkspaceStore(state => state.widgets.length);
 
   // Actions from store
   const storeSwitchWorkspace = useWorkspaceStore(state => state.switchWorkspace);
@@ -36,6 +37,14 @@ export function useWorkspaceManager() {
   }, [storeRefreshWorkspaceList]);
 
   // Computed values
+  // The stored list is read from storage on workspace changes only; the open
+  // workspace's widget count comes from the live board
+  const workspaceList = useMemo<WorkspaceMetadata[]>(() => storedWorkspaceList.map(ws => (
+    ws.id === currentWorkspaceId && ws.widgetCount !== currentWidgetCount
+      ? { ...ws, widgetCount: currentWidgetCount }
+      : ws
+  )), [storedWorkspaceList, currentWorkspaceId, currentWidgetCount]);
+
   const currentWorkspace = useMemo(() => {
     return workspaceList.find(ws => ws.id === currentWorkspaceId);
   }, [workspaceList, currentWorkspaceId]);

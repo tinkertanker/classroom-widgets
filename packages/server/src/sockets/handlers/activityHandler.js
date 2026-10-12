@@ -149,7 +149,9 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       activity: room.activity,
       isActive: room.isActive,
       actions: room.getActions(null),
-      responseCount: 0
+      responseCount: 0,
+      // Every response and the reveal were just cleared: students drop their results
+      reset: true
     };
 
     io.to(`${session.code}:${roomId}`).emit(EVENTS.ACTIVITY.STATE_UPDATE, stateData);

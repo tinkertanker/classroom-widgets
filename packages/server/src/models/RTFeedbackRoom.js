@@ -116,14 +116,15 @@ class RTFeedbackRoom extends Room {
   }
 
   /**
-   * Override removeParticipant to also remove their feedback
+   * Override removeParticipant to also remove their feedback. Feedback is
+   * keyed by socket and students submit without joining the room's own
+   * participant list, so drop it whether or not they were listed: a student
+   * who leaves (or reconnects on a new socket) must not keep counting.
    */
   removeParticipant(socketId) {
     const removed = super.removeParticipant(socketId);
-    if (removed) {
-      this.removeFeedback(socketId);
-    }
-    return removed;
+    const feedbackRemoved = this.removeFeedback(socketId);
+    return removed || feedbackRemoved;
   }
 
   /**

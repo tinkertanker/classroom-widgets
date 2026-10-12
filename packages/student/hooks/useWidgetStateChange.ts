@@ -37,8 +37,15 @@ export const useWidgetStateChange = ({
       }
     };
 
+    // After a reconnect the card keeps its state, but every update the teacher
+    // made while this socket was away was missed: ask for the current state
+    const handleReconnect = () => {
+      socket.emit(`${roomType}:requestState`, { sessionCode: roomCode, widgetId });
+    };
+
     socket.on('session:widgetStateChanged', handleWidgetStateChanged);
     socket.on(`${roomType}:stateUpdate`, handleStateUpdate);
+    socket.on('connect', handleReconnect);
 
     // Request current state if we don't have initial state
     let timer: NodeJS.Timeout | undefined;
@@ -52,6 +59,7 @@ export const useWidgetStateChange = ({
       if (timer) clearTimeout(timer);
       socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off(`${roomType}:stateUpdate`, handleStateUpdate);
+      socket.off('connect', handleReconnect);
     };
   }, [socket, roomCode, roomType, widgetId, initialIsActive]);
 };

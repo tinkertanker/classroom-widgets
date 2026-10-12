@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { cn, widgetContainer, buttons, text, transitions } from '@shared/utils/styles';
+import { isTypingTarget } from '../shared/utils/keyboard';
 
 interface Position {
   x: number;
@@ -59,6 +60,9 @@ const Snake: React.FC = () => {
   const [score, setScore] = useState(0);
   const [speed, setSpeed] = useState(INITIAL_SPEED);
   const directionRef = useRef(direction);
+  // The direction of the last step actually taken. Two quick turns between
+  // ticks (e.g. Up then Left while moving Right) must not reverse the snake.
+  const movedDirectionRef = useRef(direction);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetGame = useCallback(() => {
@@ -66,6 +70,7 @@ const Snake: React.FC = () => {
     setFood({ x: 15, y: 15 });
     setDirection(Direction.RIGHT);
     directionRef.current = Direction.RIGHT;
+    movedDirectionRef.current = Direction.RIGHT;
     setGameOver(false);
     setScore(0);
     setSpeed(INITIAL_SPEED);
@@ -111,6 +116,7 @@ const Snake: React.FC = () => {
       }
 
       newSnake.unshift(head);
+      movedDirectionRef.current = directionRef.current;
 
       // Check if food eaten
       if (isEatingFood) {
@@ -137,7 +143,7 @@ const Snake: React.FC = () => {
   // Handle keyboard input
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (gameOver) return;
+      if (gameOver || isTypingTarget(e.target)) return;
 
       const keyDirectionMap: Record<string, Direction> = {
         ArrowUp: Direction.UP,
@@ -157,7 +163,7 @@ const Snake: React.FC = () => {
         [Direction.RIGHT]: Direction.LEFT
       };
 
-      if (opposites[directionRef.current] !== newDirection) {
+      if (opposites[movedDirectionRef.current] !== newDirection) {
         setDirection(newDirection);
         directionRef.current = newDirection;
       }

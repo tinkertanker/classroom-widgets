@@ -42,6 +42,19 @@ const getViewportCenterPosition = (widgetType: WidgetType): { x: number; y: numb
   return { x, y };
 };
 
+// The Traffic Light widget stores the lit colour, not its name
+const TRAFFIC_LIGHT_COLOURS: Record<string, string> = {
+  red: '#ff0000',
+  yellow: '#ffa500',
+  orange: '#ffa500',
+  amber: '#ffa500',
+  green: '#008000'
+};
+const trafficLightState = (state: unknown) => {
+  const activeLight = typeof state === 'string' ? TRAFFIC_LIGHT_COLOURS[state.toLowerCase()] : undefined;
+  return activeLight ? { activeLight } : null;
+};
+
 // Generic widget finder
 const findWidgetByType = (type: WidgetType, preferFocused = true) => {
   const store = useWorkspaceStore.getState();
@@ -364,10 +377,11 @@ export class VoiceCommandExecutor {
 
       // Set initial items if provided
       if (items.length > 0) {
+        // The List widget's item shape: a missing status cycles to NaN
         const initialItems = items.map((item: string, index: number) => ({
           id: `item-${Date.now()}-${index}`,
           text: item,
-          completed: false
+          status: 0
         }));
 
         store.updateWidgetState(widgetId, {
@@ -411,11 +425,12 @@ export class VoiceCommandExecutor {
       // Create poll widget
       const widgetId = store.addWidget(WidgetType.POLL, { x, y });
 
-      // Set initial poll data
+      // Set initial poll data, in the shape the Poll widget restores from
       store.updateWidgetState(widgetId, {
-        question: defaultPoll.question,
-        options: options.map((option: string) => option),
-        votes: {}
+        pollData: {
+          question: defaultPoll.question,
+          options: options.map((option: string) => option)
+        }
       });
 
       debug('✅ Created poll widget:', widgetId);
@@ -708,12 +723,12 @@ export class VoiceCommandExecutor {
    * Create Traffic Light widget
    */
   private async executeCreateTrafficLight(command: any): Promise<ExecutionResult> {
-    const state = command.parameters.state || 'red';
+    const lightState = trafficLightState(command.parameters.state || 'red');
     const widgetResult = await this.executeCreateWidget(WidgetType.TRAFFIC_LIGHT, command, 'CREATE_TRAFFIC_LIGHT');
 
-    if (widgetResult.success && widgetResult.widgetId) {
+    if (widgetResult.success && widgetResult.widgetId && lightState) {
       const store = useWorkspaceStore.getState();
-      store.updateWidgetState(widgetResult.widgetId, { currentLight: state });
+      store.updateWidgetState(widgetResult.widgetId, lightState);
     }
 
     return widgetResult;
@@ -729,9 +744,12 @@ export class VoiceCommandExecutor {
       return await this.executeCreateTrafficLight(command);
     }
 
-    const state = command.parameters.state;
+    const lightState = trafficLightState(command.parameters.state);
+    if (!lightState) {
+      return { success: false, error: `Unknown traffic light state: ${command.parameters.state}` };
+    }
     const store = useWorkspaceStore.getState();
-    store.updateWidgetState(trafficLightWidget.id, { currentLight: state });
+    store.updateWidgetState(trafficLightWidget.id, lightState);
 
     return { success: true, widgetId: trafficLightWidget.id, action: 'SET_TRAFFIC_LIGHT' };
   }

@@ -80,16 +80,16 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
       });
     }
 
+    // Listen for response
+    const responseEvent = isSession ? 'session:linkShare:submitted' : 'linkShare:submitted';
+
     // Set up timeout
     const timeoutId = setTimeout(() => {
       setIsSubmitting(false);
       setError('Connection timeout. Please try again.');
-      // Remove the response listener if timeout occurs
-      socket.off(responseEvent);
+      // Remove only this submission's listener: other Drop Box cards share the socket
+      socket.off(responseEvent, handleResponse);
     }, 10000);
-
-    // Listen for response
-    const responseEvent = isSession ? 'session:linkShare:submitted' : 'linkShare:submitted';
 
     const handleResponse = (response: { success: boolean; error?: string | { code?: string; message?: string } }) => {
       // Clear the timeout since we got a response

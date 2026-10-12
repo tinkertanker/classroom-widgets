@@ -124,6 +124,16 @@ export function ActivityRenderer({
       setActivity(data.activity);
       setIsActive(data.isActive);
       setActions(data.actions);
+      if (data.reset) {
+        // The teacher cleared every response and the reveal
+        setResults(null);
+        setCorrectAnswers(null);
+      } else {
+        // A state reply carries this student's results and the reveal;
+        // room-wide updates omit both
+        if (data.results) setResults(data.results);
+        if ('correctAnswers' in data) setCorrectAnswers(data.correctAnswers ?? null);
+      }
     };
 
     const handleFeedback = (data: any) => {

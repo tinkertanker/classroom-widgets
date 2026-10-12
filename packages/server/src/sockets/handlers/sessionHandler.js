@@ -312,13 +312,8 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         return;
       }
       
-      // Check room limit
-      if (session.activeRooms.size >= LIMITS.MAX_ROOMS_PER_SESSION) {
-        callback({ success: false, error: 'Maximum rooms limit reached' });
-        return;
-      }
-      
-      // Check if room already exists
+      // Check if room already exists. Rejoining one is not a new room, so it
+      // is allowed even when the session is at its room limit.
       const existingRoom = session.getRoom(roomType, widgetId);
       if (existingRoom) {
         existingRoom.updateActivity();
@@ -332,7 +327,13 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         });
         return;
       }
-      
+
+      // Check room limit
+      if (session.activeRooms.size >= LIMITS.MAX_ROOMS_PER_SESSION) {
+        callback({ success: false, error: 'Maximum rooms limit reached' });
+        return;
+      }
+
       // Create new room
       if (SESSION_DEBUG) {
         logger.info('[SessionHandler] Creating new room:', { roomType, widgetId });

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface UseSlotMachineAnimationOptions {
   onAnimationComplete?: (selectedItem: string, selectedIndex: number) => void;
@@ -16,6 +16,10 @@ export function useSlotMachineAnimation({
   const [isSpinning, setIsSpinning] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [displayChoices, setDisplayChoices] = useState<string[]>([]);
+  // Callers pass an inline callback; keeping it out of the effect's deps stops
+  // every re-render mid-spin from re-picking the winner and restarting the timer.
+  const onAnimationCompleteRef = useRef(onAnimationComplete);
+  onAnimationCompleteRef.current = onAnimationComplete;
 
   // Start the slot machine animation
   const startAnimation = useCallback((choices: string[]) => {
@@ -51,12 +55,12 @@ export function useSlotMachineAnimation({
         const selectedItem = displayChoices[randomIndex];
         setIsLoading(false);
         setIsSpinning(false);
-        onAnimationComplete?.(selectedItem, randomIndex);
+        onAnimationCompleteRef.current?.(selectedItem, randomIndex);
       }, duration);
 
       return () => clearTimeout(timer);
     }
-  }, [isLoading, displayChoices, duration, onAnimationComplete]);
+  }, [isLoading, displayChoices, duration]);
 
   // Reset animation state
   const resetAnimation = useCallback(() => {

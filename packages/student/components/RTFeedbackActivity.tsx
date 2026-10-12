@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
@@ -16,6 +16,10 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
+  // The value the server holds for this student, or null if none was sent
+  const heldValueRef = useRef<number | null>(null);
+  const isActiveRef = useRef(isActive);
+  isActiveRef.current = isActive;
 
   // Listen for room state changes using shared hook
   useWidgetStateChange({
@@ -32,6 +36,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       if (newIsActive && wasInactive) {
         setCurrentValue(3);
         setLastSentValue(3);
+        heldValueRef.current = null;
       }
     }
   });
@@ -45,11 +50,29 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     };
 
     socket.on('session:rtfeedback:submitted', handleSubmitted);
-    
+
     return () => {
       socket.off('session:rtfeedback:submitted', handleSubmitted);
     };
   }, [socket]);
+
+  // The server drops a student's feedback when their socket disconnects, so
+  // send the last value again after a reconnect to keep counting it
+  useEffect(() => {
+    const handleReconnect = () => {
+      const value = heldValueRef.current;
+      if (value === null || !isActiveRef.current) return;
+      socket.emit('session:rtfeedback:submit', {
+        sessionCode: roomCode,
+        widgetId,
+        value
+      });
+    };
+    socket.on('connect', handleReconnect);
+    return () => {
+      socket.off('connect', handleReconnect);
+    };
+  }, [socket, roomCode, widgetId]);
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isActive) {
@@ -70,6 +93,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       });
 
       setLastSentValue(currentValue);
+      heldValueRef.current = currentValue;
 
       // Reset sending state after a short delay
       setTimeout(() => {

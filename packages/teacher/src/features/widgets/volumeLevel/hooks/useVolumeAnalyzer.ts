@@ -26,6 +26,12 @@ export function useVolumeAnalyzer({
   const dataArrayRef = useRef<Uint8Array<ArrayBuffer> | null>(null);
   const isCooldownRef = useRef(isInCooldown);
   const onThresholdExceededRef = useRef(onThresholdExceeded);
+  // The monitoring interval outlives renders, so it reads the latest settings
+  // through refs instead of a callback that would go stale.
+  const isEnabledRef = useRef(isEnabled);
+  isEnabledRef.current = isEnabled;
+  const thresholdRef = useRef(threshold);
+  thresholdRef.current = threshold;
 
   // Keep refs current without forcing callback recreation downstream.
   useEffect(() => {
@@ -74,12 +80,12 @@ export function useVolumeAnalyzer({
     setVolume(Math.min(averageVolume, 100)); // Cap at 100%
 
     // Check if the average volume exceeds the threshold and cooldown is not active
-    if (isEnabled && averageVolume > threshold && !isCooldownRef.current) {
+    if (isEnabledRef.current && averageVolume > thresholdRef.current && !isCooldownRef.current) {
       onThresholdExceededRef.current?.();
     }
 
     return averageVolume;
-  }, [isEnabled, threshold, smoothingSamples]);
+  }, [smoothingSamples]);
   const startMonitoring = useCallback((analyser: AnalyserNode) => {
     const intervalId = setInterval(() => {
       analyzeVolume(analyser);

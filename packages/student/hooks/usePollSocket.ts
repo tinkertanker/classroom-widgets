@@ -84,6 +84,12 @@ export const usePollSocket = ({
         }
         if (data.results) {
           setResults(data.results);
+          // No votes counted: the teacher changed the options (a new poll) or
+          // reset it, so the server lets this student vote again
+          if (data.results.totalVotes === 0) {
+            setHasVoted(false);
+            setSelectedOption(null);
+          }
         }
       }
     };

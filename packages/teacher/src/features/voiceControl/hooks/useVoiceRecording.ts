@@ -47,8 +47,13 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     recognition.interimResults = true; // Get interim results
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
+    // A stopped, aborted or replaced recogniser still delivers its final
+    // result, error and end events. Only the active one may touch state, or a
+    // late result is processed as a second command or survives a reset.
+    const isActive = () => recognitionRef.current === recognition;
 
     recognition.onstart = () => {
+      if (!isActive()) return;
       debug('🎤 START: Speech Recognition engine started listening');
       isGatheringInputRef.current = true;
       setState(prev => ({
@@ -71,10 +76,13 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     };
 
     recognition.onresult = (event: any) => {
+      if (!isActive()) return;
       debug('🎯 RESULT: Speech identified');
-      const result = event.results[event.results.length - 1][0];
-      const transcript = result.transcript;
-      const confidence = result.confidence;
+      // Continuous recognition splits speech at pauses into separate results;
+      // the command is all of them, not just the latest phrase
+      const results = Array.from(event.results as ArrayLike<any>);
+      const transcript = results.map((phrase) => phrase[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
+      const confidence = event.results[event.results.length - 1][0].confidence;
       const isFinal = event.results[event.results.length - 1].isFinal;
 
       // Store the latest result
@@ -93,6 +101,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     };
 
     recognition.onerror = (event: any) => {
+      if (!isActive()) return;
       debug.error('❌ ERROR: Speech recognition failed');
       let errorMessage = 'Voice recognition failed';
 
@@ -138,6 +147,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     };
 
     recognition.onend = () => {
+      if (!isActive()) return;
+      recognitionRef.current = null;
       debug('⏹️ END: Speech Recognition engine stopped');
       isGatheringInputRef.current = false;
 

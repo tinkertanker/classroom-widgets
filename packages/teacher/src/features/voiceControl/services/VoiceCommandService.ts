@@ -1,5 +1,6 @@
 import { VoiceCommandRequest, VoiceCommandResponse, VoiceContext } from '../types/voiceControl';
 import { debug } from '@shared/utils/debug';
+import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
 // LLM fallback (Ollama) usually answers in under a second, but a wedged
 // backend would otherwise leave the voice UI waiting forever
@@ -29,12 +30,10 @@ function timeoutSignal(ms: number): AbortSignal | undefined {
 }
 
 export class VoiceCommandService {
-  private baseUrl: string;
-
-  constructor() {
-    this.baseUrl = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3001/api'
-      : '/api';
+  // The API lives on the backend server, not the origin serving this app
+  // (widgets.tk.sg has no /api route), so use the configured server URL
+  private get baseUrl(): string {
+    return `${useWorkspaceUiStore.getState().serverStatus.url.replace(/\/+$/, '')}/api`;
   }
 
   /**

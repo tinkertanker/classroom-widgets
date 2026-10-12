@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 interface UseCooldownTimerOptions {
   duration?: number;
@@ -41,6 +41,14 @@ export function useCooldownTimer({
       });
     }, 1000);
   }, [duration, isInCooldown, onCooldownStart, onCooldownEnd]);
+
+  // Stop the countdown if the widget is removed mid-cooldown.
+  useEffect(() => () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  }, []);
 
   const cancelCooldown = useCallback(() => {
     if (intervalRef.current) {

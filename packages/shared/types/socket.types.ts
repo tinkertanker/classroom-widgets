@@ -404,6 +404,8 @@ export interface ActivityStateUpdateData {
   isActive: boolean;
   actions: ActivityAction[];
   responseCount: number;
+  /** Set when the teacher reset the activity: every response and the reveal were cleared */
+  reset?: boolean;
 }
 
 export interface ActivityFeedbackData {
