@@ -237,11 +237,20 @@ export interface SessionRTFeedbackSubmitData {
   sessionCode: string;
   widgetId: string;
   value: number; // 1-5 scale
+  // Set when the student re-sends a value after a reconnect. The server then
+  // refuses it if responses were cleared since resetEpoch, the clear count
+  // the student last saw. A freshly chosen value is always accepted.
+  replay?: boolean;
+  resetEpoch?: number;
 }
 
 export interface SessionRTFeedbackSubmittedResponse {
   success: boolean;
   error?: string;
+  widgetId?: string;
+  resetEpoch?: number;
+  // A replayed value was refused because responses were cleared after it was chosen
+  stale?: boolean;
 }
 
 export interface RTFeedbackUpdateData {
@@ -404,6 +413,8 @@ export interface ActivityStateUpdateData {
   isActive: boolean;
   actions: ActivityAction[];
   responseCount: number;
+  /** Set when the teacher reset the activity: every response and the reveal were cleared */
+  reset?: boolean;
 }
 
 export interface ActivityFeedbackData {

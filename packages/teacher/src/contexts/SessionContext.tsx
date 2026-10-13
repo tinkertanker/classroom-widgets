@@ -367,6 +367,11 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
     };
 
     const handleSessionClosed = () => {
+      // The host socket is in the session room, so closing our own session
+      // echoes back here after closeSession has already cleared it. Acting on
+      // the echo would report our own close as an error and abort a session
+      // the teacher has already started creating in its place.
+      if (!sessionCodeRef.current) return;
       debug('[UnifiedSession] Session closed by host');
       cancelSessionWork();
       clearSession();

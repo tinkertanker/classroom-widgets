@@ -292,7 +292,7 @@ describe('ActivityRoom', () => {
 
     it('handles null/undefined answers without throwing', () => {
       for (const answers of [null, undefined]) {
-        const result = room.submitAnswer('socket-1', answers);
+        const result = room.submitAnswer(`socket-${answers}`, answers);
         assert.equal(result.success, true);
         assert.equal(result.results.score, 0);
         assert.equal(result.results.total, 1);
@@ -308,8 +308,8 @@ describe('ActivityRoom', () => {
     });
 
     it('handles non-array placements without throwing', () => {
-      for (const placements of ['not-array', 42, {}, null]) {
-        const result = room.submitAnswer('socket-1', { placements, textInputs: {} });
+      for (const [index, placements] of ['not-array', 42, {}, null].entries()) {
+        const result = room.submitAnswer(`socket-${index}`, { placements, textInputs: {} });
         assert.equal(result.success, true);
         assert.equal(result.results.score, 0);
       }
@@ -331,8 +331,8 @@ describe('ActivityRoom', () => {
     });
 
     it('treats non-string text input values as incorrect instead of throwing', () => {
-      for (const value of [42, null, {}, [], true]) {
-        const result = room.submitAnswer('socket-1', {
+      for (const [index, value] of [42, null, {}, [], true].entries()) {
+        const result = room.submitAnswer(`socket-${index}`, {
           placements: [],
           textInputs: { 'blank-0': value }
         });

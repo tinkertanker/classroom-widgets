@@ -124,6 +124,16 @@ export function ActivityRenderer({
       setActivity(data.activity);
       setIsActive(data.isActive);
       setActions(data.actions);
+      if (data.reset) {
+        // The teacher cleared every response and the reveal
+        setResults(null);
+        setCorrectAnswers(null);
+      } else {
+        // A state reply carries this student's results and the reveal;
+        // room-wide updates omit both
+        if ('results' in data) setResults(data.results ?? null);
+        if ('correctAnswers' in data) setCorrectAnswers(data.correctAnswers ?? null);
+      }
     };
 
     const handleFeedback = (data: any) => {
@@ -154,14 +164,17 @@ export function ActivityRenderer({
       setActions(data.actions);
     };
 
+    const requestState = () => socket.emit('activity:requestState', { sessionCode, widgetId });
     socket.on('activity:stateUpdate', handleStateUpdate);
     socket.on('activity:feedback', handleFeedback);
     socket.on('activity:revealed', handleRevealed);
     socket.on('session:widgetStateChanged', handleWidgetStateChanged);
     socket.on('activity:retryReady', handleRetryReady);
+    socket.on('connect', requestState);
 
-    // Request current state on mount
-    socket.emit('activity:requestState', { sessionCode, widgetId });
+    // This renderer does not use useWidgetStateChange: refresh its full state
+    // on reconnect too, including resets/reveals missed while disconnected.
+    requestState();
 
     return () => {
       socket.off('activity:stateUpdate', handleStateUpdate);
@@ -169,6 +182,7 @@ export function ActivityRenderer({
       socket.off('activity:revealed', handleRevealed);
       socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off('activity:retryReady', handleRetryReady);
+      socket.off('connect', requestState);
     };
   }, [socket, sessionCode, widgetId]);
 

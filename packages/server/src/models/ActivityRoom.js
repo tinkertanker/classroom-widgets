@@ -71,6 +71,12 @@ class ActivityRoom extends Room {
       return { success: false, error: 'Activity not active' };
     }
 
+    // One answer per student until a retry clears it, so allowRetry holds and
+    // the teacher is not sent the same student's response again
+    if (this.responses.has(socketId)) {
+      return { success: false, error: 'Already submitted' };
+    }
+
     // Evaluate the submission
     const results = this.evaluateAnswers(answers);
 
@@ -257,7 +263,9 @@ class ActivityRoom extends Room {
       }
     ];
 
-    if (this.allowRetry && hasSubmitted) {
+    // Without a student (a broadcast to the whole room), offer retry whenever
+    // it is allowed: students who have results show it, the rest ignore it
+    if (this.allowRetry && (hasSubmitted || socketId === null)) {
       actions.push({
         type: 'retry',
         enabled: this.isActive && this.allowRetry,
@@ -278,7 +286,8 @@ class ActivityRoom extends Room {
       activity: this.activity,
       isActive: this.isActive,
       actions: this.getActions(socketId),
-      results: response?.results || null,
+      // Results are only shown to students when immediate feedback is on
+      results: this.showImmediateFeedback ? response?.results || null : null,
       correctAnswers: this.answersRevealed ? this.getCorrectAnswers() : null
     };
   }

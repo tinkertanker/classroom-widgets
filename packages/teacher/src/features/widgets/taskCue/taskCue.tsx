@@ -36,20 +36,17 @@ function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) 
     const plaey = useCallback(() => {
         const audio = new Audio(changeSoundFile);
         audio.volume = getMasterVolume();
-        void audio.play();
+        audio.play().catch(() => undefined);
     }, []);
 
-    const handleClick = useCallback((e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        if (target.closest("#widget1inside")) {
-            plaey();
-        }
-    }, [plaey]);
-
+    // The sound is played here rather than from a window click listener: every
+    // TaskCue on the board registered one and matched the same element id, so
+    // one click played the sound once per TaskCue widget.
     const handleChangeImage = useCallback((index: number) => {
         setSelectedIndex(index);
         onStateChange?.({ index });
-    }, [onStateChange]);
+        plaey();
+    }, [onStateChange, plaey]);
 
     const handleNextState = useCallback(() => {
         const index = (selectedIndex + 1) % taskModes.length;
@@ -63,13 +60,6 @@ function TaskCue({ isActive = false, savedState, onStateChange }: TaskCueProps) 
             setSelectedIndex(savedState.index);
         }
     }, [savedState?.index]);
-
-    useEffect(() => {
-        window.addEventListener("click", handleClick);
-        return () => {
-            window.removeEventListener("click", handleClick);
-        };
-    }, [handleClick]);
 
     return (
         <div className="w-full h-full overflow-hidden flex flex-col rounded-lg" id="widget1">

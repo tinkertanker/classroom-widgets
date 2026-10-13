@@ -9,9 +9,13 @@ interface TextInputBlockProps {
 export function TextInputBlock({ block }: TextInputBlockProps) {
   const { targetId, placeholder = 'Type your answer...', maxLength } = block.props;
   const { textValue, feedback, correctAnswer } = useActivityTarget(targetId);
-  const { isActive, results, setTextInput } = useActivity();
+  const { isActive, results, setTextInput, activity } = useActivity();
 
   const isDisabled = !isActive || !!results;
+
+  // The revealed answer is an item ID; show that item's text
+  const correctItem = correctAnswer ? activity?.items.find(i => i.id === correctAnswer) : null;
+  const correctContent = correctItem?.content || correctAnswer;
 
   const getFeedbackStyles = () => {
     if (!feedback) return '';
@@ -45,9 +49,9 @@ export function TextInputBlock({ block }: TextInputBlockProps) {
           ${getFeedbackStyles()}
         `}
       />
-      {feedback === 'incorrect' && correctAnswer && (
+      {feedback === 'incorrect' && correctContent && (
         <div className="mt-1 text-sm text-green-600 dark:text-green-400">
-          Correct answer: {correctAnswer}
+          Correct answer: {correctContent}
         </div>
       )}
     </div>

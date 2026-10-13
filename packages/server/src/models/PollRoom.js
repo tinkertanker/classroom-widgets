@@ -36,8 +36,10 @@ class PollRoom extends Room {
       ...data
     };
     
-    // Initialize or reset vote counts if needed
+    // Initialize or reset vote counts if needed. A new set of options is a new
+    // poll, so everyone who voted on the old one may vote again.
     if (shouldResetVotes) {
+      this.voters.clear();
       this.pollData.votes = {};
       if (this.pollData.options) {
         this.pollData.options.forEach((_, index) => {

@@ -47,8 +47,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     recognition.interimResults = true; // Get interim results
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
+    // stop() still delivers trailing results before end. Keep this recogniser
+    // active until then, but invalidate it on reset, abort or replacement.
+    const isActive = () => recognitionRef.current === recognition;
 
     recognition.onstart = () => {
+      if (!isActive()) return;
       debug('🎤 START: Speech Recognition engine started listening');
       isGatheringInputRef.current = true;
       setState(prev => ({
@@ -71,10 +75,13 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     };
 
     recognition.onresult = (event: any) => {
+      if (!isActive()) return;
       debug('🎯 RESULT: Speech identified');
-      const result = event.results[event.results.length - 1][0];
-      const transcript = result.transcript;
-      const confidence = result.confidence;
+      // Continuous recognition splits speech at pauses into separate results;
+      // the command is all of them, not just the latest phrase
+      const results = Array.from(event.results as ArrayLike<any>);
+      const transcript = results.map((phrase) => phrase[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
+      const confidence = event.results[event.results.length - 1][0].confidence;
       const isFinal = event.results[event.results.length - 1].isFinal;
 
       // Store the latest result
@@ -93,6 +100,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     };
 
     recognition.onerror = (event: any) => {
+      if (!isActive()) return;
       debug.error('❌ ERROR: Speech recognition failed');
       let errorMessage = 'Voice recognition failed';
 
@@ -138,6 +146,8 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     };
 
     recognition.onend = () => {
+      if (!isActive()) return;
+      recognitionRef.current = null;
       debug('⏹️ END: Speech Recognition engine stopped');
       isGatheringInputRef.current = false;
 
@@ -209,17 +219,15 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         debug.error('Error stopping recognition:', error);
       }
 
-      recognitionRef.current = null;
-
-      // Now show the captured transcript and set processing state
+      // Enter stops capture, not transcription. Publish the command only from
+      // onend, after trailing results, or an interim and its final correction
+      // could execute as two different commands in VoiceInterface.
       isGatheringInputRef.current = false;
       setState(prev => ({
         ...prev,
         isListening: false,
         isProcessing: true, // Now we're processing the captured speech
         isGathering: false, // Done gathering input
-        transcript: currentTranscriptRef.current, // Show the captured transcript
-        confidence: currentConfidenceRef.current,
         error: null // Clear any errors
       }));
     }

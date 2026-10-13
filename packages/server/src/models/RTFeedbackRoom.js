@@ -10,6 +10,7 @@ class RTFeedbackRoom extends Room {
     this.understanding = [0, 0, 0, 0, 0, 0, 0, 0, 0]; // 9 buckets for 0.5 increments
     this.totalResponses = 0;
     this.isActive = false; // RTFeedback starts paused by default
+    this.resetEpoch = 0; // Bumped when responses are cleared, so students can drop stale ones
   }
 
   getType() {
@@ -53,6 +54,7 @@ class RTFeedbackRoom extends Room {
     this.feedbackData.clear();
     this.understanding.fill(0);
     this.totalResponses = 0;
+    this.resetEpoch++;
     this.updateActivity();
   }
 
@@ -116,14 +118,15 @@ class RTFeedbackRoom extends Room {
   }
 
   /**
-   * Override removeParticipant to also remove their feedback
+   * Override removeParticipant to also remove their feedback. Feedback is
+   * keyed by socket and students submit without joining the room's own
+   * participant list, so drop it whether or not they were listed: a student
+   * who leaves (or reconnects on a new socket) must not keep counting.
    */
   removeParticipant(socketId) {
     const removed = super.removeParticipant(socketId);
-    if (removed) {
-      this.removeFeedback(socketId);
-    }
-    return removed;
+    const feedbackRemoved = this.removeFeedback(socketId);
+    return removed || feedbackRemoved;
   }
 
   /**

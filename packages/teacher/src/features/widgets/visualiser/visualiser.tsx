@@ -20,6 +20,9 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isMountedRef = useRef(false);
+  // Only the latest start request may own the camera; an older one that
+  // resolves later (quick device switch, retry) must release its stream.
+  const startRequestRef = useRef(0);
 
   // Get available video devices
   const getVideoDevices = async () => {
@@ -46,6 +49,8 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
 
   // Start video stream
   const startVideo = async (deviceId?: string) => {
+    const request = ++startRequestRef.current;
+    const isStale = () => !isMountedRef.current || request !== startRequestRef.current;
     try {
       // Stop any existing stream
       if (streamRef.current) {
@@ -59,7 +64,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
 
       // Check if there are any cameras available first
       const allDevices = await navigator.mediaDevices.enumerateDevices();
-      if (!isMountedRef.current) return;
+      if (isStale()) return;
       const videoDevices = allDevices.filter(device => device.kind === 'videoinput');
       console.log('📹 [Visualiser] Checking available cameras:', videoDevices.length);
 
@@ -78,12 +83,13 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       console.log('✅ [Visualiser] Camera access granted');
 
-      streamRef.current = stream;
-      if (!isMountedRef.current) {
+      if (isStale()) {
         stream.getTracks().forEach(track => track.stop());
-        streamRef.current = null;
         return;
       }
+      // Re-read after the awaits: another start may have attached a stream.
+      (streamRef.current as MediaStream | null)?.getTracks().forEach(track => track.stop());
+      streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -96,7 +102,7 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
       // Get devices after permission is granted
       await getVideoDevices();
     } catch (err: any) {
-      if (!isMountedRef.current) return;
+      if (isStale()) return;
 
       console.error('❌ [Visualiser] Error accessing webcam:', err);
 

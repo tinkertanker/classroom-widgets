@@ -40,8 +40,13 @@ export function buildFillBlankActivity(data: FillBlankState): Partial<ActivityDe
   }
 
   // Create items - shuffle ONCE and use everywhere
-  const allWords = [...answers, ...distractors];
-  const shuffled = [...allWords].sort(() => Math.random() - 0.5);
+  // Fisher-Yates: sorting with a random comparator is biased towards the input
+  // order, which would tend to list the answers first and in blank order.
+  const shuffled = [...answers, ...distractors];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   const items = shuffled.map((word, i) => ({
     id: `item-${i}`,
     content: word

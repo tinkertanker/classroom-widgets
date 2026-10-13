@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { FaPenNib, FaClipboardCheck } from 'react-icons/fa6';
 import { useModal } from '../../../../contexts/ModalContext';
 import { useNetworkedWidget } from '../../../session/hooks/useNetworkedWidget';
@@ -179,12 +179,26 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     });
   }, [onStateChange, activityData, responseCount]);
 
-  // Send activity update when data changes or room is established
+  // Send the activity when its data changes or a new room is established.
+  // The server keeps the activity across a teacher refresh or a remount, and
+  // re-sending identical data would reshuffle it under students mid-activity
+  // and clear a reveal on the server while this widget still shows it.
+  const sentActivityRef = useRef<FillBlankState | null>(hasRoom ? activityData : null);
   useEffect(() => {
-    if (hasRoom && activityData.answers.length > 0) {
-      sendActivityUpdate();
+    if (!hasRoom) {
+      sentActivityRef.current = null;
+      return;
     }
-  }, [hasRoom, activityData, sendActivityUpdate]);
+    if (sentActivityRef.current === null && recoveryData?.roomData?.activity) {
+      sentActivityRef.current = activityData;
+    }
+    if (!session.sessionCode || activityData.answers.length === 0) return;
+    if (sentActivityRef.current === activityData) return;
+    sentActivityRef.current = activityData;
+    sendActivityUpdate();
+    // A new definition clears any reveal on the server.
+    setAnswersRevealed(false);
+  }, [hasRoom, recoveryData, session.sessionCode, activityData, sendActivityUpdate]);
 
   // Handle recovery data
   useEffect(() => {

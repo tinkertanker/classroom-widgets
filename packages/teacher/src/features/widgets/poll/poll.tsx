@@ -197,7 +197,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
       />,
       onClose: hideModal
     });
-  }, [showModal, hideModal, updatePoll, pollData, canEdit, editorScope]);
+  }, [showModal, hideModal, updatePoll, pollData, canEdit, editorScope, widget, resize]);
 
   const resetVotes = useCallback(() => {
     if (!hasRoom || !canEdit()) return;

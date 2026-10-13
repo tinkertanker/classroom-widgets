@@ -332,13 +332,34 @@ const App: React.FC = () => {
             animateRoomEnter(roomId);
           });
         } else {
-          // Clean up on failure
+          // Clean up on failure. The reason reaches the join form through
+          // joinOutcome below; throwing here would only be an uncaught error.
           newSocket.close();
           socketRefs.current.delete(sessionId);
           setCurrentSessionCode(''); // Clear session code
           setIsConnected(false);
-          throw new Error('Failed to join session');
         }
+      });
+
+      // Settle the join on the server's first answer so the form can say why
+      // it failed (session full, too many attempts, ...)
+      const joinOutcome = new Promise<void>((resolve, reject) => {
+        const settle = (joinData: { success?: boolean; error?: string; message?: string }) => {
+          clearTimeout(timer);
+          if (joinData?.success) {
+            resolve();
+          } else {
+            reject(new Error(joinData?.message || joinData?.error || 'Failed to join session'));
+          }
+        };
+        const timer = setTimeout(() => {
+          newSocket.off('session:joined', settle);
+          newSocket.close();
+          socketRefs.current.delete(sessionId);
+          setIsConnected(false);
+          reject(new Error('Could not connect to the session. Please try again.'));
+        }, 15000);
+        newSocket.once('session:joined', settle);
       });
 
       // Handle new rooms being created in the session
@@ -443,6 +464,13 @@ const App: React.FC = () => {
       newSocket.on('reconnect_attempt', () => {
         // Reconnection attempts are now indicated by the warning icon
       });
+
+      try {
+        await joinOutcome;
+      } catch (error) {
+        setPrimarySocket(current => (current === newSocket ? null : current));
+        throw error;
+      }
 
     } catch (error) {
       throw error;

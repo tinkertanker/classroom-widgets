@@ -18,7 +18,18 @@ declare global {
   }
 }
 
-const PanelContentReadyNotifier = ({ onReady }: { onReady: () => void }) => {
+// JSON with object keys sorted, for comparing states by value. The macOS shell
+// hands snapshots over as NSDictionary, which does not keep key order, so the
+// echoed state and a widget's own copy of it can serialise differently. A
+// report the host sees as a no-op publishes no revision, and the panel would
+// then queue every later change behind a write that is never acknowledged.
+const canonicalJson = (value: unknown): string | undefined => JSON.stringify(value, (_key, nested) => (
+  nested !== null && typeof nested === 'object' && !Array.isArray(nested)
+    ? Object.fromEntries(Object.keys(nested).sort().map((key) => [key, nested[key]]))
+    : nested
+));
+
+const PanelContentReadyNotifier =({ onReady }: { onReady: () => void }) => {
   useEffect(() => {
     onReady();
   }, [onReady]);
@@ -44,7 +55,7 @@ const CompactWidgetApp = () => {
     const currentSnapshot = snapshotRef.current;
     if (!currentSnapshot || closingRef.current) return;
     inFlightStateRef.current = serializedState;
-    lastReportedStateRef.current = serializedState;
+    lastReportedStateRef.current = canonicalJson(JSON.parse(serializedState));
     postNativeMessage('classroomWidgetPanel', {
       type: 'panel-state-change',
       schemaVersion: 1,
@@ -79,12 +90,12 @@ const CompactWidgetApp = () => {
           return;
         }
         snapshotRef.current = nextSnapshot;
-        const echoedState = JSON.stringify(nextSnapshot.state);
+        const echoedState = canonicalJson(nextSnapshot.state);
         lastReportedStateRef.current = echoedState;
         inFlightStateRef.current = null;
         const queuedState = queuedStateRef.current;
         queuedStateRef.current = null;
-        if (queuedState !== null && queuedState !== echoedState) {
+        if (queuedState !== null && canonicalJson(JSON.parse(queuedState)) !== echoedState) {
           const optimisticSnapshot = {
             ...nextSnapshot,
             state: JSON.parse(queuedState) as JsonValue
@@ -171,7 +182,7 @@ const CompactWidgetApp = () => {
       queuedStateRef.current = serializedState;
       return;
     }
-    if (serializedState === lastReportedStateRef.current) return;
+    if (canonicalJson(state) === lastReportedStateRef.current) return;
     reportState(serializedState, currentSnapshot.stateRevision);
   }, [reportState]);
 

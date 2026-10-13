@@ -28,10 +28,21 @@ const getStableColourIndex = (id: string) => {
   return Math.abs(hash) % questionColors.length;
 };
 
+// Socket payloads, recovery snapshots and persisted saved state all carry the
+// timestamp as a string or number; it must be a Date before the list is sorted.
+const toQuestion = (q: any): Question => ({
+  id: q.id,
+  text: q.text,
+  timestamp: new Date(q.timestamp),
+  studentId: q.studentId || '',
+  studentName: q.studentName,
+  answered: q.answered || false
+});
+
 function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [questions, setQuestions] = useState<Question[]>(
-    savedState?.questions || []
+    () => Array.isArray(savedState?.questions) ? savedState.questions.map(toQuestion) : []
   );
 
   // Networked widget hook
@@ -61,15 +72,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   const socketEvents = useMemo(() => ({
     'questions:questionAdded': (data: any) => {
       if (data.widgetId === widgetId) {
-        const question: Question = {
-          id: data.id,
-          text: data.text,
-          timestamp: new Date(data.timestamp),
-          studentId: data.studentId || '',
-          studentName: data.studentName,
-          answered: data.answered || false
-        };
-        setQuestions(prev => [...prev, question]);
+        setQuestions(prev => [...prev, toQuestion(data)]);
       }
     },
     'questions:questionAnswered': (data: { questionId: string; widgetId?: string }) => {
@@ -153,14 +156,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
       if (recoveryData.roomData.questions && Array.isArray(recoveryData.roomData.questions)) {
-        setQuestions(recoveryData.roomData.questions.map((q: any) => ({
-          id: q.id,
-          text: q.text,
-          timestamp: new Date(q.timestamp),
-          studentId: q.studentId || '',
-          studentName: q.studentName,
-          answered: q.answered || false
-        })));
+        setQuestions(recoveryData.roomData.questions.map(toQuestion));
       }
     }
   }, [recoveryData]);

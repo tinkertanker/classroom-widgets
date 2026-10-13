@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { useWidgetStateChange } from './useWidgetStateChange';
 
@@ -53,6 +53,7 @@ export const usePollSocket = ({
   const [hasVoted, setHasVoted] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [results, setResults] = useState<Results | null>(null);
+  const optionsRef = useRef(initialPollData?.options);
   
   console.log(`[usePollSocket ${widgetId}] Initialized with isActive:`, initialIsActive);
 
@@ -80,10 +81,23 @@ export const usePollSocket = ({
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
         console.log('[Student Poll] Processing dataUpdate for widget:', widgetId);
         if (data.pollData) {
+          // The zero-vote broadcast may have been missed while disconnected.
+          // Changed options still mean a new poll, even if others voted since.
+          if (JSON.stringify(optionsRef.current) !== JSON.stringify(data.pollData.options)) {
+            setHasVoted(false);
+            setSelectedOption(null);
+          }
+          optionsRef.current = data.pollData.options;
           setPollData(data.pollData);
         }
         if (data.results) {
           setResults(data.results);
+          // No votes counted: the teacher changed the options (a new poll) or
+          // reset it, so the server lets this student vote again
+          if (data.results.totalVotes === 0) {
+            setHasVoted(false);
+            setSelectedOption(null);
+          }
         }
       }
     };

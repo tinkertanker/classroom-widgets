@@ -32,20 +32,36 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [modalOptions, setModalOptions] = useState<ModalOptions | null>(null);
   const modalContentRef = useRef<HTMLDivElement>(null);
   const modalTitleId = useId();
+  // The open modal's options, read at call time: modal content keeps the
+  // hideModal it was rendered with, from before these options were shown.
+  const openOptionsRef = useRef<ModalOptions | null>(null);
+  const clearOptionsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const showModal = useCallback((options: ModalOptions) => {
+    // A modal opened just after another closed must not be cleared by the
+    // closing modal's delayed cleanup.
+    if (clearOptionsTimerRef.current !== null) {
+      clearTimeout(clearOptionsTimerRef.current);
+      clearOptionsTimerRef.current = null;
+    }
+    openOptionsRef.current = options;
     setModalOptions(options);
     setIsOpen(true);
   }, []);
 
   const hideModal = useCallback(() => {
+    const closingOptions = openOptionsRef.current;
+    openOptionsRef.current = null;
     setIsOpen(false);
-    if (modalOptions?.onClose) {
-      modalOptions.onClose();
-    }
     // Clear modal options after animation
-    setTimeout(() => setModalOptions(null), 200);
-  }, [modalOptions]);
+    if (clearOptionsTimerRef.current !== null) clearTimeout(clearOptionsTimerRef.current);
+    clearOptionsTimerRef.current = setTimeout(() => {
+      clearOptionsTimerRef.current = null;
+      setModalOptions(null);
+    }, 200);
+    // Last, so an onClose that opens another modal is not undone above
+    closingOptions?.onClose?.();
+  }, []);
 
   const handleOverlayClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {

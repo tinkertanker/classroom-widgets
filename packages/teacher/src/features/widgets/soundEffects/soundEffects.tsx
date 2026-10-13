@@ -15,6 +15,7 @@ import {
 import { IconType } from 'react-icons';
 import { widgetContainer } from '@shared/utils/styles';
 import { useAudioVolumeStore } from '../../../store/audioVolumeStore';
+import { isTypingTarget } from '../shared/utils/keyboard';
 
 // Sound file imports
 import victorySoundFile from "./sounds/victory.mp3";
@@ -116,6 +117,9 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
     if (!isActive) return;
 
     const handleKeyPress = (e: KeyboardEvent) => {
+      // Leave typing and browser shortcuts such as Cmd/Ctrl+1 alone.
+      if (e.metaKey || e.ctrlKey || e.altKey || isTypingTarget(e.target)) return;
+
       // Check if it's a number key (1-9 or 0)
       const key = e.key;
       let index = -1;

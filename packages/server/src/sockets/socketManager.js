@@ -76,8 +76,22 @@ function setupSocketHandlers(io, sessionManager) {
           // Start timeout to close session if host doesn't reconnect
           startHostDisconnectTimeout(io, sessionManager, session.code);
         } else {
+          // The student's feedback leaves with them; note which feedback
+          // rooms change so the teacher's chart can be refreshed.
+          const changedFeedbackRooms = session.getActiveRoomEntries()
+            .filter(({ room }) => room.feedbackData instanceof Map && room.feedbackData.has(socket.id));
+
           // Remove participant from session
           session.removeParticipant(socket.id);
+
+          if (session.hostSocketId) {
+            for (const { widgetId, room } of changedFeedbackRooms) {
+              io.to(session.hostSocketId).emit(EVENTS.RT_FEEDBACK.DATA_UPDATE, {
+                ...room.getAggregatedFeedback(),
+                widgetId
+              });
+            }
+          }
           
           // Notify host of participant disconnect
           if (session.hostSocketId) {

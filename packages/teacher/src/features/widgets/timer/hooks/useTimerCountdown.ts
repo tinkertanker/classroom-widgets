@@ -245,7 +245,9 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
       pausedTimeRef.current += safeDelta;
       originalTimeRef.current += safeDelta;
 
-      setStatus({ kind: 'running', endTime: Date.now() + nextTime * 1000 });
+      // Extend the existing deadline rather than rebuilding it from the rounded
+      // remaining seconds, which would add up to a second on every adjustment.
+      setStatus({ kind: 'running', endTime: status.endTime + safeDelta * 1000 });
       setTime(nextTime);
       setInitialTime(prev => prev + safeDelta);
       onTickRef.current?.(nextTime);

@@ -19,7 +19,9 @@ export function useAlertSound({ soundFile, volume = 0.3 }: UseAlertSoundOptions)
       soundRef.current = new Audio(soundFile);
     }
     soundRef.current.volume = volume * masterVolume;
-    soundRef.current.play();
+    soundRef.current.play().catch(() => {
+      // Autoplay can be blocked until the user interacts with the page.
+    });
   }, [masterVolume, soundFile, volume]);
 
   const setVolume = useCallback((newVolume: number) => {

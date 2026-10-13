@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
+import type { SessionRTFeedbackSubmittedResponse } from '@shared/types/socket.types';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface RTFeedbackActivityProps {
@@ -16,6 +17,28 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);
   const [isActive, setIsActive] = useState<boolean>(initialIsActive ?? true); // Use initial state if provided
+  // The value the server holds for this student, or null if none was sent.
+  // resetEpoch is the room's clear count when the value was chosen, so a value
+  // cleared by the teacher is never replayed.
+  const heldRef = useRef<{ value: number; resetEpoch: number | null } | null>(null);
+  const knownEpochRef = useRef<number | null>(null);
+  const needsReplayRef = useRef(false);
+  // The latest value sent, awaiting the server's confirmation
+  const pendingValueRef = useRef<number | null>(null);
+
+  // Only a replay is checked against the clear count: the student did not just
+  // choose it, so a clear since then wins. A freshly chosen value is always sent.
+  const submitValue = (value: number, isReplay: boolean) => {
+    pendingValueRef.current = value;
+    // A fresh choice supersedes any replay still waiting for a state reply
+    if (!isReplay) needsReplayRef.current = false;
+    socket.emit('session:rtfeedback:submit', {
+      sessionCode: roomCode,
+      widgetId,
+      value,
+      ...(isReplay && knownEpochRef.current !== null && { replay: true, resetEpoch: knownEpochRef.current })
+    });
+  };
 
   // Listen for room state changes using shared hook
   useWidgetStateChange({
@@ -24,30 +47,79 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     roomType: 'rtfeedback',
     widgetId,
     initialIsActive,
-    onStateChange: (newIsActive) => {
+    onStateChange: (newIsActive, data) => {
       const wasInactive = !isActive;
+
+      // Only a state reply carries the room's clear count; generic active
+      // state events do not, and must not trigger a replay
+      if (typeof data?.resetEpoch === 'number') {
+        knownEpochRef.current = data.resetEpoch;
+        const held = heldRef.current;
+        // Cleared while this card was offline, or chosen when the count was unknown
+        if (held && held.resetEpoch !== data.resetEpoch) {
+          heldRef.current = null;
+        }
+        // After a reconnect the server has lost our value: send it again now
+        // that the count confirms it was not cleared in the meantime
+        if (needsReplayRef.current && heldRef.current && newIsActive && !wasInactive) {
+          needsReplayRef.current = false;
+          submitValue(heldRef.current.value, true);
+        }
+      }
       setIsActive(newIsActive);
       
       // Reset to middle value when restarted from inactive state
       if (newIsActive && wasInactive) {
         setCurrentValue(3);
         setLastSentValue(3);
+        heldRef.current = null;
+        needsReplayRef.current = false;
       }
     }
   });
 
+  // Learn the room's clear count up front so a later replay can be checked
+  useEffect(() => {
+    socket.emit('rtfeedback:requestState', { sessionCode: roomCode, widgetId });
+  }, [socket, roomCode, widgetId]);
+
   // Handle submission response
   useEffect(() => {
-    const handleSubmitted = (data: { success: boolean; error?: string }) => {
+    const handleSubmitted = (data: SessionRTFeedbackSubmittedResponse) => {
+      if (data.widgetId !== widgetId) return;
+      if (typeof data.resetEpoch === 'number') knownEpochRef.current = data.resetEpoch;
+      if (data.stale) {
+        // Responses were cleared after the replayed value was chosen
+        heldRef.current = null;
+        return;
+      }
+      // The server holds the value now, as of this clear count. This also
+      // restores a value that a clear notification dropped while it was in flight.
+      if (data.success && typeof data.resetEpoch === 'number' && pendingValueRef.current !== null) {
+        heldRef.current = { value: pendingValueRef.current, resetEpoch: data.resetEpoch };
+      }
       if (!data.success) {
         console.error('Failed to submit feedback:', data.error);
       }
     };
 
     socket.on('session:rtfeedback:submitted', handleSubmitted);
-    
+
     return () => {
       socket.off('session:rtfeedback:submitted', handleSubmitted);
+    };
+  }, [socket, widgetId]);
+
+  // The server drops a student's feedback when their socket disconnects.
+  // Flag the value for replay; the state reply to the reconnect request
+  // (see onStateChange) decides whether it is still wanted.
+  useEffect(() => {
+    const handleReconnect = () => {
+      if (heldRef.current) needsReplayRef.current = true;
+    };
+    socket.on('connect', handleReconnect);
+    return () => {
+      socket.off('connect', handleReconnect);
     };
   }, [socket]);
 
@@ -63,13 +135,10 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       setIsSending(true);
 
       // Send the updated value
-      socket.emit('session:rtfeedback:submit', {
-        sessionCode: roomCode,
-        widgetId,
-        value: currentValue
-      });
+      submitValue(currentValue, false);
 
       setLastSentValue(currentValue);
+      heldRef.current = { value: currentValue, resetEpoch: knownEpochRef.current };
 
       // Reset sending state after a short delay
       setTimeout(() => {

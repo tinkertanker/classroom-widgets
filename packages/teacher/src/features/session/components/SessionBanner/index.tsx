@@ -102,9 +102,7 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
   const handleCloseSession = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm('Are you sure you want to close this session? All students will be disconnected.')) {
-      if (socket) {
-        socket.emit('session:close', { sessionCode });
-      }
+      // closeSession tells the server; emitting here too closed it twice
       onClose();
     }
   };
