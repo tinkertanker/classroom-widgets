@@ -56,17 +56,23 @@ jobs:
         if: steps.tip.outputs.stale != 'true'
         with:
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            deploy/cloudflare/pnpm-lock.yaml
+
+      - name: Install teacher dependencies
+        if: steps.tip.outputs.stale != 'true'
+        uses: ./.github/actions/install-pnpm
+        with:
+          filter: '@classroom-widgets/teacher...'
+
+      - name: Install Cloudflare dependencies
+        if: steps.tip.outputs.stale != 'true'
+        uses: ./.github/actions/install-pnpm
+        with:
+          working-directory: deploy/cloudflare
 
       - name: Build
         if: steps.tip.outputs.stale != 'true'
         working-directory: deploy/cloudflare
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build:teacher
+        run: pnpm build:teacher --skip-install
 
       - name: Deploy classroom-widgets-web
         if: steps.tip.outputs.stale != 'true'
