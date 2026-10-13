@@ -1,0 +1,98 @@
+name: Measure dependency cache setup
+description: Temporary PR-only comparison using real GitHub cache transfer.
+inputs:
+  approach:
+    required: true
+    description: baseline or candidate
+runs:
+  using: composite
+  steps:
+    - name: Clear disposable dependency state
+      shell: bash
+      run: |
+        node --input-type=module -e '
+          import { rmSync } from "node:fs";
+          const paths = ["node_modules", ...["shared", "teacher", "student", "server", "linux-dashboard"].map(p => `packages/${p}/node_modules`), "deploy/cloudflare/node_modules", process.env.PNPM_CONFIG_STORE_DIR, process.env.npm_config_cache];
+          for (const path of paths) rmSync(path, { recursive: true, force: true });
+        '
+    - name: Start measured setup
+      id: start
+      shell: bash
+      run: echo "time=$(node -p Date.now())" >> "$GITHUB_OUTPUT"
+    - name: Locate baseline download cache
+      id: baseline
+      if: inputs.approach == 'baseline'
+      shell: bash
+      run: |
+        if [[ "$BENCH_MANAGER" == pnpm ]]; then
+          echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+        else
+          echo "path=$npm_config_cache" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Restore baseline download cache
+      id: restore
+      if: inputs.approach == 'baseline'
+      uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684
+      with:
+        key: bench-${{ github.run_id }}-${{ env.BENCH_SCOPE }}-baseline
+        path: ${{ steps.baseline.outputs.path }}
+    - name: Install baseline dependencies
+      if: inputs.approach == 'baseline'
+      shell: bash
+      env:
+        RESTORED: ${{ steps.restore.outputs.cache-hit }}
+      run: |
+        if [[ "$BENCH_PHASE" == warm && "$RESTORED" != true ]]; then
+          echo 'Expected exact warm baseline cache hit' >&2
+          exit 1
+        fi
+        if [[ "$BENCH_MANAGER" == npm ]]; then
+          (cd packages/linux-dashboard && npm ci)
+        elif [[ "$BENCH_SCOPE" == teacher ]]; then
+          pnpm install --frozen-lockfile --filter '@classroom-widgets/teacher...'
+        elif [[ "$BENCH_SCOPE" == cloudflare ]]; then
+          (cd deploy/cloudflare && pnpm install --frozen-lockfile)
+        else
+          pnpm install --frozen-lockfile
+        fi
+    - name: Save baseline download cache
+      if: inputs.approach == 'baseline' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684
+      with:
+        key: bench-${{ github.run_id }}-${{ env.BENCH_SCOPE }}-baseline
+        path: ${{ steps.baseline.outputs.path }}
+    - name: Candidate pnpm setup including transfer
+      if: inputs.approach == 'candidate' && env.BENCH_MANAGER == 'pnpm'
+      uses: ./.github/actions/install-pnpm
+      with:
+        working-directory: ${{ env.BENCH_SCOPE == 'cloudflare' && 'deploy/cloudflare' || '.' }}
+        filter: ${{ env.BENCH_SCOPE == 'teacher' && '@classroom-widgets/teacher...' || '' }}
+    - name: Candidate npm setup including transfer
+      if: inputs.approach == 'candidate' && env.BENCH_MANAGER == 'npm'
+      uses: ./.github/actions/install-linux-dependencies
+    - name: Record setup duration
+      shell: bash
+      env:
+        START: ${{ steps.start.outputs.time }}
+        APPROACH: ${{ inputs.approach }}
+      run: |
+        node --input-type=module -e '
+          import { appendFileSync } from "node:fs";
+          const e = process.env;
+          const row = {scope:e.BENCH_SCOPE,phase:e.BENCH_PHASE,approach:e.APPROACH,milliseconds:Date.now()-Number(e.START),node:process.version,platform:process.platform,arch:process.arch};
+          console.log(JSON.stringify(row));
+          appendFileSync(`${e.RUNNER_TEMP}/cache-benchmark.jsonl`, JSON.stringify(row)+"\n");
+          appendFileSync(e.GITHUB_STEP_SUMMARY, `\n${JSON.stringify(row)}\n`);
+        '
+    - name: Exercise installed dependencies outside timing
+      shell: bash
+      env:
+        WRANGLER_SEND_METRICS: 'false'
+      run: |
+        if [[ "$BENCH_MANAGER" == npm ]]; then
+          (cd packages/linux-dashboard && npm test)
+        elif [[ "$BENCH_SCOPE" == cloudflare ]]; then
+          (cd deploy/cloudflare && pnpm exec wrangler --version)
+        else
+          pnpm --filter @classroom-widgets/teacher build:desktop
+        fi

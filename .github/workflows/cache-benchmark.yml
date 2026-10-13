@@ -1,0 +1,92 @@
+name: Dependency cache benchmark (temporary)
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cache-benchmark.yml'
+      - '.github/actions/cache-benchmark/**'
+permissions:
+  contents: read
+jobs:
+  cold:
+    name: Cold ${{ matrix.scope }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {scope: linux-root, os: ubuntu-latest, manager: pnpm}
+          - {scope: macos-root, os: macos-latest, manager: pnpm}
+          - {scope: teacher, os: ubuntu-latest, manager: pnpm}
+          - {scope: cloudflare, os: ubuntu-latest, manager: pnpm}
+          - {scope: linux-npm, os: ubuntu-latest, manager: npm}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      BENCH_SCOPE: ${{ matrix.scope }}
+      BENCH_MANAGER: ${{ matrix.manager }}
+      BENCH_PHASE: cold
+      PNPM_CONFIG_STORE_DIR: ${{ github.workspace }}/.bench-pnpm-${{ github.run_id }}
+      npm_config_cache: ${{ github.workspace }}/.bench-npm-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: ./.github/actions/cache-benchmark
+        with:
+          approach: baseline
+      - uses: ./.github/actions/cache-benchmark
+        with:
+          approach: candidate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cache-cold-${{ matrix.scope }}
+          path: ${{ runner.temp }}/cache-benchmark.jsonl
+  warm:
+    name: Warm ${{ matrix.scope }}
+    needs: cold
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {scope: linux-root, os: ubuntu-latest, manager: pnpm}
+          - {scope: macos-root, os: macos-latest, manager: pnpm}
+          - {scope: teacher, os: ubuntu-latest, manager: pnpm}
+          - {scope: cloudflare, os: ubuntu-latest, manager: pnpm}
+          - {scope: linux-npm, os: ubuntu-latest, manager: npm}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    env:
+      BENCH_SCOPE: ${{ matrix.scope }}
+      BENCH_MANAGER: ${{ matrix.manager }}
+      BENCH_PHASE: warm
+      PNPM_CONFIG_STORE_DIR: ${{ github.workspace }}/.bench-pnpm-${{ github.run_id }}
+      npm_config_cache: ${{ github.workspace }}/.bench-npm-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: ./.github/actions/cache-benchmark
+        with:
+          approach: candidate
+      - uses: ./.github/actions/cache-benchmark
+        with:
+          approach: baseline
+      - uses: ./.github/actions/cache-benchmark
+        with:
+          approach: baseline
+      - uses: ./.github/actions/cache-benchmark
+        with:
+          approach: candidate
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cache-warm-${{ matrix.scope }}
+          path: ${{ runner.temp }}/cache-benchmark.jsonl
