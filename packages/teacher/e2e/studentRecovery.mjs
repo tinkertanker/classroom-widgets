@@ -125,7 +125,7 @@ try {
     await delay(1000);
     assert.equal(latest.get('feedback-b').totalResponses, 0);
   });
-  await check('a value chosen before a clear is refused, so a late replay cannot restore it', async () => {
+  await check('a replay chosen before a clear is refused, while a fresh choice is still counted', async () => {
     const late = io(stack.serverUrl, { transports: ['websocket'] });
     try {
       await new Promise(resolve => late.once('connect', resolve));
@@ -139,13 +139,19 @@ try {
       await delay(300);
       const before = latest.get('feedback-a').totalResponses;
       const reply = new Promise(resolve => late.once('session:rtfeedback:submitted', resolve));
-      late.emit('session:rtfeedback:submit', { sessionCode, widgetId: 'feedback-a', value: 4, resetEpoch });
+      late.emit('session:rtfeedback:submit', { sessionCode, widgetId: 'feedback-a', value: 4, resetEpoch, replay: true });
       const response = await reply;
       assert.equal(response.success, false);
       assert.equal(response.stale, true);
       assert.equal(response.resetEpoch, resetEpoch + 1);
       await delay(500);
       assert.equal(latest.get('feedback-a').totalResponses, before);
+      // A value the student has just chosen is still counted when the clear
+      // notification has not reached them yet
+      const accepted = new Promise(resolve => late.once('session:rtfeedback:submitted', resolve));
+      late.emit('session:rtfeedback:submit', { sessionCode, widgetId: 'feedback-a', value: 4 });
+      assert.equal((await accepted).success, true);
+      await until(() => latest.get('feedback-a').totalResponses === before + 1, 'fresh value counted');
     } finally { late.disconnect(); }
   });
   await room('poll', 'poll-a');

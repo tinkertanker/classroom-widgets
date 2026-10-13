@@ -237,8 +237,10 @@ export interface SessionRTFeedbackSubmitData {
   sessionCode: string;
   widgetId: string;
   value: number; // 1-5 scale
-  // The room's clear count the student last saw; the server refuses the value
-  // if responses were cleared since
+  // Set when the student re-sends a value after a reconnect. The server then
+  // refuses it if responses were cleared since resetEpoch, the clear count
+  // the student last saw. A freshly chosen value is always accepted.
+  replay?: boolean;
   resetEpoch?: number;
 }
 
@@ -247,7 +249,7 @@ export interface SessionRTFeedbackSubmittedResponse {
   error?: string;
   widgetId?: string;
   resetEpoch?: number;
-  // The value was refused because responses were cleared after it was chosen
+  // A replayed value was refused because responses were cleared after it was chosen
   stale?: boolean;
 }
 

@@ -23,15 +23,18 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   const heldRef = useRef<{ value: number; resetEpoch: number | null } | null>(null);
   const knownEpochRef = useRef<number | null>(null);
   const needsReplayRef = useRef(false);
-  const replayPendingRef = useRef(false);
+  // The latest value sent, awaiting the server's confirmation
+  const pendingValueRef = useRef<number | null>(null);
 
+  // Only a replay is checked against the clear count: the student did not just
+  // choose it, so a clear since then wins. A freshly chosen value is always sent.
   const submitValue = (value: number, isReplay: boolean) => {
-    replayPendingRef.current = isReplay;
+    pendingValueRef.current = value;
     socket.emit('session:rtfeedback:submit', {
       sessionCode: roomCode,
       widgetId,
       value,
-      ...(knownEpochRef.current !== null && { resetEpoch: knownEpochRef.current })
+      ...(isReplay && knownEpochRef.current !== null && { replay: true, resetEpoch: knownEpochRef.current })
     });
   };
 
@@ -84,19 +87,14 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
       if (data.widgetId !== widgetId) return;
       if (typeof data.resetEpoch === 'number') knownEpochRef.current = data.resetEpoch;
       if (data.stale) {
-        // Responses were cleared after this value was chosen. A replay is
-        // dropped; a value the student has just chosen is sent again.
-        const held = heldRef.current;
-        if (replayPendingRef.current || !held) {
-          heldRef.current = null;
-        } else {
-          heldRef.current = { ...held, resetEpoch: knownEpochRef.current };
-          submitValue(held.value, false);
-        }
+        // Responses were cleared after the replayed value was chosen
+        heldRef.current = null;
         return;
       }
-      if (data.success && typeof data.resetEpoch === 'number' && heldRef.current) {
-        heldRef.current = { ...heldRef.current, resetEpoch: data.resetEpoch };
+      // The server holds the value now, as of this clear count. This also
+      // restores a value that a clear notification dropped while it was in flight.
+      if (data.success && typeof data.resetEpoch === 'number' && pendingValueRef.current !== null) {
+        heldRef.current = { value: pendingValueRef.current, resetEpoch: data.resetEpoch };
       }
       if (!data.success) {
         console.error('Failed to submit feedback:', data.error);
