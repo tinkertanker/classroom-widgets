@@ -10,6 +10,19 @@ inputs:
   cache:
     description: Completed tree, or download store when rebuilding links is cheaper (Windows).
     default: tree
+outputs:
+  cache-key:
+    description: Exact installation identity requested from the cache service.
+    value: ${{ steps.identity.outputs.key }}
+  cache-hit:
+    description: Whether the service restored the exact key.
+    value: ${{ steps.restore.outputs.cache-hit }}
+  reused:
+    description: Whether the completed tree passed validation and installation was skipped.
+    value: ${{ steps.validate.outputs.valid }}
+  install-outcome:
+    description: Frozen installation step outcome (success, failure, or skipped).
+    value: ${{ steps.install.outcome }}
 runs:
   using: composite
   steps:

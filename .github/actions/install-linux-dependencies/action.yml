@@ -4,6 +4,19 @@ inputs:
   allow-install-fallback:
     description: Preserve release's npm ci or npm install fallback; fallback trees are never saved.
     default: 'false'
+outputs:
+  cache-key:
+    description: Exact installation identity requested from the cache service.
+    value: ${{ steps.identity.outputs.key }}
+  cache-hit:
+    description: Whether the service restored the exact key.
+    value: ${{ steps.restore.outputs.cache-hit }}
+  reused:
+    description: Whether the completed tree passed validation and installation was skipped.
+    value: ${{ steps.verify.outputs.valid }}
+  install-outcome:
+    description: Installation step outcome (success, failure, or skipped).
+    value: ${{ steps.install.outcome }}
 runs:
   using: composite
   steps:

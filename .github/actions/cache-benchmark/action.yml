@@ -62,12 +62,14 @@ runs:
         key: bench-${{ github.run_id }}-${{ env.BENCH_SCOPE }}-baseline
         path: ${{ steps.baseline.outputs.path }}
     - name: Candidate pnpm setup including transfer
+      id: pnpm
       if: inputs.approach == 'candidate' && env.BENCH_MANAGER == 'pnpm'
       uses: ./.github/actions/install-pnpm
       with:
         working-directory: ${{ env.BENCH_SCOPE == 'cloudflare' && 'deploy/cloudflare' || '.' }}
         filter: ${{ env.BENCH_SCOPE == 'teacher' && '@classroom-widgets/teacher...' || '' }}
     - name: Candidate npm setup including transfer
+      id: npm
       if: inputs.approach == 'candidate' && env.BENCH_MANAGER == 'npm'
       uses: ./.github/actions/install-linux-dependencies
     - name: Record setup duration
@@ -75,14 +77,21 @@ runs:
       env:
         START: ${{ steps.start.outputs.time }}
         APPROACH: ${{ inputs.approach }}
+        HIT: ${{ steps.pnpm.outputs.cache-hit || steps.npm.outputs.cache-hit || steps.restore.outputs.cache-hit }}
+        REUSED: ${{ steps.pnpm.outputs.reused || steps.npm.outputs.reused }}
+        INSTALL_OUTCOME: ${{ steps.pnpm.outputs.install-outcome || steps.npm.outputs.install-outcome }}
+        CACHE_KEY: ${{ steps.pnpm.outputs.cache-key || steps.npm.outputs.cache-key || format('bench-{0}-{1}-baseline', github.run_id, env.BENCH_SCOPE) }}
       run: |
         node --input-type=module -e '
           import { appendFileSync } from "node:fs";
           const e = process.env;
-          const row = {scope:e.BENCH_SCOPE,phase:e.BENCH_PHASE,approach:e.APPROACH,milliseconds:Date.now()-Number(e.START),node:process.version,platform:process.platform,arch:process.arch};
+          const hit = e.HIT === "true";
+          const validSample = e.BENCH_PHASE === "cold" ? !hit : hit && (e.APPROACH === "baseline" || (e.REUSED === "true" && e.INSTALL_OUTCOME === "skipped"));
+          const row = {scope:e.BENCH_SCOPE,phase:e.BENCH_PHASE,approach:e.APPROACH,milliseconds:Date.now()-Number(e.START),node:process.version,platform:process.platform,arch:process.arch,key:e.CACHE_KEY,hit,reused:e.REUSED,install:e.INSTALL_OUTCOME,validSample};
           console.log(JSON.stringify(row));
           appendFileSync(`${e.RUNNER_TEMP}/cache-benchmark.jsonl`, JSON.stringify(row)+"\n");
           appendFileSync(e.GITHUB_STEP_SUMMARY, `\n${JSON.stringify(row)}\n`);
+          if (!validSample) throw new Error("Cache phase mismatch: discard this measurement");
         '
     - name: Exercise installed dependencies outside timing
       shell: bash
@@ -92,7 +101,9 @@ runs:
         if [[ "$BENCH_MANAGER" == npm ]]; then
           (cd packages/linux-dashboard && npm test)
         elif [[ "$BENCH_SCOPE" == cloudflare ]]; then
-          (cd deploy/cloudflare && pnpm exec wrangler --version)
+          mkdir -p deploy/cloudflare/web/dist
+          printf '<!doctype html><title>Cache validation fixture</title>' > deploy/cloudflare/web/dist/index.html
+          (cd deploy/cloudflare && pnpm typecheck && pnpm exec wrangler deploy --dry-run -c web/wrangler.jsonc --outdir "$RUNNER_TEMP/cache-dry-run")
         else
           pnpm --filter @classroom-widgets/teacher build:desktop
         fi
