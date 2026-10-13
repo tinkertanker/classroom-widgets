@@ -14,7 +14,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   });
 
   const recognitionRef = useRef<any>(null);
-  const stoppedRecognitionRef = useRef<any>(null);
   const currentTranscriptRef = useRef<string>('');
   const currentConfidenceRef = useRef<number>(0);
   const isGatheringInputRef = useRef<boolean>(false);
@@ -48,13 +47,9 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     recognition.interimResults = true; // Get interim results
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
-    // A stopped, aborted or replaced recogniser still delivers its final
-    // result, error and end events. Only the active one may touch state, or a
-    // late result is processed as a second command or survives a reset.
-    // A recogniser stopped normally (Enter) stays eligible for its trailing
-    // final result and end event, which carry the speech it was still
-    // transcribing. Reset, abort and replacement invalidate it immediately.
-    const isActive = () => recognitionRef.current === recognition || stoppedRecognitionRef.current === recognition;
+    // stop() still delivers trailing results before end. Keep this recogniser
+    // active until then, but invalidate it on reset, abort or replacement.
+    const isActive = () => recognitionRef.current === recognition;
 
     recognition.onstart = () => {
       if (!isActive()) return;
@@ -92,12 +87,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       // Store the latest result
       currentTranscriptRef.current = transcript;
       currentConfidenceRef.current = confidence;
-
-      // After Enter the displayed transcript was already captured, so a late
-      // final result has to update it as well
-      if (stoppedRecognitionRef.current === recognition && isFinal) {
-        setState(prev => ({ ...prev, transcript, confidence }));
-      }
 
       debug(`📝 Final result: "${transcript}" (Confidence: ${confidence}, IsFinal: ${isFinal})`);
 
@@ -158,11 +147,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
 
     recognition.onend = () => {
       if (!isActive()) return;
-      if (stoppedRecognitionRef.current === recognition) {
-        // Already moved to processing by stopRecording; just release it
-        stoppedRecognitionRef.current = null;
-        return;
-      }
       recognitionRef.current = null;
       debug('⏹️ END: Speech Recognition engine stopped');
       isGatheringInputRef.current = false;
@@ -207,7 +191,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       }
 
       debug('✅ Speech Recognition initialized successfully');
-      stoppedRecognitionRef.current = null;
       recognitionRef.current = recognition;
 
       // Start recognition
@@ -236,18 +219,15 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         debug.error('Error stopping recognition:', error);
       }
 
-      stoppedRecognitionRef.current = recognitionRef.current;
-      recognitionRef.current = null;
-
-      // Now show the captured transcript and set processing state
+      // Enter stops capture, not transcription. Publish the command only from
+      // onend, after trailing results, or an interim and its final correction
+      // could execute as two different commands in VoiceInterface.
       isGatheringInputRef.current = false;
       setState(prev => ({
         ...prev,
         isListening: false,
         isProcessing: true, // Now we're processing the captured speech
         isGathering: false, // Done gathering input
-        transcript: currentTranscriptRef.current, // Show the captured transcript
-        confidence: currentConfidenceRef.current,
         error: null // Clear any errors
       }));
     }
@@ -266,7 +246,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       recognitionRef.current = null;
     }
 
-    stoppedRecognitionRef.current = null;
     isGatheringInputRef.current = false;
     setState({
       isListening: false,
@@ -292,7 +271,6 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
         }
         recognitionRef.current = null;
       }
-      stoppedRecognitionRef.current = null;
     };
   }, []);
 

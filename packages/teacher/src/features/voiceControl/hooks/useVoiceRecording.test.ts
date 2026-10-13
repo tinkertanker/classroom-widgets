@@ -1,12 +1,17 @@
-import { renderHook, act } from '@testing-library/react';
-import { describe, it, expect, beforeEach } from 'vitest';
+import React from 'react';
+import { renderHook, render, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { useVoiceRecording } from './useVoiceRecording';
+import VoiceInterface from '../components/VoiceInterface';
+import type { VoiceCommandResponse } from '../types/voiceControl';
 
 // Ways the recogniser lifecycle could go wrong:
 //  1. Enter is pressed before the first result: the final result that arrives
 //     after stop() must still reach the transcript.
 //  2. An interim result exists at Enter: the later final correction replaces it.
 //  3. Reset after Enter: late events from the aborted recogniser are ignored.
+//  4. Enter with an interim result: do not execute that command and then a
+//     second corrected command when the recogniser delivers its final result.
 
 class FakeRecognition {
   static instances: FakeRecognition[] = [];
@@ -26,7 +31,13 @@ class FakeRecognition {
 describe('useVoiceRecording', () => {
   beforeEach(() => {
     FakeRecognition.instances = [];
-    (window as any).SpeechRecognition = FakeRecognition;
+    vi.stubGlobal('SpeechRecognition', FakeRecognition);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   it('keeps the final result that arrives after Enter, before any earlier result', async () => {
@@ -51,7 +62,10 @@ describe('useVoiceRecording', () => {
 
     act(() => recognition.emitResult('start a timer', false));
     await act(async () => { await result.current.stopRecording(); });
-    act(() => recognition.emitResult('start a timer for five minutes', true));
+    act(() => {
+      recognition.emitResult('start a timer for five minutes', true);
+      recognition.onend?.();
+    });
 
     expect(result.current.transcript).toBe('start a timer for five minutes');
   });
@@ -69,5 +83,34 @@ describe('useVoiceRecording', () => {
     });
 
     expect(result.current.transcript).toBe('');
+  });
+
+  it('executes only the final command when Enter precedes a corrected result', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {});
+    const executed: string[] = [];
+    render(React.createElement(VoiceInterface, {
+      isOpen: true,
+      onClose: () => {},
+      onTranscriptComplete: async (transcript: string): Promise<VoiceCommandResponse> => {
+        executed.push(transcript);
+        return {
+          success: true,
+          command: { action: 'create', target: 'timer', parameters: {}, confidence: 0.9 },
+          feedback: { message: 'Timer created', type: 'success', shouldSpeak: false }
+        };
+      }
+    }));
+    await act(async () => { vi.advanceTimersByTime(300); });
+    const recognition = FakeRecognition.instances.at(-1)!;
+    act(() => recognition.emitResult('start a timer for five minutes', false));
+    await act(async () => { fireEvent.keyDown(document, { key: 'Enter' }); });
+    expect(executed).toEqual([]);
+    await act(async () => {
+      recognition.emitResult('start a timer for nine minutes', true);
+      recognition.onend?.();
+    });
+    expect(executed).toEqual(['start a timer for nine minutes']);
   });
 });
