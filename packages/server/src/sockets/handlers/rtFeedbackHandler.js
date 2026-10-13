@@ -16,47 +16,47 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     // Check rate limit
     const rateLimitResult = eventRateLimiter(socket, EVENTS.RT_FEEDBACK.SUBMIT);
     if (!rateLimitResult.allowed) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createRateLimitResponse(rateLimitResult.retryAfter));
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createRateLimitResponse(rateLimitResult.retryAfter), widgetId: data.widgetId });
       return;
     }
 
     const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
     if (!session) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('INVALID_SESSION'));
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('INVALID_SESSION'), widgetId: data.widgetId });
       return;
     }
 
     // Validate widget ID
     const widgetValidation = validators.widgetId(data.widgetId);
     if (!widgetValidation.valid) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('INVALID_INPUT', widgetValidation.error));
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('INVALID_INPUT', widgetValidation.error), widgetId: data.widgetId });
       return;
     }
 
     const guard = resolveRoom(session, 'rtfeedback', RTFeedbackRoom, data.widgetId);
     if (!guard.ok) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('ROOM_NOT_FOUND'));
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('ROOM_NOT_FOUND'), widgetId: data.widgetId });
       return;
     }
     const { room } = guard;
 
     // Check if feedback is active
     if (!room.isActive) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('WIDGET_PAUSED'));
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('WIDGET_PAUSED'), widgetId: data.widgetId });
       return;
     }
 
     // Validate feedback value (1-5 scale)
     const valueValidation = validators.feedbackValue(data.value);
     if (!valueValidation.valid) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('INVALID_INPUT', valueValidation.error));
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('INVALID_INPUT', valueValidation.error), widgetId: data.widgetId });
       return;
     }
 
     // Check if student is a participant
     const participant = session.participants.get(socket.id);
     if (!participant) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createErrorResponse('NOT_PARTICIPANT'));
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('NOT_PARTICIPANT'), widgetId: data.widgetId });
       return;
     }
 
@@ -64,7 +64,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     room.updateFeedback(socket.id, data.value);
 
     // Send confirmation
-    socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createSuccessResponse({ resetEpoch: room.resetEpoch }));
+    socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, createSuccessResponse({ widgetId: data.widgetId, resetEpoch: room.resetEpoch }));
 
     // Only the teacher consumes the aggregate; students receive confirmations.
     if (session.hostSocketId) {

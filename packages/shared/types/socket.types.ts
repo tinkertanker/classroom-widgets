@@ -242,6 +242,8 @@ export interface SessionRTFeedbackSubmitData {
 export interface SessionRTFeedbackSubmittedResponse {
   success: boolean;
   error?: string;
+  widgetId?: string;
+  resetEpoch?: number;
 }
 
 export interface RTFeedbackUpdateData {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
+import type { SessionRTFeedbackSubmittedResponse } from '@shared/types/socket.types';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface RTFeedbackActivityProps {
@@ -61,7 +62,8 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
 
   // Handle submission response
   useEffect(() => {
-    const handleSubmitted = (data: { success: boolean; error?: string; resetEpoch?: number }) => {
+    const handleSubmitted = (data: SessionRTFeedbackSubmittedResponse) => {
+      if (data.widgetId !== widgetId) return;
       if (data.success && typeof data.resetEpoch === 'number' && heldRef.current) {
         heldRef.current = { ...heldRef.current, resetEpoch: data.resetEpoch };
       }
@@ -75,7 +77,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
     return () => {
       socket.off('session:rtfeedback:submitted', handleSubmitted);
     };
-  }, [socket]);
+  }, [socket, widgetId]);
 
   // The server drops a student's feedback when their socket disconnects.
   // Flag the value for replay; the state reply to the reconnect request
