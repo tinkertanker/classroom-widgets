@@ -30,6 +30,8 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   // choose it, so a clear since then wins. A freshly chosen value is always sent.
   const submitValue = (value: number, isReplay: boolean) => {
     pendingValueRef.current = value;
+    // A fresh choice supersedes any replay still waiting for a state reply
+    if (!isReplay) needsReplayRef.current = false;
     socket.emit('session:rtfeedback:submit', {
       sessionCode: roomCode,
       widgetId,
