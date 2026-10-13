@@ -237,6 +237,9 @@ export interface SessionRTFeedbackSubmitData {
   sessionCode: string;
   widgetId: string;
   value: number; // 1-5 scale
+  // The room's clear count the student last saw; the server refuses the value
+  // if responses were cleared since
+  resetEpoch?: number;
 }
 
 export interface SessionRTFeedbackSubmittedResponse {
@@ -244,6 +247,8 @@ export interface SessionRTFeedbackSubmittedResponse {
   error?: string;
   widgetId?: string;
   resetEpoch?: number;
+  // The value was refused because responses were cleared after it was chosen
+  stale?: boolean;
 }
 
 export interface RTFeedbackUpdateData {

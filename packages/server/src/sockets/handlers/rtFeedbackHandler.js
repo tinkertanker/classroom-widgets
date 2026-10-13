@@ -60,6 +60,18 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       return;
     }
 
+    // Refuse a value chosen before the teacher cleared responses (for example
+    // one replayed after a reconnect while the clear was in flight)
+    if (typeof data.resetEpoch === 'number' && data.resetEpoch !== room.resetEpoch) {
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, {
+        ...createErrorResponse('INVALID_INPUT', 'Responses were cleared since this value was chosen'),
+        widgetId: data.widgetId,
+        resetEpoch: room.resetEpoch,
+        stale: true
+      });
+      return;
+    }
+
     // Submit feedback
     room.updateFeedback(socket.id, data.value);
 

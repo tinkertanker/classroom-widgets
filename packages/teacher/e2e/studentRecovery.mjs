@@ -125,6 +125,29 @@ try {
     await delay(1000);
     assert.equal(latest.get('feedback-b').totalResponses, 0);
   });
+  await check('a value chosen before a clear is refused, so a late replay cannot restore it', async () => {
+    const late = io(stack.serverUrl, { transports: ['websocket'] });
+    try {
+      await new Promise(resolve => late.once('connect', resolve));
+      late.emit('session:join', { code: sessionCode, name: 'Cy' });
+      await new Promise(resolve => late.once('session:joined', resolve));
+      const stateReply = new Promise(resolve => late.once('rtfeedback:stateUpdate', resolve));
+      late.emit('rtfeedback:requestState', { sessionCode, widgetId: 'feedback-a' });
+      const { resetEpoch } = await stateReply;
+      assert.equal(typeof resetEpoch, 'number');
+      send('session:rtfeedback:reset', 'feedback-a');
+      await delay(300);
+      const before = latest.get('feedback-a').totalResponses;
+      const reply = new Promise(resolve => late.once('session:rtfeedback:submitted', resolve));
+      late.emit('session:rtfeedback:submit', { sessionCode, widgetId: 'feedback-a', value: 4, resetEpoch });
+      const response = await reply;
+      assert.equal(response.success, false);
+      assert.equal(response.stale, true);
+      assert.equal(response.resetEpoch, resetEpoch + 1);
+      await delay(500);
+      assert.equal(latest.get('feedback-a').totalResponses, before);
+    } finally { late.disconnect(); }
+  });
   await room('poll', 'poll-a');
   send('session:poll:update', 'poll-a', { pollData: { question: 'Original poll', options: ['Old A', 'Old B'] } });
   await student.getByText('Old A', { exact: true }).click();
