@@ -18,7 +18,7 @@ runs:
     - name: Start measured setup
       id: start
       shell: bash
-      run: echo "time=$(node -p Date.now())" >> "$GITHUB_OUTPUT"
+      run: echo "time=$(node -p 'Date.now()')" >> "$GITHUB_OUTPUT"
     - name: Locate baseline download cache
       id: baseline
       if: inputs.approach == 'baseline'
