@@ -41,11 +41,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/install-pnpm
+        with:
+          cache: store
       - run: pnpm windows:publish
       - name: Zip
         shell: pwsh
@@ -82,14 +83,13 @@ jobs:
           # needs >=20.19 for require(esm), which 22 also satisfies; do not pin
           # below either bound.
           node-version: 22
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/install-pnpm
       # linux-dashboard is deliberately NOT a pnpm workspace member and keeps its
       # own package-lock.json, so it still installs with npm.
       - name: Install linux-dashboard dependencies
-        working-directory: packages/linux-dashboard
-        run: npm ci || npm install
+        uses: ./.github/actions/install-linux-dependencies
+        with:
+          allow-install-fallback: 'true'
       - run: pnpm linux:publish
       - uses: actions/upload-artifact@v4
         with:
@@ -109,8 +109,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/install-pnpm
       - run: brew install create-dmg
       - name: Import Developer ID certificate
         env:

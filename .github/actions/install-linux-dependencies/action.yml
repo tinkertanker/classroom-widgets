@@ -1,0 +1,70 @@
+name: Install Linux dashboard dependencies
+description: Reuse only an exact, verified npm ci tree and save it before packaging can materialize Electron.
+inputs:
+  allow-install-fallback:
+    description: Preserve release's npm ci or npm install fallback; fallback trees are never saved.
+    default: 'false'
+outputs:
+  cache-key:
+    description: Exact installation identity requested from the cache service.
+    value: ${{ steps.identity.outputs.key }}
+  cache-hit:
+    description: Whether the service restored the exact key.
+    value: ${{ steps.restore.outputs.cache-hit }}
+  reused:
+    description: Whether the completed tree passed validation and installation was skipped.
+    value: ${{ steps.verify.outputs.valid }}
+  install-outcome:
+    description: Installation step outcome (success, failure, or skipped).
+    value: ${{ steps.install.outcome }}
+runs:
+  using: composite
+  steps:
+    - name: Identify npm installation
+      id: identity
+      shell: bash
+      working-directory: packages/linux-dashboard
+      env:
+        ALLOW_INSTALL_FALLBACK: ${{ inputs.allow-install-fallback }}
+        CACHE_ACTION_PATH: ${{ github.action_path }}
+      run: node "$CACHE_ACTION_PATH/cache.cjs" key
+    - name: Restore completed npm tree
+      id: restore
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0, measured in the hosted benchmark
+      with:
+        path: packages/linux-dashboard/node_modules
+        key: ${{ steps.identity.outputs.key }}
+    - name: Verify restored npm tree
+      id: verify
+      shell: bash
+      working-directory: packages/linux-dashboard
+      env:
+        CACHE_KEY: ${{ steps.identity.outputs.key }}
+        CACHE_ACTION_PATH: ${{ github.action_path }}
+      run: node "$CACHE_ACTION_PATH/cache.cjs" validate
+    - name: Clean npm install
+      id: install
+      if: steps.restore.outputs.cache-hit != 'true' || steps.verify.outputs.valid != 'true'
+      shell: bash
+      working-directory: packages/linux-dashboard
+      env:
+        ALLOW_INSTALL_FALLBACK: ${{ inputs.allow-install-fallback }}
+        CACHE_KEY: ${{ steps.identity.outputs.key }}
+        CACHE_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        if npm ci; then
+          node "$CACHE_ACTION_PATH/cache.cjs" seal
+        elif [[ "$ALLOW_INSTALL_FALLBACK" == 'true' ]]; then
+          npm install
+          echo 'Fallback installation is not frozen; not saving it.'
+        else
+          exit 1
+        fi
+    # Inline save survives a later test/build failure. No partial-key restores,
+    # fallback installs or mutated inputs can create a completed-tree cache.
+    - name: Save completed npm tree
+      if: steps.install.outputs.frozen == 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0, measured in the hosted benchmark
+      with:
+        path: packages/linux-dashboard/node_modules
+        key: ${{ steps.identity.outputs.key }}

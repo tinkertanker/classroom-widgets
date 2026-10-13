@@ -31,10 +31,14 @@ const viteEnv = {
 };
 console.log('Building teacher app with', viteEnv);
 
-execFileSync('pnpm', ['install', '--frozen-lockfile', '--filter', '@classroom-widgets/teacher...'], {
-  cwd: repoRoot,
-  stdio: 'inherit',
-});
+// CI installs and caches dependencies explicitly before building. Local callers
+// retain the original frozen, teacher-filtered install unless they opt out.
+if (!process.argv.includes('--skip-install')) {
+  execFileSync('pnpm', ['install', '--frozen-lockfile', '--filter', '@classroom-widgets/teacher...'], {
+    cwd: repoRoot,
+    stdio: 'inherit',
+  });
+}
 execFileSync('pnpm', ['--filter', '@classroom-widgets/teacher', 'build'], {
   cwd: repoRoot,
   stdio: 'inherit',

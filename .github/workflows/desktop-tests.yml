@@ -6,6 +6,8 @@ on:
       - 'packages/windows-dashboard/**'
       - 'packages/macos-dashboard/**'
       - 'packages/linux-dashboard/**'
+      - '.github/actions/install-pnpm/**'
+      - '.github/actions/install-linux-dependencies/**'
       - '.github/workflows/desktop-tests.yml'
   workflow_dispatch:
 
@@ -23,8 +25,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/install-pnpm
+        with:
+          cache: store
       - run: pnpm --filter @classroom-widgets/teacher build:desktop
       - uses: actions/setup-dotnet@v4
         with:
@@ -57,9 +60,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: packages/linux-dashboard/package-lock.json
-      - run: npm ci
-        working-directory: packages/linux-dashboard
+      - uses: ./.github/actions/install-linux-dependencies
       - run: npm test
         working-directory: packages/linux-dashboard

@@ -1,0 +1,70 @@
+name: Install locked pnpm dependencies
+description: Restore dependencies and save successful installs before any build.
+inputs:
+  working-directory:
+    description: Repository root (.) or standalone deploy/cloudflare project.
+    default: '.'
+  filter:
+    description: Optional root teacher dependency scope (@classroom-widgets/teacher...).
+    default: ''
+  cache:
+    description: Completed tree, or download store when rebuilding links is cheaper (Windows).
+    default: tree
+outputs:
+  cache-key:
+    description: Exact installation identity requested from the cache service.
+    value: ${{ steps.identity.outputs.key }}
+  cache-hit:
+    description: Whether the service restored the exact key.
+    value: ${{ steps.restore.outputs.cache-hit }}
+  reused:
+    description: Whether the completed tree passed validation and installation was skipped.
+    value: ${{ steps.validate.outputs.valid }}
+  install-outcome:
+    description: Frozen installation step outcome (success, failure, or skipped).
+    value: ${{ steps.install.outcome }}
+runs:
+  using: composite
+  steps:
+    - name: Identify installation
+      id: identity
+      shell: bash
+      env:
+        INSTALL_DIRECTORY: ${{ inputs.working-directory }}
+        INSTALL_FILTER: ${{ inputs.filter }}
+        INSTALL_CACHE: ${{ inputs.cache }}
+      run: node "$GITHUB_ACTION_PATH/cache.mjs" prepare
+    - name: Restore dependency cache
+      id: restore
+      uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: ${{ steps.identity.outputs.paths }}
+        key: ${{ steps.identity.outputs.key }}
+    - name: Validate exact hit
+      id: validate
+      if: steps.restore.outputs.cache-hit == 'true'
+      shell: bash
+      env:
+        INSTALL_DIRECTORY: ${{ inputs.working-directory }}
+        INSTALL_FILTER: ${{ inputs.filter }}
+        INSTALL_CACHE: ${{ inputs.cache }}
+        INSTALL_KEY: ${{ steps.identity.outputs.key }}
+      run: node "$GITHUB_ACTION_PATH/cache.mjs" validate
+    - name: Install frozen dependencies
+      if: steps.validate.outputs.valid != 'true'
+      id: install
+      shell: bash
+      env:
+        INSTALL_DIRECTORY: ${{ inputs.working-directory }}
+        INSTALL_FILTER: ${{ inputs.filter }}
+        INSTALL_CACHE: ${{ inputs.cache }}
+        INSTALL_KEY: ${{ steps.identity.outputs.key }}
+      run: node "$GITHUB_ACTION_PATH/cache.mjs" install
+    # No post-job save: builds may change node_modules, or fail after a good install.
+    # An invalid exact hit is reinstalled but cannot replace GitHub's immutable entry.
+    - name: Save dependencies after successful install
+      if: steps.install.outputs.save == 'true' && steps.restore.outputs.cache-hit != 'true'
+      uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+      with:
+        path: ${{ steps.identity.outputs.paths }}
+        key: ${{ steps.identity.outputs.key }}
