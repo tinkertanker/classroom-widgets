@@ -358,6 +358,11 @@ final class WidgetPanelCoordinator: NSObject {
     }
 
     private func makePanelController(descriptor: WidgetPanelDescriptor) -> WidgetPanelController {
+        let perfFields: [String: Any] = PerfProbe.isEnabled
+            ? ["widgetId": descriptor.id, "widgetType": descriptor.snapshotPayload["widgetType"] ?? NSNull()]
+            : [:]
+        PerfProbe.mark("panel.create.begin", perfFields)
+        defer { PerfProbe.mark("panel.create.end", perfFields) }
         let controller = WidgetPanelController(
             descriptor: descriptor,
             webViewFactory: webViewFactory,
@@ -455,6 +460,22 @@ final class WidgetPanelCoordinator: NSObject {
         }.flatMap { intersectionArea($0.frame, frame) > 0 ? $0 : nil }
     }
 
+    // MARK: Benchmark hooks for PerfScenario
+
+    /// Closes a panel the way its close button does.
+    func perfClose(widgetID: String) {
+        guard let controller = panelControllers[widgetID], let window = controller.window else { return }
+        _ = controller.windowShouldClose(window)
+    }
+
+    func perfReload(widgetID: String) {
+        panelControllers[widgetID]?.perfReload()
+    }
+
+    func perfEvaluate(widgetID: String, script: String, arguments: [String: Any] = [:]) async -> Any? {
+        await panelControllers[widgetID]?.perfEvaluate(script, arguments: arguments)
+    }
+
     private func clampedFrame(_ frame: NSRect, on screen: NSScreen?) -> NSRect {
         guard let screen else { return frame }
         let visibleFrame = screen.visibleFrame.insetBy(dx: 12, dy: 12)
@@ -524,6 +545,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         let webContext = webViewFactory.makeWebView(widgetID: descriptor.id)
         webView = webContext.webView
         messageHandler = webContext.messageHandler
+        PerfProbe.mark("panel.webview.created", ["widgetId": descriptor.id])
 
         let initialContentRect = NSRect(
             origin: .zero,
@@ -563,11 +585,13 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         webView.uiDelegate = self
 
         messageHandler.onReady = { [weak self] in
+            PerfProbe.mark("panel.ready", ["widgetId": descriptor.id])
             if let snapshot = self?.currentSnapshot {
                 self?.push(snapshot: snapshot, force: true)
             }
         }
         messageHandler.onContentReady = { [weak self] in
+            PerfProbe.mark("panel.contentReady", ["widgetId": descriptor.id])
             self?.contentReady = true
             self?.presentPendingShow()
         }
@@ -642,6 +666,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         let wasVisible = window?.isVisible == true
         window?.orderFront(nil)
         if !wasVisible {
+            PerfProbe.mark("panel.shown", ["widgetId": widgetID])
             revealChrome()
             scheduleChromeHide()
         }
@@ -667,6 +692,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         isClosingPermanently = true
         webView.stopLoading()
         window?.close()
+        PerfProbe.mark("panel.closed", ["widgetId": widgetID])
     }
 
     func takePendingState(completion: @escaping @MainActor (WidgetPanelStateChange?, Bool) -> Void) {
@@ -832,7 +858,16 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         scheduleChromeHide()
     }
 
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        PerfProbe.mark("panel.nav.start", ["widgetId": widgetID])
+    }
+
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        PerfProbe.mark("panel.nav.commit", ["widgetId": widgetID])
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        PerfProbe.mark("panel.nav.finish", ["widgetId": widgetID])
         webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
         webView.evaluateJavaScript(DashboardAudioSettings.script(), completionHandler: nil)
         setWebBackgroundOpacity()
@@ -878,6 +913,21 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
             ExternalLinkOpener.open(url)
         }
         return nil
+    }
+
+    func perfReload() {
+        loadWidget()
+    }
+
+    func perfEvaluate(_ body: String, arguments: [String: Any]) async -> Any? {
+        await withCheckedContinuation { continuation in
+            webView.callAsyncJavaScript(body, arguments: arguments, in: nil, in: .page) { result in
+                switch result {
+                case let .success(value): continuation.resume(returning: value)
+                case let .failure(error): continuation.resume(returning: ["error": error.localizedDescription])
+                }
+            }
+        }
     }
 
     private var currentSnapshot: [String: Any]?
@@ -1205,6 +1255,7 @@ private final class WidgetPanelWebViewFactory {
         ))
         let messageHandler = WidgetPanelScriptMessageHandler(widgetID: widgetID)
         userContentController.add(messageHandler, name: "classroomWidgetPanel")
+        PerfProbe.install(in: userContentController, surface: "widget-panel", id: widgetID)
         configuration.userContentController = userContentController
 
         let webView = WKWebView(frame: .zero, configuration: configuration)

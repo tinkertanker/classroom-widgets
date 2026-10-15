@@ -24,6 +24,7 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
     }
 
     func show() {
+        PerfProbe.mark("launcher.show", ["existing": window != nil])
         if let window {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -41,6 +42,7 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
             forMainFrameOnly: false
         ))
         configuration.userContentController.add(scriptMessageHandler, name: "classroomDashboard")
+        PerfProbe.install(in: configuration.userContentController, surface: "widget-launcher")
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         ClassroomWebViewTuning.apply(to: webView)
@@ -72,6 +74,19 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
 
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        PerfProbe.mark("launcher.visible")
+    }
+
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        PerfProbe.mark("launcher.nav.start")
+    }
+
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        PerfProbe.mark("launcher.nav.commit")
+    }
+
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        PerfProbe.mark("launcher.nav.finish")
     }
 
     func webView(

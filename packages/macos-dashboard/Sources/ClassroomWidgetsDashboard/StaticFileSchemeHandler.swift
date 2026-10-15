@@ -27,9 +27,10 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
 
         let taskID = ObjectIdentifier(urlSchemeTask)
         markStarted(taskID)
+        let requestedAt = PerfProbe.isEnabled ? PerfProbe.wallMilliseconds() : 0
 
         if let cached = cachedPayload(for: fileURL) {
-            complete(task: urlSchemeTask, taskID: taskID, requestURL: requestURL, payload: cached)
+            complete(task: urlSchemeTask, taskID: taskID, requestURL: requestURL, payload: cached, requestedAt: requestedAt, hit: true)
             return
         }
 
@@ -37,7 +38,7 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
             guard let self else { return }
             do {
                 let payload = try self.loadPayload(for: fileURL)
-                self.complete(task: urlSchemeTask, taskID: taskID, requestURL: requestURL, payload: payload)
+                self.complete(task: urlSchemeTask, taskID: taskID, requestURL: requestURL, payload: payload, requestedAt: requestedAt, hit: false)
             } catch {
                 self.fail(task: urlSchemeTask, taskID: taskID, error: error)
             }
@@ -175,11 +176,13 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
         task: WKURLSchemeTask,
         taskID: ObjectIdentifier,
         requestURL: URL,
-        payload: (data: Data, mimeType: String)
+        payload: (data: Data, mimeType: String),
+        requestedAt: Double = 0,
+        hit: Bool = false
     ) {
         guard Thread.isMainThread else {
             DispatchQueue.main.async { [weak self] in
-                self?.complete(task: task, taskID: taskID, requestURL: requestURL, payload: payload)
+                self?.complete(task: task, taskID: taskID, requestURL: requestURL, payload: payload, requestedAt: requestedAt, hit: hit)
             }
             return
         }
@@ -205,6 +208,12 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
         task.didReceive(response)
         task.didReceive(payload.data)
         task.didFinish()
+        if requestedAt > 0 {
+            PerfProbe.mark("scheme.response", [
+                "path": requestURL.path, "bytes": payload.data.count, "hit": hit,
+                "ms": PerfProbe.wallMilliseconds() - requestedAt
+            ])
+        }
     }
 
     private func fail(task: WKURLSchemeTask, taskID: ObjectIdentifier, error: Error) {

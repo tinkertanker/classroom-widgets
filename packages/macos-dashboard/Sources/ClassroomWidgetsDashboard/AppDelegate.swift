@@ -25,6 +25,7 @@ private final class DockMenuAction: NSObject {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: WidgetHostController?
+    private var perfScenario: PerfScenario?
     private var launcherRequested = false
     private var initialActivationPending = false
     private var terminationPending = false
@@ -122,7 +123,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         shortcutState = initialShortcutBindingState()
     }
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        PerfProbe.mark("app.willFinishLaunching")
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        PerfProbe.mark("app.didFinishLaunching.begin")
         initialActivationPending = Self.shouldOpenLauncherOnInitialActivation(
             arguments: CommandLine.arguments,
             launchedAsLoginItem: Self.launchedAsLoginItem
@@ -150,6 +156,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             requestOpenLauncher()
         }
         DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
+        PerfProbe.mark("app.didFinishLaunching.end")
+        if let configuration = PerfProbe.configuration, let controller {
+            perfScenario = PerfScenario(host: controller, scenario: configuration.scenario)
+            perfScenario?.start()
+        }
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(10))
             await self?.updates.check()
@@ -168,11 +179,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         guard initialActivationPending else { return }
+        PerfProbe.mark("app.didBecomeActive")
         initialActivationPending = false
         requestOpenLauncher()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        PerfProbe.mark("app.willTerminate")
+        PerfProbe.flush()
         controller?.flushPersistedState()
         displayPreviewCoordinator.flushPersistedState()
         singleActionHotKeys.removeAll()
@@ -554,6 +568,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func widgetOptionsChanged(_ options: [CompactWidgetOption]) {
+        PerfProbe.mark("host.options", ["count": options.count])
         let available = Set(options.map(\.widgetType))
         widgetHotKeys = widgetHotKeys.filter { owner, _ in
             switch owner {
@@ -944,6 +959,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func requestOpenLauncher() {
+        PerfProbe.mark("launcher.requested", ["deferred": controller?.widgetOptions.isEmpty != false])
         guard controller?.widgetOptions.isEmpty == false else {
             launcherRequested = true
             return
