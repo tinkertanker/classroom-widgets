@@ -141,7 +141,9 @@ workspace), the desktop launcher (`?surface=widget-launcher`) and Timer and
 Randomiser panels (`?surface=widget-panel`, with the Linux shell's bridge and
 snapshot hand-off). They also open Timer and Randomiser from the toolbar.
 `--scenarios in-use` measures a running Timer, Randomiser spins and editing a
-200-name Randomiser list; `all` runs everything. Third-party Google Fonts
+200-name Randomiser list; `all` runs everything. `desktop-host` and
+`desktop-host-restored` time the hidden host page the desktop shells load
+first (`?dashboard=1&mode=compact`) until it posts its widget inventory. Third-party Google Fonts
 requests are answered from a local recording after 100 ms (`--fonts`, see
 `e2e/perf/fonts.mjs`). The run writes `raw.jsonl`, `summary.json` and
 `summary.md` (median, p90 and n per build) to `--out`. The option list is at

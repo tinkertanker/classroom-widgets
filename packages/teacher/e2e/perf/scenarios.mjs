@@ -260,6 +260,25 @@ async function launcher(env) {
   }
 }
 
+// The hidden host page every desktop shell loads first (the full app with
+// dashboard=1, as the Linux shell's hostController builds it). The shell can
+// show the launcher's widget list once the host posts its inventory.
+async function desktopHost(env, storage) {
+  const session = await openPage(env, {
+    viewport: { width: 900, height: 700 },
+    probe: { native: true },
+    localStorage: storage ? { [STORAGE_KEY]: JSON.stringify(storage) } : undefined,
+  });
+  try {
+    const url = `${env.baseUrl}/?dashboard=1&visible=0&mode=compact&backgroundOpacity=1`;
+    const { result } = await measureLoad(env, session, url, 'widget-panels-changed');
+    const warm = await reloadWarm(env, session, 'widget-panels-changed');
+    return { ...result, ...warm };
+  } finally {
+    await session.context.close();
+  }
+}
+
 // The widget-panel URL a desktop shell loads. With --panel-widget-type it also
 // names the widget's type, for a build that starts loading that widget early.
 const panelUrl = (env, snapshot) => `${env.baseUrl}/?surface=widget-panel&widgetId=${encodeURIComponent(snapshot.widgetId)}&backgroundOpacity=1`
@@ -493,6 +512,8 @@ export const SCENARIOS = {
   'board-restored': boardRestored,
   'board-history': boardHistory,
   launcher,
+  'desktop-host': (env) => desktopHost(env, null),
+  'desktop-host-restored': (env) => desktopHost(env, restoredBoard()),
   'panel-timer': panelTimer,
   'panel-randomiser': panelRandomiser,
   'open-timer': (env) => openFromToolbar(env, 'Timer', timerFaces),
