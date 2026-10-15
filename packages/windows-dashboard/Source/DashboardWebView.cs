@@ -28,7 +28,10 @@ public static class DashboardWebView
         var debugPort = System.Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DEBUG_PORT");
         if (int.TryParse(debugPort, out var port) && port > 0) arguments += $" --remote-debugging-port={port}";
         var options = new CoreWebView2EnvironmentOptions { AdditionalBrowserArguments = arguments };
-        return CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder, options: options);
+        PerfLog.Mark("env.create");
+        var environment = CoreWebView2Environment.CreateAsync(userDataFolder: userDataFolder, options: options);
+        if (PerfLog.Enabled) _ = environment.ContinueWith(_ => PerfLog.Mark("env.ready"), TaskScheduler.Default);
+        return environment;
     }
 
     public static string BuildUrl(IEnumerable<KeyValuePair<string, string>> query)
@@ -58,7 +61,15 @@ public static class DashboardWebView
             "window.__CLASSROOM_WIDGETS_WINDOWS__ = true; "
             + $"window.__CLASSROOM_WIDGETS_WINDOWS_VERSION__ = {versionJson}; "
             + RouteRewriteScript
-            + startupScript);
+            + startupScript
+            + (PerfLog.Enabled ? PerfLog.WebScript : string.Empty));
+        if (PerfLog.Enabled)
+        {
+            core.WebMessageReceived += (_, args) =>
+            {
+                if (args.WebMessageAsJson.Contains("\"classroomPerf\"", StringComparison.Ordinal)) PerfLog.WebMark(args.WebMessageAsJson);
+            };
+        }
 
         core.NavigationStarting += (_, args) =>
         {

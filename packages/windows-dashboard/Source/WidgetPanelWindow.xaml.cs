@@ -97,12 +97,19 @@ public partial class WidgetPanelWindow : Window
             EnableCompositedTransparency(handle);
         };
         Loaded += async (_, _) => await InitializeWebViewAsync();
+        if (PerfLog.Enabled) ContentRendered += (_, _) => PerfMark("panel.rendered");
     }
+
+    private void PerfMark(string name) => PerfLog.Mark(name, WidgetId, _descriptor.PerfWidgetType);
 
     public void ShowPanel()
     {
         if (_closingPermanently || _descriptor.Hidden) return;
-        if (!IsVisible) Show();
+        if (!IsVisible)
+        {
+            PerfMark("panel.show");
+            Show();
+        }
         _hoverTimer.Start();
     }
 
@@ -263,6 +270,7 @@ public partial class WidgetPanelWindow : Window
     private async Task InitializeWebViewAsync()
     {
         if (_webReady || _closingPermanently) return;
+        PerfMark("panel.init");
         try
         {
             await DashboardWebView.InitializeAsync(
@@ -275,10 +283,12 @@ public partial class WidgetPanelWindow : Window
             return;
         }
         if (_closingPermanently) return;
+        PerfMark("panel.controller.ready");
         _webReady = true;
         WebView.CoreWebView2.WebMessageReceived += OnWebMessageReceived;
         WebView.CoreWebView2.NavigationCompleted += (_, args) =>
         {
+            PerfMark("panel.navcompleted");
             // Mirror the macOS didFinish navigation behaviour: republish the
             // native shortener settings before the reloaded panel state.
             if (args.IsSuccess)
@@ -304,6 +314,7 @@ public partial class WidgetPanelWindow : Window
         _panelReady = false;
         _lastPushedRevision = null;
         _lastPushedStateRevision = null;
+        PerfMark("panel.navigate");
         WebView.CoreWebView2.Navigate(DashboardWebView.BuildUrl(new Dictionary<string, string>
         {
             ["surface"] = "widget-panel",
@@ -339,6 +350,7 @@ public partial class WidgetPanelWindow : Window
                     OpenSettingsRequested?.Invoke();
                     break;
                 case "panel-ready":
+                    PerfMark("panel.ready");
                     _panelReady = true;
                     PushSnapshot(force: true);
                     break;
@@ -355,6 +367,9 @@ public partial class WidgetPanelWindow : Window
                 case "randomiser-list-delete":
                     if (!body.TryGetProperty("id", out var id) || string.IsNullOrEmpty(id.GetString())) return;
                     RandomiserListChanged?.Invoke(body.Clone());
+                    break;
+                case "panel-content-ready":
+                    PerfMark("panel.content-ready");
                     break;
                 case "panel-writes-checkpoint":
                     _writesCheckpoint?.TrySetResult();
@@ -380,6 +395,7 @@ public partial class WidgetPanelWindow : Window
         if (!force && _descriptor.Revision == _lastPushedRevision && _descriptor.StateRevision == _lastPushedStateRevision) return;
         _lastPushedRevision = _descriptor.Revision;
         _lastPushedStateRevision = _descriptor.StateRevision;
+        if (force) PerfMark("panel.snapshot");
         var snapshot = _descriptor.SnapshotPayload.GetRawText();
         // Publish the native shortener settings ahead of the snapshot in the
         // same script so widgets read current preferences on their first

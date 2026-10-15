@@ -38,6 +38,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs args)
     {
         base.OnStartup(args);
+        PerfLog.ProcessStarted();
+        PerfLog.Mark("app.startup");
 
         _instanceMutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
         if (!createdNew)
@@ -87,6 +89,7 @@ public partial class App : Application
         DashboardLog.Info($"Classroom Widgets {AppVersion} starting");
 
         _settings = DashboardSettings.Load();
+        PerfLog.Mark("settings.loaded");
         _host = new WidgetHostController(_settings);
         _launcher = new LauncherWindow(widgetType =>
         {
@@ -99,22 +102,49 @@ public partial class App : Application
         {
             if (_launcherRequested) RequestOpenLauncher();
         };
+        PerfLog.Mark("launcher.constructed");
         _settings.Changed += () => _host.ApplySettings();
         _host.ApplySettings();
 
         var displayCatalog = new DisplayCatalog();
         _displayPreview = new DisplayPreviewCoordinator(_settings, displayCatalog);
-        _shortcuts = new WidgetShortcutManager(_settings, _host, _displayPreview.PerformShortcut, direction =>
-        {
-            if (!_displayPreview.TryMoveFocused(direction)) _host.MoveSelectedWidget(direction);
-        });
         _updates = new UpdateController(RequestQuitAsync);
-        _tray = new TrayController(_host, _settings, _shortcuts, _updates, RequestOpenLauncher, () => _displayPreview.Open());
         // The widget settings gear posts classroomWidgetPanel open-settings;
         // panels route it here so the same Settings window opens as from the tray.
-        _host.OpenSettingsRequested += () => _tray.OpenSettings();
+        _host.OpenSettingsRequested += () => _tray?.OpenSettings();
         _host.Coordinator.DisplayPreviewRequested += () => _displayPreview.Open();
         _ = _host.StartAsync();
+        // Preloading the launcher and building the tray icon and shortcuts take
+        // about 0.3 s warm and over a second cold. Queued at background
+        // priority once WebView2's environment is ready, they run after the
+        // host has asked for its controller, so they overlap the browser
+        // starting instead of delaying it.
+        _ = DashboardWebView.Environment.ContinueWith(
+            _ => Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(StartDeferredWork)),
+            TaskScheduler.Default);
+        PerfLog.Mark("app.startup.end");
+    }
+
+    private void StartDeferredWork()
+    {
+        if (IsShuttingDown) return;
+        if (_launcherRequested) _launcher?.Preload();
+        StartTrayAndShortcuts();
+    }
+
+    private void StartTrayAndShortcuts()
+    {
+        if (IsShuttingDown || _settings is null || _host is null || _displayPreview is null || _updates is null) return;
+        var displayPreview = _displayPreview;
+        var host = _host;
+        _shortcuts = new WidgetShortcutManager(_settings, host, displayPreview.PerformShortcut, direction =>
+        {
+            if (!displayPreview.TryMoveFocused(direction)) host.MoveSelectedWidget(direction);
+        });
+        PerfLog.Mark("shortcuts.ready");
+        _tray = new TrayController(host, _settings, _shortcuts, _updates, RequestOpenLauncher, () => displayPreview.Open());
+        PerfLog.Mark("tray.ready");
+        // Checked once the tray is listening, so it can show an available update.
         _ = CheckForUpdatesAfterDelayAsync();
     }
 
@@ -127,6 +157,7 @@ public partial class App : Application
             return;
         }
         _launcherRequested = false;
+        PerfLog.Mark("launcher.request");
         _launcher?.Show();
     }
 

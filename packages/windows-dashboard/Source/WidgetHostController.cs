@@ -63,6 +63,7 @@ public sealed class WidgetHostController
 
     public async Task StartAsync()
     {
+        PerfLog.Mark("host.start");
         _hostWindow.Show();
         try
         {
@@ -86,11 +87,13 @@ public sealed class WidgetHostController
     private async Task InitializeWebViewAsync()
     {
         await DashboardWebView.InitializeAsync(_webView, DashboardAudioSettings.Script(_settings));
+        PerfLog.Mark("host.controller.ready");
         var core = _webView.CoreWebView2;
         core.WebMessageReceived += OnWebMessageReceived;
         core.ProcessFailed += OnProcessFailed;
         core.NavigationCompleted += (_, args) =>
         {
+            PerfLog.Mark("host.navcompleted");
             if (!args.IsSuccess)
             {
                 DashboardLog.Error($"Widget host navigation failed: {args.WebErrorStatus}");
@@ -119,6 +122,7 @@ public sealed class WidgetHostController
 
     public async Task AddWidgetAsync(int widgetType)
     {
+        PerfLog.Mark("host.add-widget", widgetType: widgetType, detail: IsAvailable ? null : "unavailable");
         if (!_initialized || !IsAvailable) return;
         var applied = await DashboardWebView.EvaluateBoolAsync(_webView,
             $"(() => {{ const host = window.classroomPanelHost; return host?.addWidget ? host.addWidget({widgetType}) : false; }})()");
@@ -242,6 +246,7 @@ public sealed class WidgetHostController
             ["mode"] = "compact",
             ["backgroundOpacity"] = _settings.BackgroundOpacity.ToString(System.Globalization.CultureInfo.InvariantCulture)
         });
+        PerfLog.Mark("host.navigate");
         _webView.CoreWebView2.Navigate(url);
     }
 
@@ -271,6 +276,7 @@ public sealed class WidgetHostController
                 DashboardLog.Warn("Ignoring malformed widget inventory");
                 return;
             }
+            if (PerfLog.Enabled) PerfLog.Mark("host.inventory", detail: $"widgets={inventory.Widgets.Count};options={inventory.Options?.Count ?? -1}");
             ReconcileWidgetPanels(inventory);
         }
     }
