@@ -114,14 +114,22 @@ public partial class App : Application
         _host.OpenSettingsRequested += () => _tray?.OpenSettings();
         _host.Coordinator.DisplayPreviewRequested += () => _displayPreview.Open();
         _ = _host.StartAsync();
-        // Building the tray icon and shortcuts takes about 0.2 s warm and over
-        // a second cold. Queued at background priority once WebView2's
-        // environment is ready, it runs after the host has asked for its
-        // controller, so it overlaps the browser starting instead of delaying it.
+        // Preloading the launcher and building the tray icon and shortcuts take
+        // about 0.3 s warm and over a second cold. Queued at background
+        // priority once WebView2's environment is ready, they run after the
+        // host has asked for its controller, so they overlap the browser
+        // starting instead of delaying it.
         _ = DashboardWebView.Environment.ContinueWith(
-            _ => Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(StartTrayAndShortcuts)),
+            _ => Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(StartDeferredWork)),
             TaskScheduler.Default);
         PerfLog.Mark("app.startup.end");
+    }
+
+    private void StartDeferredWork()
+    {
+        if (IsShuttingDown) return;
+        if (_launcherRequested) _launcher?.Preload();
+        StartTrayAndShortcuts();
     }
 
     private void StartTrayAndShortcuts()
