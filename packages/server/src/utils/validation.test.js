@@ -140,6 +140,11 @@ describe('validators.normalizeUrl', () => {
 });
 
 describe('validators.isLink', () => {
+  it('accepts HTTP(S) URLs and bare domains', () => {
+    assert.equal(validators.isLink('https://example.com'), true);
+    assert.equal(validators.isLink('example.com'), true);
+  });
+
   it('rejects plain text and non-strings', () => {
     assert.equal(validators.isLink('just some text'), false);
     assert.equal(validators.isLink(''), false);

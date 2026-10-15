@@ -244,7 +244,7 @@ test('approved AppImage staging error identifies the unwritable location and rec
 // Runs the real AppImage swap script under /bin/sh against stub executables that
 // log their arguments, so the test fails if either the replacement launch or
 // the rollback launch stops forwarding the effective Ozone backend.
-async function runAppImageUpdateScript({ replacementSurvives, ozone }) {
+async function runAppImageUpdateScript({ replacementSurvives, ozone, expectedLaunches }) {
   const dir = await mkdtemp(join(tmpdir(), 'cw-appimage-update-'));
   try {
     const log = join(dir, 'launches.log');
@@ -260,7 +260,13 @@ async function runAppImageUpdateScript({ replacementSurvives, ozone }) {
     // The maximum PID is never live, so the wait loop sees the parent as exited at once.
     // The script's launch arguments are: parent pid, staged, current, backup, script, ozone.
     await execFileAsync('/bin/sh', [script, '2147483647', staged, current, backup, script, ozone]);
-    return (await readFile(log, 'utf8')).trim().split('\n');
+    // The launches are backgrounded, so the shell can exit before the last stub has logged.
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const lines = (await readFile(log, 'utf8').catch(() => '')).trim().split('\n').filter(Boolean);
+      if (lines.length >= expectedLaunches) return lines;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    throw new Error(`expected ${expectedLaunches} launches, log has: ${await readFile(log, 'utf8').catch(() => '')}`);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -269,15 +275,15 @@ async function runAppImageUpdateScript({ replacementSurvives, ozone }) {
 test('AppImage update script forwards the Ozone backend to the replacement and rollback launches', async () => {
   const ozone = '--ozone-platform=wayland';
   const [replaced, rolledBack] = await Promise.all([
-    runAppImageUpdateScript({ replacementSurvives: true, ozone }),
-    runAppImageUpdateScript({ replacementSurvives: false, ozone }),
+    runAppImageUpdateScript({ replacementSurvives: true, ozone, expectedLaunches: 1 }),
+    runAppImageUpdateScript({ replacementSurvives: false, ozone, expectedLaunches: 2 }),
   ]);
   assert.deepEqual(replaced, [`replacement:${ozone}`]);
   assert.deepEqual(rolledBack, [`replacement:${ozone}`, `current:${ozone}`]);
 });
 
 test('AppImage update script launches without an Ozone argument when none is in effect', async () => {
-  assert.deepEqual(await runAppImageUpdateScript({ replacementSurvives: true, ozone: '' }), ['replacement:']);
+  assert.deepEqual(await runAppImageUpdateScript({ replacementSurvives: true, ozone: '', expectedLaunches: 1 }), ['replacement:']);
 });
 
 test('manual approved deb failure reports package-manager and opener errors', async () => {
