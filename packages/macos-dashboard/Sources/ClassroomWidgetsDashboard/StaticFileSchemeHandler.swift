@@ -1,6 +1,50 @@
 import Foundation
 @preconcurrency import WebKit
 
+/// How to answer a request's HTTP `Range` header for a body of `length`
+/// bytes. Only a single byte range is honoured; for anything else the whole
+/// body is sent, which HTTP allows.
+enum StaticFileRange: Equatable {
+    case whole
+    case partial(Range<Int>)
+    /// The range starts at or past the end of the body (416).
+    case unsatisfiable
+
+    init(header: String?, length: Int) {
+        self = Self.parse(header, length: length) ?? .whole
+    }
+
+    private static func parse(_ header: String?, length: Int) -> StaticFileRange? {
+        guard let header, length > 0 else { return nil }
+        let parts = header.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+        guard parts.count == 2, parts[0].trimmingCharacters(in: .whitespaces).lowercased() == "bytes" else {
+            return nil
+        }
+        let spec = parts[1].trimmingCharacters(in: .whitespaces)
+        guard !spec.contains(",") else { return nil }
+        let bounds = spec.split(separator: "-", maxSplits: 1, omittingEmptySubsequences: false)
+        guard bounds.count == 2 else { return nil }
+
+        if bounds[0].isEmpty {
+            guard let suffix = position(bounds[1]) else { return nil }
+            return suffix > 0 ? .partial(max(0, length - suffix)..<length) : .unsatisfiable
+        }
+        guard let start = position(bounds[0]) else { return nil }
+        var end = length - 1
+        if !bounds[1].isEmpty {
+            guard let last = position(bounds[1]), last >= start else { return nil }
+            end = min(last, end)
+        }
+        return start < length ? .partial(start..<(end + 1)) : .unsatisfiable
+    }
+
+    /// A decimal byte position: ASCII digits only, no sign.
+    private static func position(_ text: Substring) -> Int? {
+        guard !text.isEmpty, text.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        return Int(text)
+    }
+}
+
 final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
     private let webRoot: URL
     private let lock = NSLock()
@@ -189,28 +233,51 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
 
         guard !isStopped(taskID) else { return }
 
+        // Media elements read audio in byte ranges; answering each with the
+        // whole file made WebKit fetch the same file again and again.
+        let length = payload.data.count
+        var headerFields = [
+            "Content-Type": payload.mimeType,
+            "Accept-Ranges": "bytes",
+            "Cache-Control": cacheControl(for: requestURL)
+        ]
+        let statusCode: Int
+        let body: Data
+        switch StaticFileRange(header: task.request.value(forHTTPHeaderField: "Range"), length: length) {
+        case .whole:
+            statusCode = 200
+            body = payload.data
+        case let .partial(bytes):
+            statusCode = 206
+            body = payload.data.subdata(in: bytes)
+            headerFields["Content-Range"] = "bytes \(bytes.lowerBound)-\(bytes.upperBound - 1)/\(length)"
+        case .unsatisfiable:
+            statusCode = 416
+            body = Data()
+            headerFields["Content-Range"] = "bytes */\(length)"
+        }
+        headerFields["Content-Length"] = "\(body.count)"
+
         let response = HTTPURLResponse(
             url: requestURL,
-            statusCode: 200,
+            statusCode: statusCode,
             httpVersion: "HTTP/1.1",
-            headerFields: [
-                "Content-Type": payload.mimeType,
-                "Content-Length": "\(payload.data.count)",
-                "Cache-Control": cacheControl(for: requestURL)
-            ]
+            headerFields: headerFields
         ) ?? URLResponse(
             url: requestURL,
             mimeType: payload.mimeType,
-            expectedContentLength: payload.data.count,
+            expectedContentLength: body.count,
             textEncodingName: nil
         )
 
         task.didReceive(response)
-        task.didReceive(payload.data)
+        if !body.isEmpty {
+            task.didReceive(body)
+        }
         task.didFinish()
         if requestedAt > 0 {
             PerfProbe.mark("scheme.response", [
-                "path": requestURL.path, "bytes": payload.data.count, "hit": hit,
+                "path": requestURL.path, "bytes": body.count, "status": statusCode, "hit": hit,
                 "ms": PerfProbe.wallMilliseconds() - requestedAt
             ])
         }
