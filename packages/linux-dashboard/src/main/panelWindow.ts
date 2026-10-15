@@ -123,7 +123,7 @@ export class WidgetPanelWindow extends EventEmitter {
       webPreferences: {
         preload: chromePreloadPath(),
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         nodeIntegration: false,
       },
     });
@@ -136,7 +136,7 @@ export class WidgetPanelWindow extends EventEmitter {
       webPreferences: {
         preload: bridgePreloadPath(),
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         nodeIntegration: false,
         additionalArguments: ['--classroom-widget-panel', `--classroom-app-version=${appVersion}`],
       },

@@ -57,7 +57,7 @@ export class LauncherWindow {
       webPreferences: {
         preload: bridgePreloadPath(),
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         nodeIntegration: false,
         additionalArguments: [`--classroom-app-version=${this.appVersion}`],
       },

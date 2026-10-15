@@ -1,3 +1,5 @@
+// Loaded into the sandboxed panel chrome renderer: only the sandboxed preload
+// API (`electron` renderer modules, a limited `process`) is available.
 import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
 
 contextBridge.exposeInMainWorld('classroomPanelChrome', {

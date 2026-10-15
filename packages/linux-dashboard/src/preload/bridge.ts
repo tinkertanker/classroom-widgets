@@ -1,3 +1,7 @@
+// Loaded into sandboxed renderers (host, launcher, widget panels): only the
+// sandboxed preload API is available, i.e. `electron` renderer modules and a
+// limited `process`. A sandboxed renderer skips starting Node.js, which makes
+// each one start faster and use less memory.
 import { contextBridge, ipcRenderer } from 'electron';
 
 const args = process.argv;
