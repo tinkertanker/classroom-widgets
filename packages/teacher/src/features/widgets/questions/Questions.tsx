@@ -39,6 +39,65 @@ const toQuestion = (q: any): Question => ({
   answered: q.answered || false
 });
 
+interface QuestionRowProps {
+  question: Question;
+  isReady: boolean;
+  onMarkAnswered: (questionId: string) => void;
+  onDelete: (questionId: string) => void;
+}
+
+// Memoized so a new question renders only its own row, not every row already
+// in a long list.
+const QuestionRow = React.memo(function QuestionRow({ question, isReady, onMarkAnswered, onDelete }: QuestionRowProps) {
+  const colorIndex = getStableColourIndex(question.id);
+  const questionColor = getQuestionColor(colorIndex);
+
+  return (
+    <div
+      className={`rounded-lg p-3 shadow-sm border transition-all duration-200 ${
+        question.answered
+          ? 'bg-warm-gray-100 dark:bg-warm-gray-700 border-warm-gray-200 dark:border-warm-gray-600 opacity-60'
+          : `${questionColor.bg} border-warm-gray-200 dark:border-warm-gray-600`
+      }`}
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium mb-1 ${
+            question.answered
+              ? 'text-warm-gray-500 dark:text-warm-gray-400 line-through'
+              : 'text-warm-gray-800 dark:text-warm-gray-200'
+          }`}>
+            {question.text}
+          </p>
+          <p className="text-xs text-warm-gray-600 dark:text-warm-gray-400">
+            {question.studentName || 'Anonymous'}
+          </p>
+        </div>
+        <div className="flex gap-1">
+          {!question.answered && (
+            <button
+              onClick={() => onMarkAnswered(question.id)}
+              disabled={!isReady}
+              className="p-1 text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 transition-colors"
+              title="Mark as answered"
+            >
+              <FaCheck className="text-xs" />
+            </button>
+          )}
+          <button
+            onClick={() => onDelete(question.id)}
+            disabled={!isReady}
+            className="p-1 text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors"
+            title="Delete submission"
+          >
+            <FaTrash className="text-xs" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [questions, setQuestions] = useState<Question[]>(
@@ -217,56 +276,15 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
             </div>
           ) : (
             <div className="space-y-2">
-              {sortedQuestions.map((question) => {
-                const colorIndex = getStableColourIndex(question.id);
-                const questionColor = getQuestionColor(colorIndex);
-
-                return (
-                  <div
-                    key={question.id}
-                    className={`rounded-lg p-3 shadow-sm border transition-all duration-200 ${
-                      question.answered
-                        ? 'bg-warm-gray-100 dark:bg-warm-gray-700 border-warm-gray-200 dark:border-warm-gray-600 opacity-60'
-                        : `${questionColor.bg} border-warm-gray-200 dark:border-warm-gray-600`
-                    }`}
-                  >
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium mb-1 ${
-                          question.answered
-                            ? 'text-warm-gray-500 dark:text-warm-gray-400 line-through'
-                            : 'text-warm-gray-800 dark:text-warm-gray-200'
-                        }`}>
-                          {question.text}
-                        </p>
-                        <p className="text-xs text-warm-gray-600 dark:text-warm-gray-400">
-                          {question.studentName || 'Anonymous'}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        {!question.answered && (
-                          <button
-                            onClick={() => handleMarkAnswered(question.id)}
-                            disabled={!session.isReady}
-                            className="p-1 text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 transition-colors"
-                            title="Mark as answered"
-                          >
-                            <FaCheck className="text-xs" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleDeleteQuestion(question.id)}
-                          disabled={!session.isReady}
-                          className="p-1 text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors"
-                          title="Delete submission"
-                        >
-                          <FaTrash className="text-xs" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {sortedQuestions.map((question) => (
+                <QuestionRow
+                  key={question.id}
+                  question={question}
+                  isReady={session.isReady}
+                  onMarkAnswered={handleMarkAnswered}
+                  onDelete={handleDeleteQuestion}
+                />
+              ))}
             </div>
           )}
         </div>
