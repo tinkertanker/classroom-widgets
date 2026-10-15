@@ -35,7 +35,7 @@ export const isCreatureOnColoredArc = (angle: number, progress: number): boolean
 export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
   ({ isRunning, progress, creature, onCreatureClick }) => {
     const angleRef = useRef(0);
-    const runnerRef = useRef<SVGGElement>(null);
+    const runnerRef = useRef<SVGSVGElement>(null);
     const progressRef = useRef(progress);
     const artOnColoredArcRef = useRef(isCreatureOnColoredArc(0, progress));
     const [isOnColoredArc, setIsOnColoredArc] = useState(artOnColoredArcRef.current);
@@ -56,7 +56,7 @@ export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
         // Accumulate per frame so switching to a creature with a different
         // speedFactor mid-run doesn't make the runner jump.
         angleRef.current -= (deltaTime / 1000) * 120 * definition.speedFactor;
-        runnerRef.current?.setAttribute('transform', `rotate(${angleRef.current} 50 50)`);
+        runnerRef.current?.style.setProperty('transform', `rotate(${angleRef.current}deg)`);
         updateArtIfNeeded(angleRef.current, progressRef.current);
       },
       { isActive: isRunning }
@@ -65,7 +65,7 @@ export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
     useEffect(() => {
       if (!isRunning) {
         angleRef.current = 0;
-        runnerRef.current?.setAttribute('transform', 'rotate(0 50 50)');
+        runnerRef.current?.style.setProperty('transform', 'rotate(0deg)');
         updateArtIfNeeded(0, progressRef.current);
       }
     }, [isRunning, updateArtIfNeeded]);
@@ -76,8 +76,17 @@ export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
 
     const StateArt = isOnColoredArc ? definition.Calm : definition.Shocked;
 
+    // The runner is its own SVG over the timer face, with the face's viewBox,
+    // and a CSS transform turns it about the centre (50, 50). Changing that
+    // transform each frame needs no layout or repaint, which turning an
+    // element inside the face's SVG did.
     return (
-      <g ref={runnerRef} transform="rotate(0 50 50)">
+      <svg
+        ref={runnerRef}
+        className="absolute inset-0 h-full w-full pointer-events-none"
+        viewBox="0 0 100 100"
+        style={{ transform: 'rotate(0deg)', transformOrigin: '50% 50%' }}
+      >
         {/* Anchor sits 5 units inside the ring stroke so the runner rides the track. */}
         <g
           transform="translate(50, 13) scale(0.9, -0.9)"
@@ -102,7 +111,7 @@ export const CreatureAnimation: React.FC<CreatureAnimationProps> = React.memo(
           {onCreatureClick && <circle cx="0" cy="-1" r="9.5" fill="transparent" />}
           <StateArt />
         </g>
-      </g>
+      </svg>
     );
   }
 );
