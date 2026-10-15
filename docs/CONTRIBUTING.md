@@ -119,3 +119,30 @@ panels stay alive. Missing capability metadata keeps older bundles eager.
 Results (`memory-<count>.json`, `hidden-panels-<count>.txt`, `list-restored.png`)
 go to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default:
 `classroom-widgets-test-evidence/hidden-panels` under the system temp directory).
+
+## Measuring load and runtime performance
+
+`perf:bench` compares production builds of the teacher app in one interleaved
+run. Each sample uses a fresh browser context, with and without CPU throttling,
+and the run alternates which build goes first. Copy the baseline build
+somewhere first, then build your change:
+
+```bash
+pnpm --filter @classroom-widgets/teacher exec vite build
+cp -r packages/teacher/build /tmp/perf-base
+# ...make the change...
+pnpm --filter @classroom-widgets/teacher exec vite build
+pnpm --filter @classroom-widgets/teacher perf:bench \
+  --build base=/tmp/perf-base --build fix=build --runs 10 --cpu 1,4 --out /tmp/perf-run
+```
+
+The default `headline` scenarios load the board (empty and with a restored
+workspace), the desktop launcher (`?surface=widget-launcher`) and Timer and
+Randomiser panels (`?surface=widget-panel`, with the Linux shell's bridge and
+snapshot hand-off). They also open Timer and Randomiser from the toolbar.
+`--scenarios in-use` measures a running Timer, Randomiser spins and editing a
+200-name Randomiser list; `all` runs everything. Third-party Google Fonts
+requests are answered from a local recording after 100 ms (`--fonts`, see
+`e2e/perf/fonts.mjs`). The run writes `raw.jsonl`, `summary.json` and
+`summary.md` (median, p90 and n per build) to `--out`. The option list is at
+the top of `e2e/perf/bench.mjs`.
