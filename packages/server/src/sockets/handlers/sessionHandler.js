@@ -238,7 +238,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       socket.join(`session:${code}`);
       
       // Get active rooms data
-      const activeRoomsData = session.getActiveRooms();
+      const activeRoomsData = session.getActiveRoomsForStudents();
       if (SESSION_DEBUG) {
         logger.info('[sessionHandler] Active rooms for session:', code, activeRoomsData.map(r => ({
           type: r.roomType,

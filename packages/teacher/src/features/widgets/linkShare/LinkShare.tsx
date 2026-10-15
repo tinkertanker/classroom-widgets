@@ -26,6 +26,53 @@ type CopyStatus = 'idle' | 'copied' | 'failed';
 
 const exportButtonClass = 'p-2 text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 hover:bg-warm-gray-100 dark:hover:bg-warm-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
 
+interface SubmissionRowProps {
+  submission: Submission;
+  isReady: boolean;
+  onDelete: (submissionId: string) => void;
+}
+
+// Memoized so a new submission renders only its own row, not every row
+// already in a long list.
+const SubmissionRow = React.memo(function SubmissionRow({ submission, isReady, onDelete }: SubmissionRowProps) {
+  return (
+    <div
+      className="bg-white dark:bg-warm-gray-700 rounded-lg p-3 shadow-sm border border-warm-gray-200 dark:border-warm-gray-600"
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-warm-gray-800 dark:text-warm-gray-200">
+            {submission.studentName || 'Anonymous'}
+          </p>
+          {submission.isLink && isSafeHttpUrl(submission.content) ? (
+            <a
+              href={submission.content}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 break-all inline-flex items-center gap-1 mt-1"
+            >
+              {submission.content}
+              <FaArrowUpRightFromSquare className="text-[10px] flex-shrink-0" />
+            </a>
+          ) : (
+            <p className="text-sm text-warm-gray-600 dark:text-warm-gray-300 mt-1 whitespace-pre-wrap break-words">
+              {submission.content}
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => onDelete(submission.id)}
+          disabled={!isReady}
+          className="text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors p-1"
+          title="Delete submission"
+        >
+          <FaTrash className="text-xs" />
+        </button>
+      </div>
+    </div>
+  );
+});
+
 function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
   const [submissions, setSubmissions] = useState<Submission[]>(
@@ -259,41 +306,12 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
           ) : (
             <div className="space-y-2">
               {submissions.map((submission) => (
-                <div
+                <SubmissionRow
                   key={submission.id}
-                  className="bg-white dark:bg-warm-gray-700 rounded-lg p-3 shadow-sm border border-warm-gray-200 dark:border-warm-gray-600"
-                >
-                  <div className="flex justify-between items-start gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-warm-gray-800 dark:text-warm-gray-200">
-                        {submission.studentName || 'Anonymous'}
-                      </p>
-                      {submission.isLink && isSafeHttpUrl(submission.content) ? (
-                        <a
-                          href={submission.content}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-sage-600 hover:text-sage-700 dark:text-sage-400 dark:hover:text-sage-300 break-all inline-flex items-center gap-1 mt-1"
-                        >
-                          {submission.content}
-                          <FaArrowUpRightFromSquare className="text-[10px] flex-shrink-0" />
-                        </a>
-                      ) : (
-                        <p className="text-sm text-warm-gray-600 dark:text-warm-gray-300 mt-1 whitespace-pre-wrap break-words">
-                          {submission.content}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteSubmission(submission.id)}
-                      disabled={!session.isReady}
-                      className="text-warm-gray-400 hover:text-dusty-rose-600 dark:hover:text-dusty-rose-400 transition-colors p-1"
-                      title="Delete submission"
-                    >
-                      <FaTrash className="text-xs" />
-                    </button>
-                  </div>
-                </div>
+                  submission={submission}
+                  isReady={session.isReady}
+                  onDelete={handleDeleteSubmission}
+                />
               ))}
             </div>
           )}

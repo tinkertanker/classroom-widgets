@@ -68,6 +68,15 @@ class LinkShareRoom extends Room {
       acceptMode: this.acceptMode
     };
   }
+
+  /**
+   * Submissions are for the teacher: a joining student needs only whether
+   * the Drop Box is open and what it accepts, not every entry so far.
+   */
+  toStudentJSON() {
+    const { submissions, ...room } = this.toJSON();
+    return room;
+  }
 }
 
 module.exports = LinkShareRoom;

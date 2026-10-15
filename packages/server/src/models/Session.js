@@ -275,6 +275,17 @@ class Session {
   }
 
   /**
+   * Active rooms as a joining student receives them (see Room#toStudentJSON)
+   */
+  getActiveRoomsForStudents() {
+    return this.getActiveRoomEntries().map(({ roomType, widgetId, room }) => ({
+      roomType,
+      widgetId,
+      room: room.toStudentJSON()
+    }));
+  }
+
+  /**
    * Check if the session is inactive. A session held by a connected teacher
    * never is: its rooms live until the teacher closes them (or they go idle),
    * and a disconnected teacher is handled by the reconnect grace period.

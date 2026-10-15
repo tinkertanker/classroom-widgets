@@ -508,16 +508,16 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
                 strokeDashoffset={(2 * Math.PI * 42) * (1 - progress)}
                 transform="rotate(-90 50 50)"
               />
-
-              {isRunning && time > 0 && (
-                <CreatureAnimation
-                  isRunning={isRunning}
-                  progress={progress}
-                  creature={creature}
-                  onCreatureClick={cycleCreature}
-                />
-              )}
             </svg>
+
+            {isRunning && time > 0 && (
+              <CreatureAnimation
+                isRunning={isRunning}
+                progress={progress}
+                creature={creature}
+                onCreatureClick={cycleCreature}
+              />
+            )}
 
             <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center">
               {timerFinished ? (
