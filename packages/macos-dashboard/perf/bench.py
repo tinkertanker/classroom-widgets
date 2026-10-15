@@ -14,7 +14,10 @@ quits. Before every launch the bench bundle's preferences and WebKit website
 data are removed (the HTTP cache is kept), so each launch starts from the same
 empty workspace, as on a first launch. --keep-state removes them only before
 the first round, so later launches are relaunches with the data the previous
-run left. --cold also drops the file cache with `sudo -n purge`.
+run left. That data is keyed by bundle identifier, so --keep-state needs each
+variant built with its own BENCH_BUNDLE_ID (see make_bench_app.sh); otherwise
+every launch would reuse the other variant's data. --cold also drops the file
+cache with `sudo -n purge`.
 
 Scenarios: `startup` (launch until the launcher is painted, then sample
 memory, and again 6 s later) and `panels` (launch, then open/close Timer and
@@ -98,15 +101,20 @@ def command_run(args):
         if not path:
             sys.exit("--app takes NAME=/path/to/App.app")
         variants.append((name, os.path.abspath(path)))
+    index_path = os.path.join(args.out, "runs.csv")
+    # Raw logs are named by round, so a second run into the same directory
+    # would overwrite them while the old index rows still pointed at them.
+    if os.path.exists(index_path):
+        sys.exit("%s already holds a run; pass a new --out directory" % args.out)
+    identifiers = [bundle_id(app) for _, app in variants]
+    if args.keep_state and len(set(identifiers)) != len(identifiers):
+        sys.exit("--keep-state needs each variant built with its own BENCH_BUNDLE_ID")
     os.makedirs(os.path.join(args.out, "runs"), exist_ok=True)
     timeout = args.timeout or (90 if args.scenario == "startup" else 300)
-    index_path = os.path.join(args.out, "runs.csv")
-    new_index = not os.path.exists(index_path)
-    with open(index_path, "a", newline="") as index_file:
+    with open(index_path, "w", newline="") as index_file:
         index = csv.writer(index_file)
-        if new_index:
-            index.writerow(["variant", "round", "warmup", "order", "scenario", "cold", "state",
-                            "launch_wall", "exit", "seconds", "log"])
+        index.writerow(["variant", "round", "warmup", "order", "scenario", "cold", "state",
+                        "launch_wall", "exit", "seconds", "log"])
         total_rounds = args.warmup + args.runs
         for round_number in range(total_rounds):
             ordered = variants if round_number % 2 == 0 else list(reversed(variants))
