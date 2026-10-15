@@ -120,6 +120,8 @@ public sealed class NativeMovementTests
         Console.WriteLine($"D10 created: HWND={handle}, style={GetWindowLong(handle, -20):X}");
         Assert.Equal(0, GetWindowLong(handle, -20) & 0x8);
 
+        // The app builds its tray once WebView2's environment is ready.
+        await Until(() => Field<TrayController?>(application, "_tray") is not null, "tray");
         Field<TrayController>(application, "_tray").OpenSettings();
         var settingsWindow = application.Windows.OfType<SettingsWindow>().Single();
         var settingsHandle = Handle(settingsWindow);
@@ -173,8 +175,10 @@ public sealed class NativeMovementTests
 
         var host = Field<WidgetHostController>(application, "_host");
         var preview = Field<DisplayPreviewCoordinator>(application, "_displayPreview");
-        var shortcuts = Field<WidgetShortcutManager>(application, "_shortcuts");
         await Until(() => host.IsAvailable, "production host inventory");
+        // The app registers its shortcuts once WebView2's environment is ready.
+        await Until(() => Field<WidgetShortcutManager?>(application, "_shortcuts") is not null, "global shortcuts");
+        var shortcuts = Field<WidgetShortcutManager>(application, "_shortcuts");
         Field<LauncherWindow>(application, "_launcher").Hide();
         Assert.Equal(WidgetShortcutStatus.Active, shortcuts.StatusFor(MoveWidgetShortcutLogic.NextWidgetType, WidgetShortcutAction.Toggle).Status);
         Assert.Equal(WidgetShortcutStatus.Active, shortcuts.StatusFor(MoveWidgetShortcutLogic.PreviousWidgetType, WidgetShortcutAction.Toggle).Status);

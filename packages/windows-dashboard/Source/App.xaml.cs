@@ -108,21 +108,36 @@ public partial class App : Application
 
         var displayCatalog = new DisplayCatalog();
         _displayPreview = new DisplayPreviewCoordinator(_settings, displayCatalog);
-        _shortcuts = new WidgetShortcutManager(_settings, _host, _displayPreview.PerformShortcut, direction =>
-        {
-            if (!_displayPreview.TryMoveFocused(direction)) _host.MoveSelectedWidget(direction);
-        });
-        PerfLog.Mark("shortcuts.ready");
         _updates = new UpdateController(RequestQuitAsync);
-        _tray = new TrayController(_host, _settings, _shortcuts, _updates, RequestOpenLauncher, () => _displayPreview.Open());
         // The widget settings gear posts classroomWidgetPanel open-settings;
         // panels route it here so the same Settings window opens as from the tray.
-        _host.OpenSettingsRequested += () => _tray.OpenSettings();
+        _host.OpenSettingsRequested += () => _tray?.OpenSettings();
         _host.Coordinator.DisplayPreviewRequested += () => _displayPreview.Open();
-        PerfLog.Mark("tray.ready");
         _ = _host.StartAsync();
-        _ = CheckForUpdatesAfterDelayAsync();
+        // Building the tray icon and shortcuts takes about 0.2 s warm and over
+        // a second cold. Queued at background priority once WebView2's
+        // environment is ready, it runs after the host has asked for its
+        // controller, so it overlaps the browser starting instead of delaying it.
+        _ = DashboardWebView.Environment.ContinueWith(
+            _ => Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(StartTrayAndShortcuts)),
+            TaskScheduler.Default);
         PerfLog.Mark("app.startup.end");
+    }
+
+    private void StartTrayAndShortcuts()
+    {
+        if (IsShuttingDown || _settings is null || _host is null || _displayPreview is null || _updates is null) return;
+        var displayPreview = _displayPreview;
+        var host = _host;
+        _shortcuts = new WidgetShortcutManager(_settings, host, displayPreview.PerformShortcut, direction =>
+        {
+            if (!displayPreview.TryMoveFocused(direction)) host.MoveSelectedWidget(direction);
+        });
+        PerfLog.Mark("shortcuts.ready");
+        _tray = new TrayController(host, _settings, _shortcuts, _updates, RequestOpenLauncher, () => displayPreview.Open());
+        PerfLog.Mark("tray.ready");
+        // Checked once the tray is listening, so it can show an available update.
+        _ = CheckForUpdatesAfterDelayAsync();
     }
 
     private void RequestOpenLauncher()
