@@ -2,7 +2,7 @@
 // panels, memory and CPU). Each launch is a separate Electron process running
 // benchEntry.cjs, which requires a variant's own compiled out/main/main.js.
 //
-// Build the teacher app once and keep it fixed for every variant, e.g.
+// To compare shells, build the teacher app once and keep it fixed for every variant, e.g.
 //   pnpm --filter @classroom-widgets/teacher build:desktop
 // snapshot each shell variant (a directory holding out/, src/renderer/,
 // assets/ and package.json from `npm run build`), for example with
@@ -11,6 +11,9 @@
 //   xvfb-run -a -s '-screen 0 1920x1080x24' node packages/linux-dashboard/tests/perf/launchBench.cjs \
 //     --variant base=<dir> --variant fix=<dir> --runs 10 --out <evidence dir> [--web-root <teacher build>] \
 //     [--network live|blocked] [--phases cold,warm,panels] [--warmup 1] [--keep-raw]
+// To compare whole commits, give each variant the teacher build of its own ref:
+// `snapshotVariant.sh <ref> <dir> --with-web` also builds it into <dir>/web, and
+// `--variant-web-root <name>=<dir>/web` serves it to that variant alone.
 // Runs are interleaved ABAB with the order alternating each iteration; the
 // first iteration is a warm-up and is excluded from the summary. Each
 // iteration and variant uses a fresh profile for three launches: cold start,
@@ -31,10 +34,13 @@ const option = (name, fallback) => {
   return index === -1 ? fallback : args[index + 1];
 };
 const variants = [];
+const variantWebRoots = new Map();
 args.forEach((arg, index) => {
-  if (arg !== '--variant') return;
-  const [name, dir] = args[index + 1].split('=');
-  variants.push({ name, dir: resolve(dir) });
+  if (arg !== '--variant' && arg !== '--variant-web-root') return;
+  const value = args[index + 1];
+  const split = value.indexOf('=');
+  if (arg === '--variant') variants.push({ name: value.slice(0, split), dir: resolve(value.slice(split + 1)) });
+  else variantWebRoots.set(value.slice(0, split), resolve(value.slice(split + 1)));
 });
 const from = option('from', null);
 const previous = from ? readFileSync(from, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : null;
@@ -49,6 +55,11 @@ const keepRaw = args.includes('--keep-raw');
 const phases = (option('phases', 'cold,warm,panels')).split(',');
 const root = resolve(__dirname, '..', '..');
 const webRoot = resolve(option('web-root', join(root, '..', 'teacher', 'build')));
+for (const name of variantWebRoots.keys()) {
+  if (!variants.some((variant) => variant.name === name)) throw new Error(`--variant-web-root names no variant: ${name}`);
+}
+for (const variant of variants) variant.webRoot = variantWebRoots.get(variant.name) ?? webRoot;
+const webRoots = Object.fromEntries(variants.map((variant) => [variant.name, variant.webRoot]));
 const outDir = resolve(option('out', join(tmpdir(), 'classroom-widgets-test-evidence/linux-launch-bench')));
 const electron = from ? null : require(join(root, 'node_modules', 'electron'));
 mkdirSync(outDir, { recursive: true });
@@ -66,7 +77,7 @@ function launch(variant, profile, scenario) {
     BENCH_OUT: resultFile,
     BENCH_SCENARIO: scenario,
     BENCH_NETWORK: network,
-    CLASSROOM_WIDGETS_WEB_ROOT: webRoot,
+    CLASSROOM_WIDGETS_WEB_ROOT: variant.webRoot,
   };
   delete env.ELECTRON_RUN_AS_NODE;
   return new Promise((done) => {
@@ -228,7 +239,7 @@ function mannWhitneyP(x, y) {
   return Math.min(1, erfc);
 }
 function writeSummary(elapsedMs) {
-  const summary = { variants: variants.map((variant) => variant.name), runs, warmup, network, webRoot, elapsedMs, metrics: {} };
+  const summary = { variants: variants.map((variant) => variant.name), runs, warmup, network, webRoots, elapsedMs, metrics: {} };
   const kept = records.filter((record) => !record.warmup && record.errors.length === 0);
   const keys = new Set();
   for (const record of kept) for (const key of Object.keys(record.metrics)) keys.add(`${record.kind}:${key}`);
@@ -259,7 +270,7 @@ function writeSummary(elapsedMs) {
   summary.failedRuns = records.filter((record) => record.errors.length > 0).map((record) => ({ iteration: record.iteration, variant: record.variant, kind: record.kind, error: record.errors[0].slice(0, 300) }));
   writeFileSync(join(outDir, 'summary.json'), JSON.stringify(summary, null, 1) + '\n');
   const [a, ...others] = variants.map((variant) => variant.name);
-  const lines = [`# Linux launch benchmark`, '', `variants: ${summary.variants.join(', ')}; runs per variant: ${runs} (+${warmup} warm-up discarded); network: ${network}`, from ? `regenerated from ${from}` : `web root: ${webRoot}`, ''];
+  const lines = [`# Linux launch benchmark`, '', `variants: ${summary.variants.join(', ')}; runs per variant: ${runs} (+${warmup} warm-up discarded); network: ${network}`, from ? `regenerated from ${from}` : `web root: ${new Set(Object.values(webRoots)).size === 1 ? webRoot : Object.entries(webRoots).map(([name, dir]) => `${name}=${dir}`).join(', ')}`, ''];
   const deltaHeads = others.map((name) => ` ${name} vs ${a} | % | paired delta | ${name} lower in | p |`).join('');
   lines.push(`| metric | ${variants.map((variant) => `${variant.name} median (p25-p75, p90) n`).join(' | ')} |${deltaHeads}`);
   lines.push(`|---|${variants.map(() => '---').join('|')}|${others.map(() => '---|---|---|---|---|').join('')}`);
