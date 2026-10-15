@@ -125,6 +125,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationWillFinishLaunching(_ notification: Notification) {
         PerfProbe.mark("app.willFinishLaunching")
+        // The host page's first load waits about a second for WebKit's helper
+        // processes, so start it before AppKit finishes launching.
+        DashboardDefaults.register()
+        controller = WidgetHostController()
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -133,19 +137,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             arguments: CommandLine.arguments,
             launchedAsLoginItem: Self.launchedAsLoginItem
         )
-        DashboardDefaults.register()
         shortcutState = initialShortcutBindingState()
         let iconVisibility = AppIconVisibility(rawValue: defaults.string(forKey: DashboardSettingKeys.appIconVisibility) ?? "") ?? .both
         NSApp.setActivationPolicy(iconVisibility == .menuBarOnly ? .accessory : .regular)
         NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         setupMainMenu()
 
-        controller = WidgetHostController()
         controller?.onWidgetOptionsChanged = { [weak self] options in
             self?.widgetOptionsChanged(options)
             if self?.launcherRequested == true { self?.requestOpenLauncher() }
         }
         controller?.onDisplayPreviewRequested = { [weak self] in self?.displayPreviewCoordinator.open() }
+        // Widgets the host listed before these callbacks were set.
+        if let options = controller?.widgetOptions, !options.isEmpty { widgetOptionsChanged(options) }
         applyPresentationSettings()
         if iconVisibility != .dockOnly { setupStatusItem() }
         registerAcceptedSingleActionHotKeys()
