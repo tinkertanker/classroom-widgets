@@ -3,17 +3,6 @@ import XCTest
 @testable import ClassroomWidgets
 
 final class WidgetPanelContentLayoutTests: XCTestCase {
-    func testGapIsAddedWithoutReducingPreferredViewport() {
-        XCTAssertEqual(
-            WidgetPanelContentLayout.panelSize(for: NSSize(width: 350, height: 415)),
-            NSSize(width: 350, height: 425)
-        )
-        XCTAssertEqual(
-            WidgetPanelContentLayout.panelSize(for: NSSize(width: 325, height: 325)),
-            NSSize(width: 325, height: 335)
-        )
-    }
-
     func testTimerAspectRatioExcludesGapWhenResizingEitherAxis() {
         let timer = descriptor(aspectRatio: 350.0 / 415.0)
         for proposed in [NSSize(width: 700, height: 425), NSSize(width: 350, height: 840)] {

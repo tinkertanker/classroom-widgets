@@ -24,17 +24,14 @@ public sealed class MoveToNextDisplayGeometryTests
     }
 
     [Fact]
-    public void PanelMovesToPreviousDisplayPreservingOffset()
+    public void PanelMovesToPreviousDisplayAndWrapsFromFirstToLast()
     {
-        var result = MoveToNextDisplayGeometry.NextDisplayFrame(new Rect(2000, 80, 300, 200), [Left, Right], MoveDirection.Previous);
-        Assert.Equal(new Rect(80, 80, 300, 200), result);
-    }
-
-    [Fact]
-    public void PanelWrapsFromFirstDisplayToLast()
-    {
-        var result = MoveToNextDisplayGeometry.NextDisplayFrame(new Rect(100, 50, 400, 300), [Left, Right], MoveDirection.Previous);
-        Assert.Equal(new Rect(2020, 50, 400, 300), result);
+        // Three displays, so Previous and Next pick different targets.
+        var far = new Rect(3840, 0, 1920, 1080);
+        var fromMiddle = MoveToNextDisplayGeometry.NextDisplayFrame(new Rect(2000, 80, 300, 200), [Left, Right, far], MoveDirection.Previous);
+        Assert.Equal(new Rect(80, 80, 300, 200), fromMiddle);
+        var fromFirst = MoveToNextDisplayGeometry.NextDisplayFrame(new Rect(100, 50, 400, 300), [Left, Right, far], MoveDirection.Previous);
+        Assert.Equal(new Rect(3940, 50, 400, 300), fromFirst);
     }
 
     [Fact]

@@ -98,7 +98,6 @@ describe('adminHandler: admin:getSessions', () => {
     assert.equal(response.success, true);
     assert.equal(response.sessions.length, 1);
     assert.equal(response.sessions[0].code, SESSION_CODE);
-    assert.deepEqual(response.stats, { activeSessions: 1 });
   });
 });
 

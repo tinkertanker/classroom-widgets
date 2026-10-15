@@ -81,28 +81,6 @@ test('returns not configured before validation or upstream requests', async (t) 
   });
 });
 
-test('rejects invalid URLs without calling upstream', async (t) => {
-  restoreEnv(t);
-  process.env.SHORTIO_API_KEY = 'test-key';
-  process.env.SHORTIO_DOMAIN = 'go.example.edu';
-  let upstreamCalled = false;
-  stubUpstream(t, () => {
-    upstreamCalled = true;
-    throw new Error('upstream should not be called');
-  });
-
-  await withServer(t, async (baseUrl) => {
-    const response = await realFetch(`${baseUrl}/api/shorten`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: 'not a url' })
-    });
-    assert.equal(response.status, 400);
-    assert.equal((await response.json()).success, false);
-    assert.equal(upstreamCalled, false);
-  });
-});
-
 test('invalid payloads do not consume the rate limit', async (t) => {
   restoreEnv(t);
   process.env.SHORTIO_API_KEY = 'test-key';

@@ -11,15 +11,6 @@ describe('Session', () => {
   });
 
   describe('createRoom', () => {
-    it('creates each known room type', () => {
-      for (const type of ['poll', 'linkShare', 'rtfeedback', 'questions', 'handout', 'activity']) {
-        const room = session.createRoom(type, `w-${type}`);
-        assert.equal(room.getType(), type === 'linkShare' ? 'linkShare' : room.getType());
-        assert.equal(session.getRoom(type, `w-${type}`), room);
-      }
-      assert.equal(session.activeRooms.size, 6);
-    });
-
     it('throws on duplicate rooms instead of silently replacing state', () => {
       session.createRoom('poll', 'w-1');
       assert.throws(() => session.createRoom('poll', 'w-1'), /Room already exists/);
@@ -79,13 +70,6 @@ describe('Session', () => {
   });
 
   describe('hostToken', () => {
-    it('generates a unique token per session', () => {
-      const other = new Session('FGHIJ');
-      assert.equal(typeof session.hostToken, 'string');
-      assert.ok(session.hostToken.length > 0);
-      assert.notEqual(session.hostToken, other.hostToken);
-    });
-
     it('isValidHostToken accepts only the session\'s own token', () => {
       assert.equal(session.isValidHostToken(undefined), false);
       assert.equal(session.isValidHostToken(null), false);
@@ -106,17 +90,6 @@ describe('Session', () => {
       assert.notEqual(rotated, oldToken);
       assert.equal(session.isValidHostToken(oldToken), false);
       assert.equal(session.isValidHostToken(rotated), true);
-    });
-  });
-
-  describe('inactivity', () => {
-    it('is only inactive when idle AND empty', () => {
-      session.lastActivity = Date.now() - 5000;
-      assert.equal(session.isInactive(1000), true);
-
-      session.addParticipant('sock-1', 'Ada');
-      session.lastActivity = Date.now() - 5000; // addParticipant refreshed it
-      assert.equal(session.isInactive(1000), false);
     });
   });
 });

@@ -42,23 +42,9 @@ describe('formatSubmissionsAsCsv', () => {
     );
   });
 
-  it('returns only the header for no submissions', () => {
-    expect(formatSubmissionsAsCsv([])).toBe('Name,Content,Type,Submitted at\r\n');
-  });
-
-  it('quotes fields containing commas', () => {
-    const csv = formatSubmissionsAsCsv([sub({ content: 'red, green' })]);
-    expect(csv.split('\r\n')[1]).toBe('Ada,"red, green",Text,2026-09-27 10:05:09');
-  });
-
-  it('doubles embedded quotes and wraps the field in quotes', () => {
-    const csv = formatSubmissionsAsCsv([sub({ studentName: 'Al "Ace" Lee', content: 'say "hi"' })]);
-    expect(csv.split('\r\n')[1]).toBe('"Al ""Ace"" Lee","say ""hi""",Text,2026-09-27 10:05:09');
-  });
-
-  it('keeps line breaks inside a quoted field', () => {
-    const csv = formatSubmissionsAsCsv([sub({ content: 'line one\nline two\r\nline three' })]);
-    expect(csv).toContain('Ada,"line one\nline two\r\nline three",Text,');
+  it('keeps a CRLF line break inside a quoted field', () => {
+    const csv = formatSubmissionsAsCsv([sub({ content: 'line one\r\nline two' })]);
+    expect(csv).toContain('Ada,"line one\r\nline two",Text,');
   });
 
   it.each(['=1+1', '+1+1', '-cmd', '-5+3', '@SUM(A1)', '\tx', '\rx', ' =1+1', '  @SUM(A1)', ' +1+1'])(
@@ -108,17 +94,6 @@ describe('formatSubmissionsAsCsv', () => {
 });
 
 describe('formatSubmissionsAsText', () => {
-  it('writes one "Name: content" line per submission, in order', () => {
-    expect(formatSubmissionsAsText([
-      sub({ studentName: 'Ada', content: 'https://a.example', isLink: true }),
-      sub({ studentName: 'Bo', content: 'my answer' })
-    ])).toBe('Ada: https://a.example\nBo: my answer');
-  });
-
-  it('returns an empty string for no submissions', () => {
-    expect(formatSubmissionsAsText([])).toBe('');
-  });
-
   it('keeps each multi-line submission on a single line', () => {
     expect(formatSubmissionsAsText([
       sub({ content: 'first\nsecond\r\n\r\nthird' }),

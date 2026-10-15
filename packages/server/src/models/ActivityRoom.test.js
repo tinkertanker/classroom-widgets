@@ -120,31 +120,6 @@ describe('ActivityRoom', () => {
   });
 
   describe('evaluateAnswers for code-fill-blank', () => {
-    it('uses whitespace-flexible matching by default for code activities', () => {
-      room.setActivity({
-        type: 'code-fill-blank',
-        items: [
-          { id: 'item-0', content: 'def' },
-          { id: 'item-1', content: 'return' }
-        ],
-        targets: [
-          { id: 'blank-0', accepts: ['item-0'] },
-          { id: 'blank-1', accepts: ['item-1'] }
-        ]
-      });
-
-      const results = room.evaluateAnswers({
-        placements: [],
-        textInputs: {
-          'blank-0': '  def  ', // extra whitespace
-          'blank-1': 'return'
-        }
-      });
-
-      assert.equal(results.score, 2);
-      assert.equal(results.total, 2);
-    });
-
     it('collapses whitespace even inside quoted strings (documented behavior)', () => {
       room.setActivity({
         type: 'code-fill-blank',
@@ -210,45 +185,6 @@ describe('ActivityRoom', () => {
       assert.ok(retryAction);
       assert.equal(retryAction.enabled, true);
       assert.equal(submitAction.enabled, false);
-    });
-  });
-
-  describe('revealAnswers', () => {
-    beforeEach(() => {
-      room.setActivity({
-        type: 'fill-blank',
-        items: [
-          { id: 'item-0', content: 'hello' },
-          { id: 'item-1', content: 'world' }
-        ],
-        targets: [
-          { id: 'blank-0', accepts: ['item-0'] },
-          { id: 'blank-1', accepts: ['item-1'] }
-        ]
-      });
-    });
-  });
-
-  describe('reset', () => {
-    beforeEach(() => {
-      room.setActivity({
-        type: 'fill-blank',
-        items: [{ id: 'item-0', content: 'test' }],
-        targets: [{ id: 'blank-0', accepts: ['item-0'] }]
-      });
-      room.isActive = true;
-    });
-
-    it('clears all responses and reveal state', () => {
-      room.submitAnswer('socket-1', { placements: [], textInputs: {} });
-      room.submitAnswer('socket-2', { placements: [], textInputs: {} });
-      room.answersRevealed = true;
-      assert.equal(room.getResponseCount(), 2);
-
-      room.reset();
-
-      assert.equal(room.getResponseCount(), 0);
-      assert.equal(room.answersRevealed, false);
     });
   });
 

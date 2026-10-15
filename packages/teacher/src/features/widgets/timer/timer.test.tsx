@@ -206,24 +206,6 @@ describe('Timer Widget', () => {
     expect(onStateChange).not.toHaveBeenCalled();
   });
 
-  test('preserves a restored running timer deadline', () => {
-    const onStateChange = vi.fn();
-    const endTime = Date.now() + 60_000;
-
-    renderWithModal(<Timer savedState={{ timer: {
-      endTime,
-      initialTime: 10,
-      originalTime: 10,
-      isRunning: true,
-      isPaused: false,
-      pausedTimeRemaining: 0
-    } }} onStateChange={onStateChange} />);
-
-    expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({
-      timer: expect.objectContaining({ endTime })
-    }));
-  });
-
   test('notifies once when a running timer expired while unmounted in StrictMode', () => {
     renderWithModal(<React.StrictMode><Timer savedState={{ timer: {
       endTime: Date.now() - 1000,

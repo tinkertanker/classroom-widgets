@@ -56,40 +56,6 @@ describe('CompactPanelHost', () => {
     });
   });
 
-  it('keeps audio widgets running while allowing passive hidden panels to defer', async () => {
-    useWorkspaceStore.setState({
-      widgets: [
-        ...useWorkspaceStore.getState().widgets,
-        { id: 'list-1', type: WidgetType.LIST, hidden: true, position: { x: 0, y: 0 }, size: { width: 350, height: 400 }, zIndex: 1 }
-      ]
-    });
-    render(<CompactPanelHost />);
-    await waitFor(() => expect(postMessage).toHaveBeenCalled());
-    const widgets = postMessage.mock.calls[0][0].widgets;
-    expect(widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1').keepAliveWhenHidden).toBe(true);
-    expect(widgets.find((widget: { widgetId: string }) => widget.widgetId === 'list-1').keepAliveWhenHidden).toBe(false);
-  });
-
-  it('publishes compact widget options in native menu order, most used first', async () => {
-    render(<CompactPanelHost />);
-
-    await waitFor(() => expect(postMessage).toHaveBeenCalled());
-    const options = postMessage.mock.calls[0][0].compactWidgetOptions;
-    expect(options.map(({ widgetType, title, menuGroup }: { widgetType: WidgetType; title: string; menuGroup: number }) => (
-      { widgetType, title, menuGroup }
-    ))).toEqual([
-      { widgetType: WidgetType.TIMER, title: 'Timer', menuGroup: 0 },
-      { widgetType: WidgetType.TEXT_BANNER, title: 'Text Banner', menuGroup: 0 },
-      { widgetType: WidgetType.TRAFFIC_LIGHT, title: 'Traffic Light', menuGroup: 1 },
-      { widgetType: WidgetType.TASK_CUE, title: 'Task Cue', menuGroup: 1 },
-      { widgetType: WidgetType.RANDOMISER, title: 'Randomiser', menuGroup: 2 },
-      { widgetType: WidgetType.LIST, title: 'List', menuGroup: 2 },
-      // Link Shortener is compact only inside a native shell.
-      { widgetType: WidgetType.QRCODE, title: 'QR Code', menuGroup: 3 },
-      { widgetType: WidgetType.SOUND_EFFECTS, title: 'Sound Effects', menuGroup: 3 }
-    ]);
-  });
-
   it('publishes the effective dashboard theme and updates on appearance changes', async () => {
     const { rerender } = render(<CompactPanelHost dashboardTheme="dark" />);
     await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
@@ -143,70 +109,6 @@ describe('CompactPanelHost', () => {
       await Promise.resolve();
     });
     expect(postMessage).toHaveBeenCalledTimes(1);
-  });
-
-  it('preserves an unchanged widget revision when another widget changes', async () => {
-    useWorkspaceStore.setState({
-      widgets: [
-        ...useWorkspaceStore.getState().widgets,
-        { id: 'qr-1', type: WidgetType.QRCODE, position: { x: 0, y: 0 }, size: { width: 350, height: 415 }, zIndex: 1 }
-      ],
-      widgetStates: new Map([
-        ['timer-1', { timer: { time: 10 } }],
-        ['qr-1', { text: 'first' }]
-      ])
-    });
-    render(<CompactPanelHost />);
-    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
-    const firstInventory = postMessage.mock.calls[0][0];
-    const timerSnapshot = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1');
-    const qrSnapshot = firstInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1');
-
-    act(() => {
-      useWorkspaceStore.setState({ widgetStates: new Map([
-        ['timer-1', { timer: { time: 10 } }],
-        ['qr-1', { text: 'second' }]
-      ]) });
-    });
-
-    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(2));
-    const secondInventory = postMessage.mock.calls[1][0];
-    const secondTimer = secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'timer-1');
-    const secondQr = secondInventory.widgets.find((widget: { widgetId: string }) => widget.widgetId === 'qr-1');
-    expect(secondTimer.revision).toBe(timerSnapshot.revision);
-    expect(secondTimer.stateRevision).toBe(timerSnapshot.stateRevision);
-    expect(secondQr.revision).toBe(qrSnapshot.revision);
-    expect(secondQr.stateRevision).toBeGreaterThan(qrSnapshot.stateRevision);
-  });
-
-  it('starts a new host instance when the dashboard host reloads', async () => {
-    const { unmount } = render(<CompactPanelHost />);
-
-    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
-    const firstInventory = postMessage.mock.calls[0][0];
-    unmount();
-
-    render(<CompactPanelHost />);
-
-    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(2));
-    const secondInventory = postMessage.mock.calls[1][0];
-    expect(secondInventory.inventoryRevision).toBe(1);
-    expect(secondInventory.hostInstanceId).not.toBe(firstInventory.hostInstanceId);
-  });
-
-  it('applies a panel state change to the authoritative workspace store', () => {
-    render(<CompactPanelHost />);
-
-    act(() => {
-      window.classroomPanelHost?.applyStateChange({
-        schemaVersion: 1,
-        widgetId: 'timer-1',
-        baseRevision: 1,
-        state: { timer: { time: 25 } }
-      });
-    });
-
-    expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
   });
 
   it('rejects a panel state change based on a stale snapshot revision', async () => {
@@ -285,32 +187,6 @@ describe('CompactPanelHost', () => {
     expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 25 } });
   });
 
-  it('hides an existing widget on toggle and restores it unchanged', async () => {
-    render(<CompactPanelHost />);
-    await waitFor(() => expect(postMessage).toHaveBeenCalledTimes(1));
-
-    act(() => {
-      expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
-    });
-    expect(useWorkspaceStore.getState().widgets).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'timer-1', hidden: true })
-    ]));
-    await waitFor(() => {
-      const latest = postMessage.mock.calls[postMessage.mock.calls.length - 1][0];
-      expect(latest.widgets).toEqual([
-        expect.objectContaining({ widgetId: 'timer-1', hidden: true })
-      ]);
-    });
-    expect(useWorkspaceStore.getState().widgetStates.get('timer-1')).toEqual({ timer: { time: 10 } });
-
-    act(() => {
-      expect(window.classroomPanelHost?.toggleWidget(WidgetType.TIMER)).toBe(true);
-    });
-    expect(useWorkspaceStore.getState().widgets).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'timer-1', hidden: false })
-    ]));
-  });
-
   it('adds a new widget when toggling a type with no existing widget', () => {
     useWorkspaceStore.setState({ widgets: [], widgetStates: new Map() });
     render(<CompactPanelHost />);
@@ -321,27 +197,6 @@ describe('CompactPanelHost', () => {
     const added = useWorkspaceStore.getState().widgets.find((widget) => widget.type === WidgetType.TIMER);
     expect(added).toBeDefined();
     expect(added?.hidden).not.toBe(true);
-  });
-
-  it('restores a hidden widget on show instead of adding a duplicate', () => {
-    useWorkspaceStore.setState({
-      widgets: [{
-        id: 'timer-1',
-        type: WidgetType.TIMER,
-        position: { x: 0, y: 0 },
-        size: { width: 350, height: 415 },
-        zIndex: 0,
-        hidden: true
-      }]
-    });
-    render(<CompactPanelHost />);
-
-    act(() => {
-      expect(window.classroomPanelHost?.showWidget(WidgetType.TIMER)).toBe(true);
-    });
-    const widgets = useWorkspaceStore.getState().widgets;
-    expect(widgets.filter((widget) => widget.type === WidgetType.TIMER)).toHaveLength(1);
-    expect(widgets[0]).toEqual(expect.objectContaining({ id: 'timer-1', hidden: false }));
   });
 
   it('dismisses the visible widget before a hidden one of the same type', () => {

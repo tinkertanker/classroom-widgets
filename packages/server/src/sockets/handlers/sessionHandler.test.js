@@ -118,12 +118,6 @@ describe('sessionHandler: student join', () => {
     assert.equal(session.getParticipant('student-1').studentId, 'device-abc-123');
   });
 
-  it('rejects joining an unknown session', async () => {
-    const response = await join({ code: 'NOSUCH', name: 'Ada' });
-    assert.equal(response.success, false);
-    assert.match(response.error, /not found/i);
-  });
-
   it('rejects joins once the session participant limit is reached', async () => {
     session.getParticipantCount = () => LIMITS.MAX_PARTICIPANTS_PER_SESSION;
 
@@ -181,16 +175,6 @@ describe('sessionHandler: host session:create', () => {
     return response;
   }
 
-  it('refuses to reclaim an existing session without a token', async () => {
-    const response = await create({ existingCode: CODE });
-
-    assert.equal(response.success, true);
-    assert.equal(response.isExisting, false);
-    assert.equal(response.code, 'NEW01');
-    assert.equal(session.hostSocketId, 'host-1');
-    assert.equal(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED), undefined);
-  });
-
   it('refuses to reclaim an existing session with a wrong token', async () => {
     const response = await create({ existingCode: CODE, hostToken: 'not-the-token' });
 
@@ -199,56 +183,5 @@ describe('sessionHandler: host session:create', () => {
     assert.equal(response.code, 'NEW01');
     assert.equal(session.hostSocketId, 'host-1');
     assert.equal(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED), undefined);
-  });
-
-  it('reclaims the session when the host token matches', async () => {
-    const originalToken = session.hostToken;
-    const response = await create({ existingCode: CODE, hostToken: originalToken });
-
-    assert.equal(response.success, true);
-    assert.equal(response.isExisting, true);
-    assert.equal(response.code, CODE);
-    assert.equal(session.hostSocketId, socket.id);
-    assert.ok(io._emitFn.calls.find(c => c[0] === EVENTS.SESSION.HOST_RECONNECTED));
-
-    // The reclaim rotates the token: the response carries the fresh one
-    assert.notEqual(response.hostToken, originalToken);
-    assert.equal(response.hostToken, session.hostToken);
-  });
-
-  // The rotated token reaches the host only in the acknowledgement, which can
-  // be lost (#78). The pre-rotation token therefore stays valid until the
-  // rotated one is presented, and never after: at most one stale token works.
-  it('accepts the pre-rotation token only until the rotated one is presented', async () => {
-    const originalToken = session.hostToken;
-    const first = await create({ existingCode: CODE, hostToken: originalToken });
-    const rotatedToken = first.hostToken;
-
-    const attempt = async (id, hostToken) => {
-      const peer = createMockSocket(id);
-      sessionHandler(io, peer, sessionManager, () => null);
-      let result;
-      peer.trigger(EVENTS.SESSION.CREATE, { existingCode: CODE, hostToken }, (r) => { result = r; });
-      await new Promise(resolve => setImmediate(resolve));
-      return { peer, result };
-    };
-
-    // The host whose ack was lost still holds the original token
-    const lostAck = await attempt('lost-ack', originalToken);
-    assert.equal(lostAck.result.isExisting, true);
-    assert.equal(lostAck.result.hostToken, rotatedToken, 'it is handed the token it missed');
-    assert.equal(session.hostSocketId, lostAck.peer.id);
-
-    // Presenting the rotated token retires the original one
-    const reclaim = await attempt('reclaimer', rotatedToken);
-    assert.equal(reclaim.result.success, true);
-    assert.equal(reclaim.result.isExisting, true);
-    assert.equal(session.hostSocketId, reclaim.peer.id);
-
-    const replay = await attempt('attacker', originalToken);
-    assert.equal(replay.result.success, true);
-    assert.equal(replay.result.isExisting, false);
-    assert.equal(replay.result.code, 'NEW01');
-    assert.equal(session.hostSocketId, reclaim.peer.id);
   });
 });

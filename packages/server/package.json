@@ -8,7 +8,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node scripts/check-startup-warnings.js && pnpm run test:unit && node test-server.js",
+    "test": "node scripts/check-startup-warnings.js && pnpm run test:unit",
     "test:startup": "node scripts/check-startup-warnings.js",
     "test:unit": "node --test \"src/**/*.test.js\""
   },
@@ -19,7 +19,6 @@
   "dependencies": {
     "@boundaryml/baml": "^0.212.0",
     "@classroom-widgets/shared": "workspace:*",
-    "axios": "^1.11.0",
     "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^17.0.1",

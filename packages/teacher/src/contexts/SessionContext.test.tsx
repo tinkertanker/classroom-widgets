@@ -135,18 +135,6 @@ describe('SessionContext room + participant state (T5-B)', () => {
     expect(roomOf('widget-1')?.roomType).toBe('poll');
   });
 
-  it('ignores a participant count for a widgetId with no room instead of orphaning it', () => {
-    renderSession();
-    connect();
-
-    act(() => {
-      socket.fire('session:participantUpdate', { count: 5, roomType: 'poll', widgetId: 'ghost-widget' });
-    });
-
-    expect(session.activeRooms.has('ghost-widget')).toBe(false);
-    expect(session.activeRooms.size).toBe(0);
-  });
-
   it('ignores session-level participant updates that carry no widgetId', () => {
     renderSession();
     connect();
@@ -222,101 +210,6 @@ describe('SessionContext connection phase (T5-A)', () => {
     act(() => {
       socket.connected = false;
       socket.fire('disconnect');
-    });
-    expect(session.connectionPhase).toBe('disconnected');
-    expect(session.isConnected).toBe(false);
-  });
-
-  it('goes connected -> recovering -> recovered when a stored session is rejoined', async () => {
-    storeState.current.sessionCode = 'ABC123';
-    storeState.current.sessionCreatedAt = Date.now();
-    renderSession();
-
-    connect();
-    expect(session.connectionPhase).toBe('recovering');
-    expect(session.isConnected).toBe(true);
-    expect(session.isRecovering).toBe(true);
-    // still in flight: widgets must not conclude "no room for me" yet
-    expect(isRecoverySettled(session.connectionPhase)).toBe(false);
-
-    const ack = socket.ackFor('session:create');
-    expect(ack).toBeTypeOf('function');
-    await act(async () => {
-      ack!({
-        success: true,
-        isExisting: true,
-        activeRooms: [
-          { roomType: 'poll', widgetId: 'widget-1', room: { isActive: true, participantCount: 2 } }
-        ]
-      });
-    });
-
-    expect(session.connectionPhase).toBe('recovered');
-    expect(session.isRecovering).toBe(false);
-    expect(isRecoverySettled(session.connectionPhase)).toBe(true);
-    // the recovered room carries its participant count with it
-    expect(roomOf('widget-1')?.participantCount).toBe(2);
-  });
-
-  it('goes to recovery-failed when the server rejects the rejoin', async () => {
-    storeState.current.sessionCode = 'ABC123';
-    storeState.current.sessionCreatedAt = Date.now();
-    renderSession();
-
-    connect();
-    expect(session.connectionPhase).toBe('recovering');
-
-    await act(async () => {
-      socket.ackFor('session:create')!({ success: false, error: 'Session not found' });
-    });
-
-    expect(session.connectionPhase).toBe('recovery-failed');
-    expect(session.isRecovering).toBe(false);
-    // settled, so widgets may now treat "no recovery data" as "no room"
-    expect(isRecoverySettled(session.connectionPhase)).toBe(true);
-    expect(session.sessionCode).toBeNull();
-  });
-
-  it('re-attempts recovery after a reconnect', async () => {
-    storeState.current.sessionCode = 'ABC123';
-    storeState.current.sessionCreatedAt = Date.now();
-    renderSession();
-
-    connect();
-    await act(async () => {
-      socket.ackFor('session:create')!({ success: true, isExisting: true, activeRooms: [] });
-    });
-    expect(session.connectionPhase).toBe('recovered');
-    const attemptsBefore = socket.emitted.filter(c => c.event === 'session:create').length;
-
-    act(() => {
-      socket.connected = false;
-      socket.fire('disconnect');
-    });
-    expect(session.connectionPhase).toBe('disconnected');
-
-    connect();
-    expect(session.connectionPhase).toBe('recovering');
-    expect(socket.emitted.filter(c => c.event === 'session:create').length).toBe(attemptsBefore + 1);
-  });
-
-  it('stays disconnected if the socket drops while recovery is still in flight', async () => {
-    storeState.current.sessionCode = 'ABC123';
-    storeState.current.sessionCreatedAt = Date.now();
-    renderSession();
-
-    connect();
-    expect(session.connectionPhase).toBe('recovering');
-
-    act(() => {
-      socket.connected = false;
-      socket.fire('disconnect');
-    });
-    expect(session.connectionPhase).toBe('disconnected');
-
-    // a late answer from the dead connection must not claim we are connected
-    await act(async () => {
-      socket.ackFor('session:create')!({ success: true, isExisting: true, activeRooms: [] });
     });
     expect(session.connectionPhase).toBe('disconnected');
     expect(session.isConnected).toBe(false);

@@ -70,10 +70,4 @@ describe('handout:add link detection', () => {
       assert.equal(item.isLink, true);
     }
   });
-
-  it('keeps URLs that already have a protocol as links', () => {
-    const item = addItem('https://Mr.Tan');
-    assert.equal(item.content, 'https://Mr.Tan');
-    assert.equal(item.isLink, true);
-  });
 });

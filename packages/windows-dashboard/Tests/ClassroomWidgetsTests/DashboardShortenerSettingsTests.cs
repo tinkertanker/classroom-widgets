@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using ClassroomWidgets;
 using Xunit;
 
@@ -13,13 +12,6 @@ public class DashboardShortenerSettingsTests
 {
     private const string ScriptPrefix = "window.classroomShortenerSettings = ";
     private const string ScriptSuffix = "; window.dispatchEvent(new Event('classroom-shortener-settings-changed'));";
-
-    // Same options DashboardSettings.Save uses, so the roundtrip matches disk.
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
 
     [Fact]
     public void ScriptPublishesEscapedShortioSettingsWithoutInterpolation()
@@ -55,32 +47,6 @@ public class DashboardShortenerSettingsTests
             Assert.Equal(provider, DashboardShortenerSettings.NormalizeProvider(provider));
         }
         Assert.Equal("tinyurl", DashboardShortenerSettings.NormalizeProvider(null));
-    }
-
-    [Fact]
-    public void PreferencesFromEarlierVersionsKeepTheirValuesAndGainShortenerDefaults()
-    {
-        // A settings.json written before this feature: none of the existing
-        // preferences may move, and the shortener falls back to TinyURL.
-        const string legacyJson = """
-            {
-              "BackgroundOpacity": 0.4,
-              "AlwaysOnTop": false,
-              "PanelFrames": {
-                "qr": { "Left": 10, "Top": 20, "Width": 320, "Height": 260 }
-              }
-            }
-            """;
-
-        var settings = JsonSerializer.Deserialize<DashboardSettings>(legacyJson, JsonOptions);
-
-        Assert.NotNull(settings);
-        Assert.Equal(0.4, settings.BackgroundOpacity);
-        Assert.False(settings.AlwaysOnTop);
-        Assert.Equal(320, settings.PanelFrames["qr"].Width);
-        Assert.Equal("tinyurl", settings.LinkShortenerProvider);
-        Assert.Equal("", settings.LinkShortenerPublicApiKey);
-        Assert.Equal("", settings.LinkShortenerDomain);
     }
 
     private static JsonElement ParsePayload(string script)

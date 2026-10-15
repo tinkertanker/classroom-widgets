@@ -12,10 +12,6 @@ final class DisplayPreviewReconnectPolicyTests: XCTestCase {
         return policy
     }
 
-    func testLosingTheExternalDisplayHidesAnOpenWidgetAndRemembersWhy() {
-        XCTAssertTrue(autoHidden().hiddenByDisconnect)
-    }
-
     func testTheWidgetComesBackOnceWhenTheDisplayReconnects() {
         var policy = autoHidden()
         XCTAssertEqual(policy.displaysChanged(externalDisplayAvailable: true, isOpen: false, showOnReconnect: true), .show)

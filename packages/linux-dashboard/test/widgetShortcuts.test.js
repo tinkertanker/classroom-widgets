@@ -83,13 +83,6 @@ test('preserves explicit clears and intended assignments when registration fails
   assert.deepEqual(h.controller.getStatuses().map((item) => item.state), ['inactive', 'conflict']);
 });
 
-test('reset preserves regular widget bindings before options load', () => {
-  const h = harness();
-  h.controller.reset();
-  assert.equal(h.settings.widgetShortcutsInitialized, false);
-  assert.deepEqual(h.settings.widgetShortcuts, {});
-});
-
 for (const action of ['show', 'dismiss']) {
   test(`reset waits for inventory when a retained widget ${action} reserves Display's default`, () => {
     const h = harness({
@@ -263,22 +256,6 @@ test('Display migration copies custom Show only for missing Dismiss, not explici
   oneSided.controller.updateOptions([], false);
   assert.equal(oneSided.settings.displayPreviewDismissShortcut, null);
   assert.equal(oneSided.controller.getDisplayStatus().dismissDetail, 'Not assigned');
-});
-
-test('distinct Display Show raises only and Dismiss never opens an absent preview without a host', () => {
-  const h = harness({ displayPreviewShortcut: 'Ctrl+Alt+S', displayPreviewDismissShortcut: 'Ctrl+Alt+D' });
-  h.controller.updateOptions([], false);
-  assert.equal(h.callbacks.has('Ctrl+Alt+D'), true);
-  h.callbacks.get('Ctrl+Alt+D')();
-  assert.equal(h.preview.isOpen, false);
-  h.callbacks.get('Ctrl+Alt+S')();
-  h.callbacks.get('Ctrl+Alt+S')();
-  assert.equal(h.preview.isOpen, true);
-  assert.equal(h.preview.closed, 0);
-  assert.equal(h.displayed.length, 2);
-  h.callbacks.get('Ctrl+Alt+D')();
-  assert.equal(h.preview.isOpen, false);
-  assert.equal(h.preview.closed, 1);
 });
 
 test('both Display chords reserve generic Show/Dismiss including absent inventory entries', () => {

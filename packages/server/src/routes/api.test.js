@@ -1,13 +1,16 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const apiRoutes = require('./api');
+const SessionManager = require('../services/SessionManager');
+const { stopRateLimiterCleanup } = require('../middleware/rateLimit');
 
-function dispatchCleanupRequest(sessionManager, headers = {}) {
+function dispatchRequest(sessionManager, method, url, headers = {}) {
   return new Promise((resolve, reject) => {
     const req = {
-      method: 'POST',
-      url: '/admin/cleanup',
-      headers
+      method,
+      url,
+      headers,
+      socket: { remoteAddress: '127.0.0.1' }
     };
     const res = {
       statusCode: 200,
@@ -22,6 +25,10 @@ function dispatchCleanupRequest(sessionManager, headers = {}) {
 
     apiRoutes(sessionManager).handle(req, res, reject);
   });
+}
+
+function dispatchCleanupRequest(sessionManager, headers = {}) {
+  return dispatchRequest(sessionManager, 'POST', '/admin/cleanup', headers);
 }
 
 function createSessionManager() {
@@ -78,4 +85,21 @@ test('POST /api/admin/cleanup accepts a configured ADMIN_TOKEN', async (t) => {
   assert.equal(response.statusCode, 200);
   assert.equal(response.body.success, true);
   assert.equal(sessionManager.cleanupCalls, 1);
+});
+
+test('GET /api/sessions/:code/exists reports live sessions only', async (t) => {
+  const sessionManager = new SessionManager();
+  t.after(() => {
+    sessionManager.stopCleanupInterval();
+    stopRateLimiterCleanup();
+  });
+
+  const session = sessionManager.createSession();
+  const live = await dispatchRequest(sessionManager, 'GET', `/sessions/${session.code}/exists`);
+  assert.equal(live.statusCode, 200);
+  assert.equal(live.body.exists, true);
+
+  sessionManager.deleteSession(session.code);
+  const gone = await dispatchRequest(sessionManager, 'GET', `/sessions/${session.code}/exists`);
+  assert.equal(gone.body.exists, false);
 });

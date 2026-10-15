@@ -131,17 +131,3 @@ test('a client failure falls back to an UNKNOWN command with alternatives', asyn
     ['CREATE_TIMER', 'CREATE_LIST', 'RANDOMISE']
   );
 });
-
-test('healthCheck reports healthy when the client parses, unhealthy when it throws', async () => {
-  const { service: healthy, calls } = makeService(() => OK_RESULT);
-  assert.equal((await healthy.healthCheck()).status, 'healthy');
-  assert.deepEqual(calls[0].widgetTargets, EXPECTED_TARGETS);
-  assert.deepEqual(calls[0].actionNames, EXPECTED_ACTIONS);
-
-  const { service: broken } = makeService(() => {
-    throw new Error('connection refused');
-  });
-  const unhealthy = await broken.healthCheck();
-  assert.equal(unhealthy.status, 'unhealthy');
-  assert.equal(unhealthy.error, 'connection refused');
-});

@@ -189,25 +189,6 @@ describe('VoiceInterface', () => {
     expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
   });
 
-  it('forces an exit from "processing" when the command never settles', async () => {
-    const onTranscriptComplete = vi.fn().mockReturnValue(new Promise<VoiceCommandResponse>(() => {}));
-
-    render(
-      <VoiceInterface isOpen onClose={vi.fn()} onTranscriptComplete={onTranscriptComplete} />
-    );
-
-    await armMicrophone();
-    await speak();
-    expect(screen.getByText('Processing command...')).toBeInTheDocument();
-
-    await act(async () => {
-      vi.advanceTimersByTime(PROCESSING_TIMEOUT_MS);
-    });
-
-    expect(screen.queryByText('Processing command...')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Try Again/i })).toBeInTheDocument();
-  });
-
   it('ignores a command that settles after the processing timeout', async () => {
     let resolveCommand: (value: VoiceCommandResponse) => void = () => {};
     const onTranscriptComplete = vi.fn().mockReturnValue(

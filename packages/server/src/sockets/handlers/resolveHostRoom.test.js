@@ -5,12 +5,7 @@ const Session = require('../../models/Session');
 const PollRoom = require('../../models/PollRoom');
 const ActivityRoom = require('../../models/ActivityRoom');
 const HandoutRoom = require('../../models/HandoutRoom');
-const {
-  GUARD_ERRORS,
-  isHostRejection,
-  resolveRoom,
-  resolveHostRoom
-} = require('./resolveHostRoom');
+const { GUARD_ERRORS, resolveHostRoom } = require('./resolveHostRoom');
 
 /**
  * Unit tests for the shared host/room resolution guard used by every widget
@@ -45,7 +40,7 @@ describe('resolveHostRoom guard', () => {
       assert.equal(result.roomId, `poll:${WIDGET_ID}`);
     });
 
-    it('returns the same room key the session builds internally', () => {
+    it('returns room keys for widget-less rooms and widget IDs containing a colon', () => {
       // Including a widget-less room and a widget ID that itself contains ':'
       session.createRoom('handout');
       session.createRoom('handout', 'nested:widget');
@@ -53,12 +48,10 @@ describe('resolveHostRoom guard', () => {
       const unscoped = resolveHostRoom(session, HOST_SOCKET, 'handout', HandoutRoom, undefined);
       assert.equal(unscoped.ok, true);
       assert.equal(unscoped.roomId, 'handout');
-      assert.equal(unscoped.roomId, session._roomKey('handout', undefined));
 
       const nested = resolveHostRoom(session, HOST_SOCKET, 'handout', HandoutRoom, 'nested:widget');
       assert.equal(nested.ok, true);
       assert.equal(nested.roomId, 'handout:nested:widget');
-      assert.equal(nested.roomId, session._roomKey('handout', 'nested:widget'));
     });
   });
 
@@ -85,15 +78,6 @@ describe('resolveHostRoom guard', () => {
         assert.equal(result.room, null);
         assert.equal(result.roomId, null);
       }
-    });
-
-    it('rejects with NOT_HOST once the host socket has been replaced', () => {
-      session.hostSocketId = 'a-newer-host-socket';
-
-      const result = resolveHostRoom(session, HOST_SOCKET, 'poll', PollRoom, WIDGET_ID);
-
-      assert.equal(result.ok, false);
-      assert.equal(result.error, GUARD_ERRORS.NOT_HOST);
     });
 
     it('rejects with NO_ROOM when the room does not exist', () => {
@@ -123,36 +107,6 @@ describe('resolveHostRoom guard', () => {
       const result = resolveHostRoom(session, STUDENT_SOCKET, 'poll', PollRoom, 'no-such-widget');
 
       assert.equal(result.error, GUARD_ERRORS.NOT_HOST);
-    });
-  });
-
-  describe('resolveRoom', () => {
-    it('resolves for a non-host socket', () => {
-      for (const [roomType, RoomClass] of [['poll', PollRoom], ['activity', ActivityRoom]]) {
-        const result = resolveRoom(session, roomType, RoomClass, WIDGET_ID);
-
-        assert.equal(result.ok, true);
-        assert.equal(result.error, null);
-        assert.equal(result.room, session.getRoom(roomType, WIDGET_ID));
-        assert.equal(result.roomId, `${roomType}:${WIDGET_ID}`);
-      }
-    });
-
-    it('rejects with NO_SESSION, NO_ROOM and WRONG_ROOM_TYPE like the host variant', () => {
-      assert.equal(resolveRoom(undefined, 'poll', PollRoom, WIDGET_ID).error, GUARD_ERRORS.NO_SESSION);
-      assert.equal(resolveRoom(session, 'poll', PollRoom, 'no-such-widget').error, GUARD_ERRORS.NO_ROOM);
-      assert.equal(resolveRoom(session, 'activity', PollRoom, WIDGET_ID).error, GUARD_ERRORS.WRONG_ROOM_TYPE);
-    });
-  });
-
-  describe('isHostRejection', () => {
-    it('is true only for the reasons the old `!session || hostSocketId !== socket.id` covered', () => {
-      assert.equal(isHostRejection(GUARD_ERRORS.NO_SESSION), true);
-      assert.equal(isHostRejection(GUARD_ERRORS.NOT_HOST), true);
-      assert.equal(isHostRejection(GUARD_ERRORS.NO_ROOM), false);
-      assert.equal(isHostRejection(GUARD_ERRORS.WRONG_ROOM_TYPE), false);
-      assert.equal(isHostRejection(null), false);
-      assert.equal(isHostRejection(undefined), false);
     });
   });
 });

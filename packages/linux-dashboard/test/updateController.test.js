@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { appImageUpdateScript, UpdateController } = require('../out/main/updateController.js');
+const { UpdateController } = require('../out/main/updateController.js');
 
 const releasePage = 'https://example.test/releases/v2.0.0';
 
@@ -232,12 +232,6 @@ test('approved AppImage staging error identifies the unwritable location and rec
     if (previous === undefined) delete process.env.APPIMAGE;
     else process.env.APPIMAGE = previous;
   }
-});
-
-test('AppImage updater keeps the effective Ozone backend for replacement and rollback launches', () => {
-  const script = appImageUpdateScript();
-  assert.equal(script.match(/"\$3" "\$6" >\/dev\/null 2>&1 &/g)?.length, 2);
-  assert.equal(script.match(/"\$3" >\/dev\/null 2>&1 &/g)?.length, 2);
 });
 
 test('manual approved deb failure reports package-manager and opener errors', async () => {

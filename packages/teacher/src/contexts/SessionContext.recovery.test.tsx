@@ -512,13 +512,12 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     expect(storeState.current.setSessionCode).not.toHaveBeenCalledWith(response.code);
   });
 
-  it.each(['invalid token', 'deleted session'] as const)('ends the stored session for %s, without reclaiming or creating one (#78)', async (failure) => {
+  it('ends the stored session for an invalid token, without reclaiming or creating one (#78)', async () => {
     mount();
     await recoverOnce();
     const previousHost = server.session.hostSocketId;
     disconnect();
-    if (failure === 'invalid token') server.session.rotateHostToken();
-    else server.manager.deleteSession(CODE);
+    server.session.rotateHostToken();
     const sessionsBefore = server.manager.sessions.size;
     connect();
     const response = await respond();

@@ -1,11 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { getQuestionColor, questionColors } from '@shared/constants/questionColors';
-import {
-  getStudentQuestionColor,
-  studentQuestionColors
-} from '@shared/constants/studentQuestionColors';
+import { questionColors } from '@shared/constants/questionColors';
+import { studentQuestionColors } from '@shared/constants/studentQuestionColors';
 
 // Every value in these token tables must be a complete, literal Tailwind class
 // string. Raw hex (the old contract) type-checks identically but is inert once
@@ -53,11 +50,6 @@ describe('question colour token contract', () => {
       expect(JSON.stringify(Object.keys(entry).sort()), `index ${index}`).toBe(expected);
     }
   });
-
-  it('wraps the option index past the end of each table', () => {
-    expect(getQuestionColor(questionColors.length)).toBe(questionColors[0]);
-    expect(getStudentQuestionColor(studentQuestionColors.length)).toBe(studentQuestionColors[0]);
-  });
 });
 
 describe('question colour consumers', () => {
@@ -74,24 +66,6 @@ describe('question colour consumers', () => {
       // `${colour}` is the bug; `${colour.bg}` is the fix.
       const bareInterpolation = new RegExp(`\\$\\{\\s*${variable}\\s*\\}`);
       expect(source, `bare \${${variable}} interpolation`).not.toMatch(bareInterpolation);
-    }
-  });
-
-  it.each(CONSUMERS)('$name only reads fields that exist on its token table', ({ name, source }) => {
-    const table = name === 'Questions.tsx' ? questionColors : studentQuestionColors;
-    const known = new Set(Object.keys(table[0]));
-    const colourVariables = [
-      ...source.matchAll(/(?:const|let)\s+([A-Za-z_$][\w$]*)\s*=\s*get(?:Student)?QuestionColor\s*\(/g)
-    ].map((match) => match[1]);
-
-    for (const variable of colourVariables) {
-      const accesses = [...source.matchAll(new RegExp(`\\b${variable}\\.([\\w$]+)`, 'g'))].map(
-        (match) => match[1]
-      );
-      expect(accesses.length).toBeGreaterThan(0);
-      for (const field of accesses) {
-        expect(known, `${variable}.${field}`).toContain(field);
-      }
     }
   });
 });

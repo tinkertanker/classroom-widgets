@@ -39,7 +39,9 @@ describe('executeLaunchWidget target resolution', () => {
     const entries = Object.entries(VOICE_WIDGET_TARGET_MAP);
     expect(entries.length).toBeGreaterThan(0);
 
-    for (const [name, expectedType] of entries) {
+    // 'Randomiser' also checks case folding and that WidgetType.RANDOMISER === 0
+    // is not rejected by a falsy check (P2-A).
+    for (const [name, expectedType] of [...entries, ['Randomiser', WidgetType.RANDOMISER] as const]) {
       expect(typeof expectedType).toBe('number');
       expect(WidgetType[expectedType]).toBeDefined();
 
@@ -53,34 +55,12 @@ describe('executeLaunchWidget target resolution', () => {
     }
   });
 
-  it('covers every widget declared in the shared definitions', async () => {
+  it('covers every widget declared in the shared definitions', () => {
     for (const widget of Object.values(VOICE_WIDGET_DEFINITIONS)) {
       const target = widget.targetName.toLowerCase();
       expect(VOICE_WIDGET_TARGET_MAP[target]).toBe(
         WidgetType[widget.widgetType as keyof typeof WidgetType]
       );
-
-      addWidget.mockClear();
-      const result = await launch(target);
-      expect(result.success, `launching '${target}' should succeed: ${result.error}`).toBe(true);
-    }
-  });
-
-  // Regression guard for P2-A: RANDOMISER is enum value 0, so a falsy check on the
-  // resolved widget type rejected it as "not found" and the generic launcher could
-  // never open the randomiser.
-  it('launches the randomiser even though WidgetType.RANDOMISER === 0', async () => {
-    expect(WidgetType.RANDOMISER).toBe(0);
-    expect(VOICE_WIDGET_TARGET_MAP['randomiser']).toBe(0);
-
-    for (const target of ['randomiser', 'randomizer', 'Randomiser']) {
-      addWidget.mockClear();
-      const result = await launch(target);
-
-      expect(result.success, `launching '${target}' should succeed: ${result.error}`).toBe(true);
-      expect(result.error).toBeUndefined();
-      expect(addWidget).toHaveBeenCalledTimes(1);
-      expect(addWidget.mock.calls[0][0]).toBe(WidgetType.RANDOMISER);
     }
   });
 

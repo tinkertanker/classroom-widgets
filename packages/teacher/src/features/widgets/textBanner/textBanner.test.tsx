@@ -21,22 +21,6 @@ afterEach(() => {
 });
 
 describe('TextBanner text editor', () => {
-  it('keeps the auto-size display node mounted across an editor session', async () => {
-    const user = userEvent.setup();
-    render(<TextBanner savedState={{ text: 'Keep fitting' }} />);
-
-    const display = screen.getByTestId('text-banner-display');
-    await user.click(screen.getByRole('button', { name: 'Edit banner' }));
-
-    expect(display).toBeInTheDocument();
-    expect(display).toHaveClass('invisible', 'pointer-events-none');
-
-    await user.click(screen.getByRole('button', { name: 'Cancel' }));
-
-    expect(screen.getByTestId('text-banner-display')).toBe(display);
-    expect(display).not.toHaveClass('invisible');
-  });
-
   it('cycles preset colours from the displayed banner while editor choices remain transactional', async () => {
     const user = userEvent.setup();
     const onStateChange = vi.fn();

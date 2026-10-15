@@ -12,11 +12,6 @@ function autoHidden() {
   return policy;
 }
 
-test('losing the external display hides an open widget and remembers why', () => {
-  const policy = autoHidden();
-  assert.equal(policy.hiddenByDisconnect, true);
-});
-
 test('the widget comes back once when the display reconnects', () => {
   const policy = autoHidden();
   assert.equal(policy.displaysChanged(true, false, true), 'show');

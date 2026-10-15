@@ -47,15 +47,10 @@ describe('BottomBarMenu', () => {
     isDesktopDashboardMode.mockReturnValue(false);
   });
 
-  it('keeps runtime shortener settings off the web menu', () => {
+  it.each([false, true])('offers runtime shortener settings only in desktop mode (desktop: %s)', (desktop) => {
+    isDesktopDashboardMode.mockReturnValue(desktop);
     renderMenu();
-    expect(screen.queryByText('Link Shortener…')).not.toBeInTheDocument();
-  });
-
-  it('offers runtime shortener settings in desktop mode', () => {
-    isDesktopDashboardMode.mockReturnValue(true);
-    renderMenu();
-    expect(screen.getByText('Link Shortener…')).toBeInTheDocument();
+    expect(screen.queryByText('Link Shortener…') !== null).toBe(desktop);
   });
 
   it('omits the download link inside the installed desktop app', () => {

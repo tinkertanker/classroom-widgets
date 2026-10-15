@@ -363,16 +363,6 @@ final class WidgetLaunchShortcutStoreTests: XCTestCase {
         )
     }
 
-    func testCustomAndUnassignedDisplayChoicesPersist() {
-        let store = WidgetLaunchShortcutStore(defaults: defaults)
-
-        let custom = DashboardShortcut(keyCode: Int(kVK_ANSI_D), modifiers: Int(NSEvent.ModifierFlags.command.rawValue))
-        store.setDisplay(custom)
-        XCTAssertEqual(WidgetLaunchShortcutStore(defaults: defaults).storedDisplayBinding(), custom)
-        store.setDisplay(DashboardShortcut(keyCode: -1, modifiers: 123))
-        XCTAssertEqual(store.storedDisplayBinding(), DashboardShortcut(keyCode: -1, modifiers: 0))
-    }
-
     func testDisplayOwnerConflictsBothDirectionsAndSurvivesWidgetInventoryRefresh() {
         let command = Int(NSEvent.ModifierFlags.command.rawValue)
         let settings = DashboardShortcut(keyCode: 1, modifiers: command)

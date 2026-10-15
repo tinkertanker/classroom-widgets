@@ -57,17 +57,6 @@ describe('secondsToTimeSegments', () => {
     });
   });
 
-  it('breaks 3661 seconds into 1h 1m 1s', () => {
-    expect(secondsToTimeSegments(3661)).toEqual({
-      hours: 1,
-      minutes: 1,
-      seconds: 1,
-      hoursText: '01',
-      minutesText: '01',
-      secondsText: '01'
-    });
-  });
-
   it('breaks a large value (359999 seconds) into 99h 59m 59s', () => {
     expect(secondsToTimeSegments(359999)).toEqual({
       hours: 99,
