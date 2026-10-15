@@ -328,6 +328,10 @@ final class StaticFileSchemeHandler: NSObject, WKURLSchemeHandler {
             return "audio/mpeg"
         case "wav":
             return "audio/wav"
+        case "woff2":
+            return "font/woff2"
+        case "woff":
+            return "font/woff"
         case "json", "webmanifest":
             return "application/json"
         default:
