@@ -141,7 +141,11 @@ function panelMetrics(result) {
     metrics[`${label}.processes`] = totals.processes;
   }
   for (const label of ['cpu-idle', 'cpu-panels-idle', 'cpu-timer-running', 'cpu-randomiser-spin']) {
-    if (result.samples[label]) metrics[`${label}.cpuPercent`] = result.samples[label].cpuPercent;
+    const sample = result.samples[label];
+    if (!sample) continue;
+    metrics[`${label}.cpuPercent`] = sample.cpuPercent;
+    // The main (browser) process's share, where the shell's own timers run.
+    if (sample.byKind) metrics[`${label}.browserCpuPercent`] = (100 * (sample.byKind.browser ?? 0)) / sample.elapsedMs;
   }
   for (const label of ['frames-randomiser-spin', 'frames-timer-running']) {
     const frames = result.samples[label];
