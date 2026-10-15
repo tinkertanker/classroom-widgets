@@ -1,9 +1,10 @@
 import AppKit
 
 /// Benchmark driver for `--perf-scenario=startup|panels`, constructed only
-/// when perf logging is on. It opens widgets through the same host call as the
-/// menu, closes them as the close button does, samples memory and CPU, then
-/// quits so `perf/bench.py` can launch the next run.
+/// when perf logging is on and one of those scenarios is named. It opens
+/// widgets through the same host call as the menu, closes them as the close
+/// button does, samples memory and CPU, then quits so `perf/bench.py` can
+/// launch the next run.
 @MainActor
 final class PerfScenario {
     private let host: WidgetHostController
@@ -18,6 +19,12 @@ final class PerfScenario {
         "Harper", "Jordan", "Kai", "Logan", "Morgan", "Quinn"
     ]
     private static let longListChoices = (1...500).map { String(format: "Student %03d", $0) }
+
+    /// Whether `scenario` names a benchmark run. Logging alone (`--perf-log`
+    /// with no scenario) leaves the app running instead of quitting.
+    nonisolated static func runs(_ scenario: String) -> Bool {
+        scenario == "startup" || scenario == "panels"
+    }
 
     init(host: WidgetHostController, scenario: String) {
         self.host = host

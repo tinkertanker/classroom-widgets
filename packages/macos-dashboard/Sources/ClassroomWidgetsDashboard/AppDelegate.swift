@@ -161,7 +161,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
         PerfProbe.mark("app.didFinishLaunching.end")
-        if let configuration = PerfProbe.configuration, let controller {
+        if let configuration = PerfProbe.configuration, PerfScenario.runs(configuration.scenario), let controller {
             perfScenario = PerfScenario(host: controller, scenario: configuration.scenario)
             perfScenario?.start()
         }
