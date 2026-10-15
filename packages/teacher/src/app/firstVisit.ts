@@ -31,3 +31,15 @@ export function redirectFirstVisitToLanding(): boolean {
   window.history.replaceState(window.history.state, '', `/about${search}${hash}`);
   return true;
 }
+
+// A visitor who arrives on About or a widget page has already seen a landing
+// page. Those pages do not load App, so its store never writes the workspace
+// key there; without this, their first Start Teaching click would be sent
+// back to /about.
+export function rememberLandingSeen(): void {
+  try {
+    window.localStorage.setItem(SEEN_LANDING_KEY, '1');
+  } catch {
+    // Without storage the redirect never fires, so there is nothing to record.
+  }
+}

@@ -7,7 +7,7 @@ import '@shared/assets/fonts/lora.css';
 import '@shared/assets/fonts/roboto-slab.css';
 import '@shared/assets/fonts/jetbrains-mono.css';
 import './index.css';
-import { redirectFirstVisitToLanding } from './app/firstVisit';
+import { redirectFirstVisitToLanding, rememberLandingSeen } from './app/firstVisit';
 
 const surface = new URLSearchParams(window.location.search).get('surface');
 const isCompactWidgetPanel = surface === 'widget-panel';
@@ -73,6 +73,7 @@ async function renderApp() {
     return;
   }
 
+  rememberLandingSeen();
   const [
     { Helmet, HelmetProvider },
     { BrowserRouter, Routes, Route },
