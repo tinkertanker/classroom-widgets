@@ -257,6 +257,9 @@ final class PerfEventWaiters {
 }
 
 /// CPU time and memory of this app and the WebKit helper processes it started.
+/// A helper counts only when launchd names this app as its responsible
+/// process, so helpers that Safari or another WebKit app starts during a run
+/// are left out.
 enum PerfProcessSampler {
     struct Sample {
         let pid: pid_t
@@ -274,9 +277,22 @@ enum PerfProcessSampler {
         return info
     }()
 
+    private typealias ResponsiblePIDFunction = @convention(c) (pid_t) -> pid_t
+
+    /// launchd records the process that asked for an XPC service as that
+    /// service's responsible process. This is SPI, so it is looked up at run
+    /// time; without it, helpers are matched by start time alone.
+    private static func responsiblePIDFunction() -> ResponsiblePIDFunction? {
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "responsibility_get_pid_responsible_for_pid") else {
+            return nil
+        }
+        return unsafeBitCast(symbol, to: ResponsiblePIDFunction.self)
+    }
+
     static func sample() -> [Sample] {
         let selfPID = getpid()
         let uid = getuid()
+        let responsiblePID = responsiblePIDFunction()
         var pids = [pid_t](repeating: 0, count: 8192)
         let count = pids.withUnsafeMutableBytes { proc_listallpids($0.baseAddress, Int32($0.count)) }
         guard count > 0 else { return [] }
@@ -289,7 +305,9 @@ enum PerfProcessSampler {
             guard proc_name(pid, &nameBuffer, UInt32(nameBuffer.count)) > 0 else { continue }
             let name = nameBuffer.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
             let started = Double(bsd.pbi_start_tvsec) * 1000 + Double(bsd.pbi_start_tvusec) / 1000
-            guard pid == selfPID || (name.hasPrefix("com.apple.WebKit") && started >= PerfProbe.processStartWall) else { continue }
+            let isOwnHelper = name.hasPrefix("com.apple.WebKit") && started >= PerfProbe.processStartWall
+                && (responsiblePID.map { $0(pid) == selfPID } ?? true)
+            guard pid == selfPID || isOwnHelper else { continue }
             var usage = rusage_info_v4()
             let result = withUnsafeMutablePointer(to: &usage) {
                 $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, RUSAGE_INFO_V4, $0) }
