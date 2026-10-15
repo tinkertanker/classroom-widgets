@@ -59,16 +59,29 @@ async function renderApp() {
     return;
   }
 
+  // The board (also every desktop dashboard host) needs neither the router nor
+  // Helmet: its only route is `/`, and index.html already carries its tags.
+  if (window.location.pathname === '/') {
+    const { default: App } = await import('./app/App');
+    root.render(
+      <React.StrictMode>
+        <React.Suspense fallback={null}>
+          <App />
+        </React.Suspense>
+      </React.StrictMode>
+    );
+    return;
+  }
+
   const [
-    { default: App },
     { Helmet, HelmetProvider },
     { BrowserRouter, Routes, Route },
   ] = await Promise.all([
-    import('./app/App'),
     import('react-helmet-async'),
     import('react-router-dom'),
   ]);
 
+  const App = React.lazy(() => import('./app/App'));
   const About = React.lazy(() => import('./pages/About'));
   const WidgetsHub = React.lazy(() => import('./pages/WidgetsHub'));
   const PollPage = React.lazy(() => import('./pages/widgets/PollPage'));
