@@ -119,6 +119,14 @@ class Room {
       lastActivity: this.lastActivity
     };
   }
+
+  /**
+   * The room as a joining student receives it in session:joined. Rooms whose
+   * full snapshot carries a history students never read from it leave that out.
+   */
+  toStudentJSON() {
+    return this.toJSON();
+  }
 }
 
 module.exports = Room;
