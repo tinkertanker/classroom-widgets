@@ -219,7 +219,8 @@ app.whenReady().then(() => {
 });
 
 // Time spent in the shell's app:// handler until it returns a Response (the
-// body then streams separately). Wrapped before main.js installs it.
+// body then streams separately), and a 'request' mark per URL for waterfalls
+// (see waterfall.cjs). Wrapped before main.js installs it.
 const protocolStats = { count: 0, totalMs: 0, maxMs: 0 };
 const handle = protocol.handle.bind(protocol);
 protocol.handle = (scheme, handler) => handle(scheme, async (request) => {
@@ -231,6 +232,7 @@ protocol.handle = (scheme, handler) => handle(scheme, async (request) => {
     protocolStats.count += 1;
     protocolStats.totalMs += ms;
     protocolStats.maxMs = Math.max(protocolStats.maxMs, ms);
+    mark('request', started, { url: request.url, ms });
   }
 });
 
