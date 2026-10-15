@@ -38,6 +38,8 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs args)
     {
         base.OnStartup(args);
+        PerfLog.ProcessStarted();
+        PerfLog.Mark("app.startup");
 
         _instanceMutex = new Mutex(initiallyOwned: true, MutexName, out var createdNew);
         if (!createdNew)
@@ -87,6 +89,7 @@ public partial class App : Application
         DashboardLog.Info($"Classroom Widgets {AppVersion} starting");
 
         _settings = DashboardSettings.Load();
+        PerfLog.Mark("settings.loaded");
         _host = new WidgetHostController(_settings);
         _launcher = new LauncherWindow(widgetType =>
         {
@@ -99,6 +102,7 @@ public partial class App : Application
         {
             if (_launcherRequested) RequestOpenLauncher();
         };
+        PerfLog.Mark("launcher.constructed");
         _settings.Changed += () => _host.ApplySettings();
         _host.ApplySettings();
 
@@ -108,14 +112,17 @@ public partial class App : Application
         {
             if (!_displayPreview.TryMoveFocused(direction)) _host.MoveSelectedWidget(direction);
         });
+        PerfLog.Mark("shortcuts.ready");
         _updates = new UpdateController(RequestQuitAsync);
         _tray = new TrayController(_host, _settings, _shortcuts, _updates, RequestOpenLauncher, () => _displayPreview.Open());
         // The widget settings gear posts classroomWidgetPanel open-settings;
         // panels route it here so the same Settings window opens as from the tray.
         _host.OpenSettingsRequested += () => _tray.OpenSettings();
         _host.Coordinator.DisplayPreviewRequested += () => _displayPreview.Open();
+        PerfLog.Mark("tray.ready");
         _ = _host.StartAsync();
         _ = CheckForUpdatesAfterDelayAsync();
+        PerfLog.Mark("app.startup.end");
     }
 
     private void RequestOpenLauncher()
@@ -127,6 +134,7 @@ public partial class App : Application
             return;
         }
         _launcherRequested = false;
+        PerfLog.Mark("launcher.request");
         _launcher?.Show();
     }
 

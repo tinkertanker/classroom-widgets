@@ -34,10 +34,12 @@ public sealed class LauncherWindow
             Content = _webView
         };
         _window.Closing += OnClosing;
+        if (PerfLog.Enabled) _window.ContentRendered += (_, _) => PerfLog.Mark("launcher.rendered");
     }
 
     public void Show()
     {
+        PerfLog.Mark("launcher.show");
         ShowWindow();
         if (_ready) return;
         if (!_initializing) _ = InitializeAsync();
@@ -65,7 +67,9 @@ public sealed class LauncherWindow
             }
             if (!_initialized)
             {
+                PerfLog.Mark("launcher.init");
                 await DashboardWebView.InitializeAsync(_webView, string.Empty);
+                PerfLog.Mark("launcher.controller.ready");
                 var initializedCore = _webView.CoreWebView2;
                 initializedCore.WebMessageReceived += OnWebMessageReceived;
                 initializedCore.NavigationCompleted += OnNavigationCompleted;
@@ -73,6 +77,7 @@ public sealed class LauncherWindow
                 _initialized = true;
             }
             var core = _webView.CoreWebView2;
+            PerfLog.Mark("launcher.navigate");
             core.Navigate(DashboardWebView.BuildUrl(new Dictionary<string, string>
             {
                 ["surface"] = "widget-launcher"
@@ -102,6 +107,7 @@ public sealed class LauncherWindow
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
     {
         _initializing = false;
+        PerfLog.Mark("launcher.navcompleted");
         if (!args.IsSuccess)
         {
             DashboardLog.Error($"Widget launcher navigation failed: {args.WebErrorStatus}");
@@ -155,6 +161,7 @@ public sealed class LauncherWindow
                 && widgetType.ValueKind == JsonValueKind.Number
                 && widgetType.TryGetInt32(out var value))
             {
+                PerfLog.Mark("launcher.add-widget", widgetType: value);
                 _addWidget(value);
                 return;
             }
