@@ -1,6 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { UpdateController } = require('../out/main/updateController.js');
+const { mkdtemp, readFile, writeFile, chmod, rm } = require('node:fs/promises');
+const { tmpdir } = require('node:os');
+const { join } = require('node:path');
+const { execFile } = require('node:child_process');
+const { promisify } = require('node:util');
+const { appImageUpdateScript, UpdateController } = require('../out/main/updateController.js');
+
+const execFileAsync = promisify(execFile);
 
 const releasePage = 'https://example.test/releases/v2.0.0';
 
@@ -232,6 +239,45 @@ test('approved AppImage staging error identifies the unwritable location and rec
     if (previous === undefined) delete process.env.APPIMAGE;
     else process.env.APPIMAGE = previous;
   }
+});
+
+// Runs the real AppImage swap script under /bin/sh against stub executables that
+// log their arguments, so the test fails if either the replacement launch or
+// the rollback launch stops forwarding the effective Ozone backend.
+async function runAppImageUpdateScript({ replacementSurvives, ozone }) {
+  const dir = await mkdtemp(join(tmpdir(), 'cw-appimage-update-'));
+  try {
+    const log = join(dir, 'launches.log');
+    const stub = (label, body = '') => `#!/bin/sh\necho "${label}:$*" >> "${log}"\n${body}`;
+    const current = join(dir, 'ClassroomWidgets.AppImage');
+    const staged = join(dir, 'staged.AppImage');
+    const backup = join(dir, 'backup.AppImage');
+    const script = join(dir, 'update.sh');
+    await writeFile(current, stub('current'));
+    await writeFile(staged, stub('replacement', replacementSurvives ? 'sleep 3' : 'exit 0'));
+    await writeFile(script, appImageUpdateScript());
+    await Promise.all([current, staged, script].map((file) => chmod(file, 0o755)));
+    // The maximum PID is never live, so the wait loop sees the parent as exited at once.
+    // The script's launch arguments are: parent pid, staged, current, backup, script, ozone.
+    await execFileAsync('/bin/sh', [script, '2147483647', staged, current, backup, script, ozone]);
+    return (await readFile(log, 'utf8')).trim().split('\n');
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+}
+
+test('AppImage update script forwards the Ozone backend to the replacement and rollback launches', async () => {
+  const ozone = '--ozone-platform=wayland';
+  const [replaced, rolledBack] = await Promise.all([
+    runAppImageUpdateScript({ replacementSurvives: true, ozone }),
+    runAppImageUpdateScript({ replacementSurvives: false, ozone }),
+  ]);
+  assert.deepEqual(replaced, [`replacement:${ozone}`]);
+  assert.deepEqual(rolledBack, [`replacement:${ozone}`, `current:${ozone}`]);
+});
+
+test('AppImage update script launches without an Ozone argument when none is in effect', async () => {
+  assert.deepEqual(await runAppImageUpdateScript({ replacementSurvives: true, ozone: '' }), ['replacement:']);
 });
 
 test('manual approved deb failure reports package-manager and opener errors', async () => {
