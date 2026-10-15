@@ -8,11 +8,15 @@
 // assets/ and package.json from `npm run build`), then from the repo root:
 //   xvfb-run -a -s '-screen 0 1920x1080x24' node packages/linux-dashboard/tests/perf/launchBench.cjs \
 //     --variant base=<dir> --variant fix=<dir> --runs 10 --out <evidence dir> [--web-root <teacher build>] \
-//     [--network live|blocked] [--keep-raw]
+//     [--network live|blocked] [--phases cold,warm,panels] [--warmup 1] [--keep-raw]
 // Runs are interleaved ABAB with the order alternating each iteration; the
 // first iteration is a warm-up and is excluded from the summary. Each
 // iteration and variant uses a fresh profile for three launches: cold start,
 // warm start, then a warm launch that opens Timer and Randomiser panels.
+// The summary compares every variant with the first one: the difference of
+// medians, the median of per-iteration (paired) differences, how many
+// iterations the variant was lower in, and a two-sided Mann-Whitney U p-value.
+// `--from <runs.jsonl> --out <dir>` rewrites the summary of an earlier run.
 const { spawn } = require('node:child_process');
 const { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, appendFileSync, existsSync } = require('node:fs');
 const { tmpdir } = require('node:os');
@@ -30,21 +34,26 @@ args.forEach((arg, index) => {
   const [name, dir] = args[index + 1].split('=');
   variants.push({ name, dir: resolve(dir) });
 });
+const from = option('from', null);
+const previous = from ? readFileSync(from, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line)) : null;
+if (previous && variants.length === 0) {
+  for (const record of previous) if (!variants.some((variant) => variant.name === record.variant)) variants.push({ name: record.variant, dir: null });
+}
 if (variants.length === 0) throw new Error('Pass at least one --variant name=<app dir>');
-const runs = Number(option('runs', 10));
-const warmup = Number(option('warmup', 1));
-const network = option('network', 'live');
+const warmup = Number(option('warmup', previous ? previous.filter((record) => record.warmup).reduce((most, record) => Math.max(most, record.iteration + 1), 0) : 1));
+const runs = Number(option('runs', previous ? previous.reduce((most, record) => Math.max(most, record.iteration + 1), 0) - warmup : 10));
+const network = option('network', previous ? previous[0]?.network ?? 'not recorded' : 'live');
 const keepRaw = args.includes('--keep-raw');
 const phases = (option('phases', 'cold,warm,panels')).split(',');
 const root = resolve(__dirname, '..', '..');
 const webRoot = resolve(option('web-root', join(root, '..', 'teacher', 'build')));
 const outDir = resolve(option('out', join(tmpdir(), 'classroom-widgets-test-evidence/linux-launch-bench')));
-const electron = require(join(root, 'node_modules', 'electron'));
+const electron = from ? null : require(join(root, 'node_modules', 'electron'));
 mkdirSync(outDir, { recursive: true });
 const rawDir = join(outDir, 'raw');
 if (keepRaw) mkdirSync(rawDir, { recursive: true });
 const metricsFile = join(outDir, 'runs.jsonl');
-rmSync(metricsFile, { force: true });
+if (!from) rmSync(metricsFile, { force: true });
 
 function launch(variant, profile, scenario) {
   const resultFile = join(profile, `..`, `result-${Date.now()}.json`);
@@ -79,6 +88,10 @@ function launch(variant, profile, scenario) {
 }
 
 const first = (result, name, role) => result.marks.find((entry) => entry.name === name && (role === undefined || entry.extra?.role === role))?.t ?? null;
+const rendererCpu = (sample, role) => {
+  const processes = sample?.processes.filter((entry) => entry.role === role) ?? [];
+  return processes.length ? processes.reduce((sum, entry) => sum + entry.cpuNs / 1e6, 0) : null;
+};
 function startupMetrics(result) {
   const launcherWc = result.marks.find((entry) => entry.name === 'content-raf2' && entry.extra?.role === 'launcher')?.extra.wc;
   const show = result.marks.find((entry) => entry.name === 'show' && entry.extra?.wc === launcherWc)?.t ?? null;
@@ -104,14 +117,20 @@ function startupMetrics(result) {
     privateMiBAtInteractive: interactive ? interactive.totals.privateKiB / 1024 : null,
     processesAtInteractive: interactive?.totals.processes ?? null,
     hostFontsCssMs: fonts?.extra.ms ?? null,
+    protocolRequestsToInteractive: interactive?.protocol?.count ?? null,
+    protocolHandlerMsToInteractive: interactive?.protocol?.totalMs ?? null,
+    hostRendererCpuMs: rendererCpu(interactive, 'host'),
+    launcherRendererCpuMs: rendererCpu(interactive, 'launcher'),
   };
 }
 function panelMetrics(result) {
   const metrics = {};
   for (const [label, phase] of Object.entries(result.phases)) {
-    for (const key of ['contentPainted', 'windowShown', 'viewNavStart', 'viewPreload', 'viewLoaded', 'panelReady', 'contentReady', 'chromeLoaded']) {
+    for (const key of ['contentPainted', 'windowShown', 'viewNavStart', 'viewPreload', 'viewLoaded', 'panelReady', 'contentReady', 'chromeLoaded', 'viewCpuMs', 'chromeCpuMs']) {
       metrics[`${label}.${key}`] = phase[key];
     }
+    metrics[`${label}.protocolRequests`] = phase.protocol?.count ?? null;
+    metrics[`${label}.protocolHandlerMs`] = phase.protocol?.totalMs ?? null;
   }
   const memory = (label) => result.samples[label]?.totals;
   for (const label of ['idle-no-panels', 'timer-and-randomiser-open']) {
@@ -121,7 +140,7 @@ function panelMetrics(result) {
     metrics[`${label}.privateMiB`] = totals.privateKiB / 1024;
     metrics[`${label}.processes`] = totals.processes;
   }
-  for (const label of ['cpu-idle', 'cpu-timer-running', 'cpu-randomiser-spin']) {
+  for (const label of ['cpu-idle', 'cpu-panels-idle', 'cpu-timer-running', 'cpu-randomiser-spin']) {
     if (result.samples[label]) metrics[`${label}.cpuPercent`] = result.samples[label].cpuPercent;
   }
   for (const label of ['frames-randomiser-spin', 'frames-timer-running']) {
@@ -151,7 +170,7 @@ async function main() {
       for (const [kind, scenario] of kinds) {
         const result = await launch(variant, profile, scenario);
         const metrics = { ...startupMetrics(result), ...(scenario === 'panels' ? panelMetrics(result) : {}) };
-        const record = { iteration, warmup: iteration < warmup, variant: variant.name, kind, errors: result.errors, metrics };
+        const record = { iteration, warmup: iteration < warmup, variant: variant.name, kind, network, errors: result.errors, metrics };
         records.push(record);
         appendFileSync(metricsFile, JSON.stringify(record) + '\n');
         if (keepRaw) writeFileSync(join(rawDir, `${iteration}-${variant.name}-${kind}.json.gz`), gzipSync(JSON.stringify(result)));
@@ -174,6 +193,26 @@ function quantile(sorted, q) {
   const high = Math.ceil(position);
   return sorted[low] + (sorted[high] - sorted[low]) * (position - low);
 }
+// Two-sided Mann-Whitney U test, normal approximation with tie-averaged ranks.
+function mannWhitneyP(x, y) {
+  const all = [...x.map((value) => [value, 0]), ...y.map((value) => [value, 1])].sort((p, q) => p[0] - q[0]);
+  let rankSumX = 0;
+  for (let i = 0; i < all.length;) {
+    let j = i;
+    while (j < all.length && all[j][0] === all[i][0]) j++;
+    const rank = (i + j + 1) / 2;
+    for (let k = i; k < j; k++) if (all[k][1] === 0) rankSumX += rank;
+    i = j;
+  }
+  const u = rankSumX - (x.length * (x.length + 1)) / 2;
+  const sd = Math.sqrt((x.length * y.length * (x.length + y.length + 1)) / 12);
+  if (!sd) return 1;
+  const z = Math.abs(u - (x.length * y.length) / 2) / sd;
+  // erfc(z / sqrt 2) via Abramowitz-Stegun 7.1.26.
+  const t = 1 / (1 + 0.3275911 * (z / Math.SQRT2));
+  const erfc = t * (0.254829592 + t * (-0.284496736 + t * (1.421413741 + t * (-1.453152027 + t * 1.061405429)))) * Math.exp(-(z * z) / 2);
+  return Math.min(1, erfc);
+}
 function writeSummary(elapsedMs) {
   const summary = { variants: variants.map((variant) => variant.name), runs, warmup, network, webRoot, elapsedMs, metrics: {} };
   const kept = records.filter((record) => !record.warmup && record.errors.length === 0);
@@ -187,32 +226,52 @@ function writeSummary(elapsedMs) {
         .map((record) => record.metrics[metric]).filter((value) => typeof value === 'number').sort((a, b) => a - b);
       row[variant.name] = { n: values.length, median: quantile(values, 0.5), p25: quantile(values, 0.25), p75: quantile(values, 0.75), p90: quantile(values, 0.9) };
     }
+    const byIteration = (name) => new Map(kept.filter((record) => record.variant === name && record.kind === kind && typeof record.metrics[metric] === 'number')
+      .map((record) => [record.iteration, record.metrics[metric]]));
+    const reference = byIteration(variants[0].name);
+    for (const variant of variants.slice(1)) {
+      const other = byIteration(variant.name);
+      const paired = [...reference.keys()].filter((iteration) => other.has(iteration));
+      const differences = paired.map((iteration) => other.get(iteration) - reference.get(iteration)).sort((p, q) => p - q);
+      row[variant.name].paired = paired.length ? {
+        n: paired.length,
+        medianDelta: quantile(differences, 0.5),
+        lowerIn: differences.filter((difference) => difference < 0).length,
+        p: mannWhitneyP(paired.map((iteration) => reference.get(iteration)), paired.map((iteration) => other.get(iteration))),
+      } : null;
+    }
     summary.metrics[key] = row;
   }
   summary.failedRuns = records.filter((record) => record.errors.length > 0).map((record) => ({ iteration: record.iteration, variant: record.variant, kind: record.kind, error: record.errors[0].slice(0, 300) }));
   writeFileSync(join(outDir, 'summary.json'), JSON.stringify(summary, null, 1) + '\n');
-  const [a, b] = variants.map((variant) => variant.name);
-  const lines = [`# Linux launch benchmark`, '', `variants: ${summary.variants.join(', ')}; runs per variant: ${runs} (+${warmup} warm-up discarded); network: ${network}`, `web root: ${webRoot}`, ''];
-  lines.push(`| metric | ${variants.map((variant) => `${variant.name} median (p25-p75, p90) n`).join(' | ')}${b ? ' | delta | delta % |' : ''}`);
-  lines.push(`|---|${variants.map(() => '---').join('|')}${b ? '|---|---|' : ''}`);
+  const [a, ...others] = variants.map((variant) => variant.name);
+  const lines = [`# Linux launch benchmark`, '', `variants: ${summary.variants.join(', ')}; runs per variant: ${runs} (+${warmup} warm-up discarded); network: ${network}`, from ? `regenerated from ${from}` : `web root: ${webRoot}`, ''];
+  const deltaHeads = others.map((name) => ` ${name} vs ${a} | % | paired delta | ${name} lower in | p |`).join('');
+  lines.push(`| metric | ${variants.map((variant) => `${variant.name} median (p25-p75, p90) n`).join(' | ')} |${deltaHeads}`);
+  lines.push(`|---|${variants.map(() => '---').join('|')}|${others.map(() => '---|---|---|---|---|').join('')}`);
   for (const [key, row] of Object.entries(summary.metrics)) {
     const cells = variants.map((variant) => {
       const stats = row[variant.name];
       return stats.n ? `${stats.median.toFixed(1)} (${stats.p25.toFixed(1)}-${stats.p75.toFixed(1)}, ${stats.p90.toFixed(1)}) n=${stats.n}` : '-';
     });
-    let delta = '';
-    if (b && row[a].n && row[b].n) {
-      const difference = row[b].median - row[a].median;
-      delta = ` | ${difference.toFixed(1)} | ${row[a].median ? ((100 * difference) / row[a].median).toFixed(1) : '-'}% |`;
-    } else if (b) delta = ' | - | - |';
-    lines.push(`| ${key} | ${cells.join(' | ')}${delta}`);
+    const deltas = others.map((name) => {
+      if (!row[a].n || !row[name].n) return ' - | - | - | - | - |';
+      const difference = row[name].median - row[a].median;
+      const paired = row[name].paired;
+      const pairedCells = paired ? ` ${paired.medianDelta.toFixed(1)} | ${paired.lowerIn}/${paired.n} | ${paired.p.toFixed(3)} |` : ' - | - | - |';
+      return ` ${difference.toFixed(1)} | ${row[a].median ? ((100 * difference) / row[a].median).toFixed(1) : '-'}% |${pairedCells}`;
+    }).join('');
+    lines.push(`| ${key} | ${cells.join(' | ')} |${deltas}`);
   }
   if (summary.failedRuns.length) lines.push('', `Failed runs: ${JSON.stringify(summary.failedRuns)}`);
   writeFileSync(join(outDir, 'summary.md'), lines.join('\n') + '\n');
   console.log(lines.join('\n'));
 }
 
-main().catch((error) => {
+if (previous) {
+  records.push(...previous);
+  writeSummary(null);
+} else main().catch((error) => {
   console.error(error);
   process.exit(1);
 });

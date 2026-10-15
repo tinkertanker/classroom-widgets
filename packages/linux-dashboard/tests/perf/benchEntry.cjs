@@ -1,7 +1,7 @@
 // Electron entry for one benchmark launch of the real Linux shell. It installs
 // observers, then requires the shell's own compiled main.js from BENCH_APP_DIR,
 // so main.ts runs unmodified. Spawned by launchBench.cjs; see that file.
-const { app, BrowserWindow, ipcMain, session, webContents: allContents } = require('electron');
+const { app, BrowserWindow, contentTracing, ipcMain, protocol, session, webContents: allContents } = require('electron');
 const { readdirSync, readFileSync, writeFileSync } = require('node:fs');
 const { join, resolve } = require('node:path');
 
@@ -100,7 +100,7 @@ const totals = (processes) => processes.reduce((sum, entry) => ({
 }), { processes: 0, cpuMs: 0, pssKiB: 0, privateKiB: 0 });
 function snapshot(label) {
   const processes = sampleProcesses();
-  result.samples[label] = { t: now() - spawnTime, totals: totals(processes), processes };
+  result.samples[label] = { t: now() - spawnTime, totals: totals(processes), processes, protocol: { ...protocolStats } };
   return processes;
 }
 async function cpuOver(label, ms, during) {
@@ -178,8 +178,15 @@ ipcMain.on('native-message', (event, message) => {
 });
 
 app.on('will-finish-launching', () => mark('will-finish-launching'));
+let tracing = null;
 app.whenReady().then(() => {
   mark('ready');
+  // Optional Chromium trace (BENCH_TRACE=<file.json>) for profiling, not for timing runs.
+  if (process.env.BENCH_TRACE) {
+    tracing = contentTracing.startRecording({
+      included_categories: (process.env.BENCH_TRACE_CATEGORIES || 'v8,v8.execute,blink,loading,devtools.timeline,disabled-by-default-v8.compile,disabled-by-default-devtools.timeline,toplevel,navigation,electron').split(','),
+    });
+  }
   // External (non app://) requests are observed, and dropped for BENCH_NETWORK=blocked.
   const external = { urls: ['http://*/*', 'https://*/*'] };
   const started = new Map();
@@ -207,6 +214,22 @@ app.whenReady().then(() => {
   void runScenario().catch((error) => {
     result.errors.push(String(error?.stack ?? error));
   }).finally(finish);
+});
+
+// Time spent in the shell's app:// handler until it returns a Response (the
+// body then streams separately). Wrapped before main.js installs it.
+const protocolStats = { count: 0, totalMs: 0, maxMs: 0 };
+const handle = protocol.handle.bind(protocol);
+protocol.handle = (scheme, handler) => handle(scheme, async (request) => {
+  const started = now();
+  try {
+    return await handler(request);
+  } finally {
+    const ms = now() - started;
+    protocolStats.count += 1;
+    protocolStats.totalMs += ms;
+    protocolStats.maxMs = Math.max(protocolStats.maxMs, ms);
+  }
 });
 
 const beforeMain = now();
@@ -248,6 +271,7 @@ async function until(label, check, timeout = 15000) {
 async function openWidget(type, label) {
   await delay(400);
   const requested = now();
+  const protocolBefore = { ...protocolStats };
   mark(`${label}:request`, requested);
   const contentPainted = waitFor((name, _time, extra) => name === 'content-raf2' && extra?.role === 'panel'
     && !openWidgets.has(extra.widgetId), `${label} painted`, 30000);
@@ -257,6 +281,17 @@ async function openWidget(type, label) {
   openWidgets.add(widgetId);
   const viewWc = painted.extra.wc;
   const chromeWindow = BrowserWindow.getAllWindows().find((win) => win.contentView.children[0]?.webContents?.id === viewWc);
+  // CPU the panel's renderers used from spawn to painted content: a companion
+  // to wall-clock that is less sensitive to other load on the machine.
+  const cpuOf = (contents) => {
+    try {
+      return Number(readFileSync(`/proc/${contents.getOSProcessId()}/schedstat`, 'utf8').split(' ')[0]) / 1e6;
+    } catch {
+      return null;
+    }
+  };
+  const viewCpuMs = cpuOf(allContents.fromId(viewWc));
+  const chromeCpuMs = chromeWindow ? cpuOf(chromeWindow.webContents) : null;
   const rel = (time) => time - requested;
   const at = (predicate) => {
     const entry = result.marks.find((candidate) => candidate.t + spawnTime >= requested && predicate(candidate));
@@ -276,6 +311,9 @@ async function openWidget(type, label) {
     contentReady: at((entry) => entry.name === 'msg:panel-content-ready' && entry.extra?.wc === viewWc),
     content: at((entry) => entry.name === 'content' && entry.extra?.wc === viewWc),
     contentPainted: rel(painted.time),
+    viewCpuMs,
+    chromeCpuMs,
+    protocol: { count: protocolStats.count - protocolBefore.count, totalMs: protocolStats.totalMs - protocolBefore.totalMs },
   };
   result.phases[label] = phase;
   return { widgetId, view: allContents.fromId(viewWc), window: chromeWindow };
@@ -328,6 +366,7 @@ async function panelsPhase() {
   const randomiser = await openWidget(0, 'randomiser-both');
   await delay(2500);
   snapshot('timer-and-randomiser-open');
+  await cpuOver('cpu-panels-idle', 4000);
 
   await timer.view.executeJavaScript(`document.querySelector('[aria-label="Mute timer sound"]')?.click()`);
   await clickIn(timer.view, buttonEndingWith('Start'));
@@ -363,6 +402,13 @@ function finish() {
   finished = true;
   result.marks.sort((a, b) => a.t - b.t);
   writeFileSync(out, JSON.stringify(result));
+  if (tracing) {
+    tracing.then(() => contentTracing.stopRecording(process.env.BENCH_TRACE)).finally(quit);
+    return;
+  }
+  quit();
+}
+function quit() {
   // Quit through the shell's own path so profile data (code cache, settings)
   // is flushed the way a user quitting would flush it.
   setTimeout(() => app.exit(0), 8000).unref();
