@@ -146,3 +146,24 @@ requests are answered from a local recording after 100 ms (`--fonts`, see
 `e2e/perf/fonts.mjs`). The run writes `raw.jsonl`, `summary.json` and
 `summary.md` (median, p90 and n per build) to `--out`. The option list is at
 the top of `e2e/perf/bench.mjs`.
+
+`--network slow4g` adds Lighthouse's slow-4G link (1.6 Mbps, 150 ms) to model a
+cold load on a school network. Pair it with `--fonts serve` when a build loads
+Google Fonts: Chrome then fetches them from a local host through the same
+throttled link, paying three round trips to connect to each host.
+
+`--scenarios board-history` reloads a board in the middle of a lesson: it
+reclaims a live session whose Questions and Drop Box already hold
+`--questions` and `--submissions` entries, then times new entries arriving.
+The bench starts this checkout's server on port 3001 (`--history-port`), the
+address teacher builds use unless they were built with another
+`VITE_SERVER_URL`.
+
+To compare student-app builds, build each with
+`pnpm --filter @classroom-widgets/student exec vite build --outDir <dir>` and
+pass `--app student`. Every build then gets its own server (this checkout's
+`packages/server`, or `--server name=<dir>` for the build of the same name)
+holding a session whose Drop Box and Questions rooms already have entries
+(`--submissions`, `--questions`). The student scenarios time the cold load to
+the join form, a join until both rooms are on screen, and the server's reply
+size and CPU time per join.

@@ -5,7 +5,7 @@
 export const STORAGE_KEY = 'classroom-widgets-storage-v2';
 export const SEEN_LANDING_KEY = 'classroom-widgets:seen-landing';
 
-const WidgetType = { RANDOMISER: 0, TIMER: 1, LIST: 2, TASK_CUE: 3, TRAFFIC_LIGHT: 4, TEXT_BANNER: 7 };
+const WidgetType = { RANDOMISER: 0, TIMER: 1, LIST: 2, TASK_CUE: 3, TRAFFIC_LIGHT: 4, TEXT_BANNER: 7, LINK_SHARE: 13, QUESTIONS: 17 };
 const T0 = 1760000000000;
 
 export function classNames(count) {
@@ -99,6 +99,17 @@ export const restoredBoard = () => workspaceStorage([
   { type: WidgetType.TRAFFIC_LIGHT, size: { width: 200, height: 380 } },
   { type: WidgetType.TEXT_BANNER, size: { width: 500, height: 200 } },
 ]);
+
+// A board mid-lesson: Questions and Drop Box in a live session. The rooms on
+// the server use these widgets' ids (HISTORY_ROOMS).
+export const HISTORY_ROOMS = { questionsRoom: `${T0}-perf0`, dropBox: `${T0 + 1}-perf1` };
+export function historyBoard({ code, createdAt }) {
+  const storage = workspaceStorage([
+    { type: WidgetType.QUESTIONS, size: { width: 420, height: 600 }, position: { x: 40, y: 40 } },
+    { type: WidgetType.LINK_SHARE, size: { width: 420, height: 600 }, position: { x: 500, y: 40 } },
+  ]);
+  return { ...storage, session: { code, createdAt } };
+}
 
 export const timerBoard = (options) => workspaceStorage([
   { type: WidgetType.TIMER, size: { width: 350, height: 415 }, state: timerState(options) },

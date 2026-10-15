@@ -5,9 +5,10 @@
 // in-page click (interactions).
 import { perfProbe } from './probe.mjs';
 import {
-  SEEN_LANDING_KEY, STORAGE_KEY, WidgetType, panelSnapshot, randomiserBoard, randomiserState,
-  restoredBoard, timerBoard, timerState,
+  HISTORY_ROOMS, SEEN_LANDING_KEY, STORAGE_KEY, WidgetType, historyBoard, panelSnapshot, randomiserBoard,
+  randomiserState, restoredBoard, timerBoard, timerState,
 } from './fixtures.mjs';
+import { join, once } from './liveSession.mjs';
 
 const BOARD_VIEWPORT = { width: 1366, height: 768 };
 const TOOLBAR = 'button[title^="More widgets"]';
@@ -17,7 +18,7 @@ const randomiseButtons = () => [...document.querySelectorAll('button')]
 
 // ---------------------------------------------------------------- helpers
 
-async function openPage(env, { probe = {}, viewport = BOARD_VIEWPORT, localStorage } = {}) {
+export async function openPage(env, { probe = {}, viewport = BOARD_VIEWPORT, localStorage } = {}) {
   const context = await env.browser.newContext({ viewport, deviceScaleFactor: 1 });
   await env.installFonts(context);
   const config = { ...probe, localStorage: { [SEEN_LANDING_KEY]: '1', ...(localStorage || {}) } };
@@ -27,6 +28,15 @@ async function openPage(env, { probe = {}, viewport = BOARD_VIEWPORT, localStora
   const cdp = await context.newCDPSession(page);
   await cdp.send('Performance.enable');
   if (env.cpu > 1) await cdp.send('Emulation.setCPUThrottlingRate', { rate: env.cpu });
+  if (env.network) {
+    await cdp.send('Network.enable');
+    await cdp.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: env.network.rttMs,
+      downloadThroughput: (env.network.downKbps * 1000) / 8,
+      uploadThroughput: (env.network.upKbps * 1000) / 8,
+    });
+  }
   return { context, page, cdp };
 }
 
@@ -35,7 +45,7 @@ const METRIC_NAMES = {
   LayoutCount: 'layouts', RecalcStyleCount: 'styleRecalcs', JSHeapUsedSize: 'heapKB', Nodes: 'domNodes',
 };
 
-async function cdpMetrics(cdp) {
+export async function cdpMetrics(cdp) {
   const { metrics } = await cdp.send('Performance.getMetrics');
   const out = {};
   for (const { name, value } of metrics) {
@@ -46,11 +56,11 @@ async function cdpMetrics(cdp) {
   return out;
 }
 
-const delta = (after, before, prefix = '') => Object.fromEntries(
+export const delta = (after, before, prefix = '') => Object.fromEntries(
   Object.entries(after).filter(([key]) => !['heapKB', 'domNodes'].includes(key))
     .map(([key, value]) => [`${prefix}${key}`, value - (before[key] ?? 0)]));
 
-const longTaskStats = (tasks, from, to, prefix = '') => {
+export const longTaskStats = (tasks, from, to, prefix = '') => {
   const inside = tasks.filter(([start]) => start >= from && start < to);
   return {
     [`${prefix}longTasks`]: inside.length,
@@ -59,7 +69,7 @@ const longTaskStats = (tasks, from, to, prefix = '') => {
   };
 };
 
-async function readPerf(page) {
+export async function readPerf(page) {
   return page.evaluate(() => {
     const perf = window.__perf;
     const resources = performance.getEntriesByType('resource').map((entry) => ({
@@ -95,12 +105,12 @@ function resourceStats(resources, ready) {
   return out;
 }
 
-const waitForMark = (page, mark, timeout = 60000) =>
+export const waitForMark = (page, mark, timeout = 60000) =>
   page.waitForFunction((name) => window.__perf?.marks?.[name] != null, mark, { timeout, polling: 20 });
 
 // Navigates, waits for `readyMark`, lets late work (LCP, idle callbacks)
 // settle, and summarises the load.
-async function measureLoad(env, session, url, readyMark, extraMarks = []) {
+export async function measureLoad(env, session, url, readyMark, extraMarks = []) {
   const { page, cdp } = session;
   await page.goto(url, { waitUntil: 'commit' });
   await waitForMark(page, readyMark);
@@ -135,8 +145,9 @@ async function boardEmpty(env) {
   }
 }
 
-// Second load in the same context: HTTP and code caches are warm.
-async function reloadWarm(env, session, readyMark) {
+// Second load in the same context. HTTP and code caches are warm only with
+// --fonts none: Playwright disables the HTTP cache while a route is installed.
+export async function reloadWarm(env, session, readyMark) {
   const { page } = session;
   await page.reload({ waitUntil: 'commit' });
   await waitForMark(page, readyMark);
@@ -163,6 +174,69 @@ async function boardRestored(env) {
     const warm = await reloadWarm(env, session, 'allWidgets');
     return { ...result, ...warm };
   } finally {
+    await session.context.close();
+  }
+}
+
+// A teacher reloads mid-lesson: the board reclaims its live session and the
+// Questions and Drop Box widgets render their whole history from the
+// recovery reply (bench.mjs starts the server; see --history). Then two new
+// questions and two new links arrive: what each costs the page.
+async function boardHistory(env) {
+  const { history } = env;
+  if (!history) throw new Error('board-history needs the session server bench.mjs starts for it');
+  const session = await openPage(env, {
+    probe: {
+      watch: [toolbarWatch, {
+        name: 'history',
+        // Every entry of both lists on screen (earlier runs' arrivals add a few).
+        test: `() => document.querySelectorAll('button[title="Delete submission"]').length >= ${history.questions + history.submissions}`,
+      }],
+    },
+    localStorage: {
+      [STORAGE_KEY]: JSON.stringify(historyBoard(history)),
+      'classroom-widgets:hostToken': history.hostToken,
+      'classroom-widgets:hostTokenCode': history.code,
+    },
+  });
+  const { page, cdp } = session;
+  let student = null;
+  try {
+    const { result } = await measureLoad(env, session, `${env.baseUrl}/`, 'history', ['toolbar']);
+    ({ socket: student } = await join(history.serverUrl, history.code, `Arrival ${Date.now()}`));
+    await page.waitForTimeout(500);
+    const arrivals = {};
+    for (const [kind, send] of [
+      ['question', (i) => {
+        const done = once(student, 'session:questions:submitted');
+        student.emit('session:questions:submit', { sessionCode: history.code, widgetId: HISTORY_ROOMS.questionsRoom, question: `Late question ${i}: what happens to the glucose afterwards?` });
+        return done;
+      }],
+      ['link', (i) => {
+        const done = once(student, 'session:linkShare:submitted');
+        student.emit('session:linkShare:submit', { sessionCode: history.code, widgetId: HISTORY_ROOMS.dropBox, content: `https://example.com/late/${Date.now()}-${i}` });
+        return done;
+      }],
+    ]) {
+      const before = await cdpMetrics(cdp);
+      const from = await page.evaluate(() => performance.now());
+      for (let i = 0; i < 2; i++) {
+        const reply = await send(i);
+        if (!reply?.success) throw new Error(`${kind} rejected: ${reply?.error}`);
+        await page.waitForTimeout(400);
+      }
+      await page.waitForTimeout(400);
+      const after = await cdpMetrics(cdp);
+      const perf = await readPerf(page);
+      arrivals[`${kind}ArrivalTaskMs`] = (after.taskMs - before.taskMs) / 2;
+      arrivals[`${kind}ArrivalScriptMs`] = (after.scriptMs - before.scriptMs) / 2;
+      Object.assign(arrivals, longTaskStats(perf.longTasks, from, from + 1e6, `${kind}Arrival_`));
+    }
+    return { ...result, ...arrivals };
+  } finally {
+    student?.disconnect();
+    // A reclaim rotates the host token; the next run presents the new one.
+    history.hostToken = await page.evaluate(() => localStorage.getItem('classroom-widgets:hostToken')).catch(() => null) || history.hostToken;
     await session.context.close();
   }
 }
@@ -412,6 +486,7 @@ async function randomiserEdit(env, count) {
 export const SCENARIOS = {
   'board-empty': boardEmpty,
   'board-restored': boardRestored,
+  'board-history': boardHistory,
   launcher,
   'panel-timer': panelTimer,
   'panel-randomiser': panelRandomiser,
