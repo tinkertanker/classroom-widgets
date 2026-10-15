@@ -1,6 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+// Poppins, self-hosted with the teacher app's copy (no Google Fonts request).
+import '@shared/assets/fonts/poppins.css';
 import './index.css';
 
 // Load Umami analytics conditionally (only if env vars are set)
