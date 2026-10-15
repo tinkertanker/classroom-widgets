@@ -138,7 +138,9 @@ app.on('web-contents-created', (_event, contents) => {
   result.contents[contents.id] = info;
   const contentsMark = (name, time = now(), extra = null) => mark(name, time, { ...(extra ?? {}), wc: contents.id, role: info.role, widgetId: info.widgetId });
   contents.on('did-start-navigation', (details) => {
-    if (!details.isMainFrame || info.role) return;
+    // A contents that started on another app:// document (role 'other') takes
+    // the role of the surface it navigates to next.
+    if (!details.isMainFrame || (info.role && info.role !== 'other')) return;
     info.role = roleFor(details.url);
     if (info.role === 'panel') info.widgetId = new URL(details.url).searchParams.get('widgetId');
     contentsMark('nav-start');

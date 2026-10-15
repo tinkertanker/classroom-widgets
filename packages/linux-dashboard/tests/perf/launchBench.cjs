@@ -5,7 +5,9 @@
 // Build the teacher app once and keep it fixed for every variant, e.g.
 //   pnpm --filter @classroom-widgets/teacher build:desktop
 // snapshot each shell variant (a directory holding out/, src/renderer/,
-// assets/ and package.json from `npm run build`), then from the repo root:
+// assets/ and package.json from `npm run build`), for example with
+//   packages/linux-dashboard/tests/perf/snapshotVariant.sh <ref> <dir>
+// then from the repo root:
 //   xvfb-run -a -s '-screen 0 1920x1080x24' node packages/linux-dashboard/tests/perf/launchBench.cjs \
 //     --variant base=<dir> --variant fix=<dir> --runs 10 --out <evidence dir> [--web-root <teacher build>] \
 //     [--network live|blocked] [--phases cold,warm,panels] [--warmup 1] [--keep-raw]
@@ -144,8 +146,16 @@ function panelMetrics(result) {
     const sample = result.samples[label];
     if (!sample) continue;
     metrics[`${label}.cpuPercent`] = sample.cpuPercent;
-    // The main (browser) process's share, where the shell's own timers run.
-    if (sample.byKind) metrics[`${label}.browserCpuPercent`] = (100 * (sample.byKind.browser ?? 0)) / sample.elapsedMs;
+    if (!sample.byKind) continue;
+    const share = (match) => (100 * Object.entries(sample.byKind).filter(([kind]) => match(kind)).reduce((sum, [, ms]) => sum + ms, 0)) / sample.elapsedMs;
+    // The main (browser) process, where the shell's own timers run; the panel
+    // web renderers, where widget code runs; the hidden host renderer, which
+    // owns the store; and the GPU process, which composites (in software
+    // under --disable-gpu).
+    metrics[`${label}.browserCpuPercent`] = share((kind) => kind === 'browser');
+    metrics[`${label}.panelRendererCpuPercent`] = share((kind) => kind === 'renderer:panel');
+    metrics[`${label}.hostRendererCpuPercent`] = share((kind) => kind === 'renderer:host');
+    metrics[`${label}.gpuCpuPercent`] = share((kind) => kind === 'gpu-process');
   }
   for (const label of ['frames-randomiser-spin', 'frames-timer-running']) {
     const frames = result.samples[label];
