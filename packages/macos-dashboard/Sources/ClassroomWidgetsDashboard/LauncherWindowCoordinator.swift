@@ -7,6 +7,7 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
     private let onAddWidget: (Int) -> Void
     private let onOpenDisplayPreview: () -> Void
     private var window: NSWindow?
+    private var webView: WKWebView?
 
     init(onAddWidget: @escaping (Int) -> Void, onOpenDisplayPreview: @escaping () -> Void) {
         self.onAddWidget = onAddWidget
@@ -25,12 +26,21 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
 
     func show() {
         PerfProbe.mark("launcher.show", ["existing": window != nil])
-        if let window {
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
+        prepare()
+        if let webView, window?.contentView !== webView {
+            window?.contentView = webView
         }
+        window?.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        PerfProbe.mark("launcher.visible")
+    }
 
+    /// Starts loading the launcher page while the widget host is still
+    /// starting. The web view joins the window only in `show()`, so nothing
+    /// is drawn for a window that is not on screen yet.
+    func prepare() {
+        guard window == nil else { return }
+        PerfProbe.mark("launcher.prepare")
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
         let appVersionJSON = (try? JSONEncoder().encode(appVersion))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"unknown\""
@@ -44,20 +54,21 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
         configuration.userContentController.add(scriptMessageHandler, name: "classroomDashboard")
         PerfProbe.install(in: configuration.userContentController, surface: "widget-launcher")
 
-        let webView = WKWebView(frame: .zero, configuration: configuration)
+        let contentRect = NSRect(x: 0, y: 0, width: 850, height: 580)
+        let webView = WKWebView(frame: contentRect, configuration: configuration)
         ClassroomWebViewTuning.apply(to: webView)
         webView.navigationDelegate = self
         webView.uiDelegate = self
+        self.webView = webView
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 850, height: 580),
+            contentRect: contentRect,
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Add Widget — Classroom Widgets"
         window.minSize = NSSize(width: 700, height: 540)
-        window.contentView = webView
         window.center()
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("WidgetLauncherWindow")
@@ -71,10 +82,6 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
         if let url = components.url {
             webView.load(URLRequest(url: url))
         }
-
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
-        PerfProbe.mark("launcher.visible")
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {

@@ -962,6 +962,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         PerfProbe.mark("launcher.requested", ["deferred": controller?.widgetOptions.isEmpty != false])
         guard controller?.widgetOptions.isEmpty == false else {
             launcherRequested = true
+            // Load the launcher page alongside the host; it is shown once the host has its widgets.
+            launcherWindowCoordinator.prepare()
             return
         }
         launcherRequested = false
