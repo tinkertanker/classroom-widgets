@@ -1,5 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// Self-hosted web fonts. Browsers fetch a face only when text uses it, so the
+// Text Banner families cost nothing until a banner shows them.
+import '@shared/assets/fonts/poppins.css';
+import '@shared/assets/fonts/lora.css';
+import '@shared/assets/fonts/roboto-slab.css';
+import '@shared/assets/fonts/jetbrains-mono.css';
 import './index.css';
 import { redirectFirstVisitToLanding } from './app/firstVisit';
 
