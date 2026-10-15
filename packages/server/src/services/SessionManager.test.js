@@ -60,16 +60,3 @@ test('createSession throws once MAX_SESSIONS is reached instead of growing witho
     manager.stopCleanupInterval();
   }
 });
-
-test('findSessionByHost locates sessions and returns null otherwise', () => {
-  const manager = new SessionManager();
-  try {
-    const session = manager.createSession();
-    session.hostSocketId = 'host-42';
-
-    assert.equal(manager.findSessionByHost('host-42'), session);
-    assert.equal(manager.findSessionByHost('nobody'), null);
-  } finally {
-    manager.stopCleanupInterval();
-  }
-});

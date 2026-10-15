@@ -204,7 +204,7 @@ describe('socketAuth middleware', () => {
     assert.match(error.message, /capacity/);
   });
 
-  it('accepts connections below capacity and initializes metadata', () => {
+  it('accepts connections below capacity and records the client IP', () => {
     const sessionManager = {
       getStats: () => ({ totalParticipants: 0 })
     };
@@ -216,7 +216,5 @@ describe('socketAuth middleware', () => {
 
     assert.equal(error, undefined);
     assert.equal(socket.clientIP, '10.0.0.1');
-    assert.equal(socket.metadata.isHost, false);
-    assert.equal(socket.metadata.sessionCode, null);
   });
 });

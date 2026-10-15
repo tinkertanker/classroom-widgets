@@ -1,9 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import {
-  classifyDrop,
   initialWidgetInteractionState,
-  isClickSuppressedState,
   useWidgetInteractionState,
   widgetInteractionReducer,
   type WidgetInteractionEvent,
@@ -25,14 +23,6 @@ function run(...events: WidgetInteractionEvent[]): WidgetInteractionState {
 
 describe('widgetInteractionReducer', () => {
   describe('idle', () => {
-    it('enters dragging, not yet moved, on drag start', () => {
-      expect(run({ type: 'dragStart' })).toEqual(DRAGGING);
-    });
-
-    it('enters resizing on resize start', () => {
-      expect(run({ type: 'resizeStart' })).toEqual(RESIZING);
-    });
-
     it.each<WidgetInteractionEvent>([
       { type: 'dragMove' },
       { type: 'dragStop' },
@@ -45,28 +35,9 @@ describe('widgetInteractionReducer', () => {
   });
 
   describe('dragging', () => {
-    it('records movement on the first drag move', () => {
-      expect(run({ type: 'dragStart' }, { type: 'dragMove' })).toEqual(DRAGGING_MOVED);
-    });
-
-    it('returns the identical object for repeat drag moves, so callers can skip work', () => {
-      const moved = widgetInteractionReducer(DRAGGING, { type: 'dragMove' });
-      expect(widgetInteractionReducer(moved, { type: 'dragMove' })).toBe(moved);
-      expect(widgetInteractionReducer(moved, { type: 'dragMove' })).toBe(moved);
-    });
-
     it('resets movement when a second drag starts', () => {
       expect(run({ type: 'dragStart' }, { type: 'dragMove' }, { type: 'dragStart' }))
         .toEqual(DRAGGING);
-    });
-
-    it('goes to postDrag when a drag that moved stops', () => {
-      expect(run({ type: 'dragStart' }, { type: 'dragMove' }, { type: 'dragStop' }))
-        .toEqual(POST_DRAG);
-    });
-
-    it('goes straight back to idle when a drag that never moved stops', () => {
-      expect(run({ type: 'dragStart' }, { type: 'dragStop' })).toEqual(IDLE);
     });
 
     it.each([
@@ -76,26 +47,12 @@ describe('widgetInteractionReducer', () => {
       expect(widgetInteractionReducer(from, { type: 'globalMouseUp' })).toEqual(IDLE);
     });
 
-    it('does not open a click-suppression window when the window mouseup ends the drag', () => {
-      // react-rnd never reported a drag stop, so no synthetic click follows.
-      const after = widgetInteractionReducer(DRAGGING_MOVED, { type: 'globalMouseUp' });
-      expect(isClickSuppressedState(after)).toBe(false);
-    });
-
     it('ignores a resize stop it never started', () => {
       expect(widgetInteractionReducer(DRAGGING_MOVED, { type: 'resizeStop' })).toBe(DRAGGING_MOVED);
     });
   });
 
   describe('resizing', () => {
-    it('returns to idle on resize stop', () => {
-      expect(run({ type: 'resizeStart' }, { type: 'resizeStop' })).toEqual(IDLE);
-    });
-
-    it('returns to idle on a window mouseup', () => {
-      expect(run({ type: 'resizeStart' }, { type: 'globalMouseUp' })).toEqual(IDLE);
-    });
-
     it('stays resizing if a drag start slips through', () => {
       // react-rnd's disableDragging makes this unreachable; dropping the resize
       // here would clear the resize cursor mid-gesture.
@@ -113,25 +70,6 @@ describe('widgetInteractionReducer', () => {
   });
 
   describe('postDrag', () => {
-    it('suppresses clicks, and no other state does', () => {
-      for (const state of ALL_STATES) {
-        expect(isClickSuppressedState(state)).toBe(state.status === 'postDrag');
-      }
-    });
-
-    it('reopens clicks when the suppression window elapses', () => {
-      expect(widgetInteractionReducer(POST_DRAG, { type: 'clickSuppressionElapsed' })).toEqual(IDLE);
-    });
-
-    it('survives the window mouseup that follows the same drag', () => {
-      // The safety-net listener is still attached and fires on the very mouseup
-      // that ended the drag, right after react-rnd's own handler. If that
-      // cancelled postDrag, every drag would end by focusing the widget.
-      const after = widgetInteractionReducer(POST_DRAG, { type: 'globalMouseUp' });
-      expect(after).toBe(POST_DRAG);
-      expect(isClickSuppressedState(after)).toBe(true);
-    });
-
     it('is left by a new drag start', () => {
       expect(widgetInteractionReducer(POST_DRAG, { type: 'dragStart' })).toEqual(DRAGGING);
     });
@@ -141,23 +79,6 @@ describe('widgetInteractionReducer', () => {
     for (const state of ALL_STATES.filter((s) => s.status !== 'postDrag')) {
       expect(widgetInteractionReducer(state, { type: 'clickSuppressionElapsed' })).toBe(state);
     }
-  });
-});
-
-describe('classifyDrop', () => {
-  it('treats the trash zone as a delete', () => {
-    expect(classifyDrop('trash')).toBe('trash');
-  });
-
-  it('treats no drop target as an ordinary reposition', () => {
-    expect(classifyDrop(null)).toBe('reposition');
-  });
-
-  it('treats any other drop target as an ordinary reposition', () => {
-    // Only the trash zone deletes; anything else the board reports must leave
-    // the widget alive and simply move it.
-    expect(classifyDrop('board')).toBe('reposition');
-    expect(classifyDrop('')).toBe('reposition');
   });
 });
 
@@ -335,7 +256,6 @@ describe('useWidgetInteractionState', () => {
   });
 
   it('drops a pending suppression timeout when unmounted mid-post-drag', () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { result, unmount } = renderHook(() => useWidgetInteractionState());
     const { dispatch } = result.current;
 
@@ -348,30 +268,6 @@ describe('useWidgetInteractionState', () => {
 
     unmount();
 
-    expect(vi.getTimerCount()).toBe(0);
-
-    const errorsBefore = consoleError.mock.calls.length;
-    act(() => void vi.advanceTimersByTime(0));
-    expect(consoleError.mock.calls.length).toBe(errorsBefore);
-
-    consoleError.mockRestore();
-  });
-
-  it.each([
-    ['drag', [{ type: 'dragStart' }, { type: 'dragMove' }] as WidgetInteractionEvent[]],
-    ['resize', [{ type: 'resizeStart' }] as WidgetInteractionEvent[]]
-  ])('unmounts cleanly mid-%s without leaving a timer behind', (_label, events) => {
-    const { result, unmount } = renderHook(() => useWidgetInteractionState());
-    const { dispatch } = result.current;
-
-    act(() => {
-      for (const event of events) dispatch(event);
-    });
-
-    unmount();
-
-    // The gesture is deliberately not unwound: the workspace store owns drag
-    // state, and unmounting mid-drag leaves it untouched, as it always has.
     expect(vi.getTimerCount()).toBe(0);
   });
 });

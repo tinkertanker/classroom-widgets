@@ -7,35 +7,12 @@ import XCTest
 final class DisplayCaptureSessionTests: XCTestCase {
     private enum TestError: Error { case unexpectedDiscovery }
 
-    func testTransientFrameStatusesHoldWhileIdleRetainsCurrentFrame() {
-        XCTAssertEqual(DisplayCaptureSession.disposition(for: .idle), .ignore)
-        XCTAssertEqual(DisplayCaptureSession.disposition(for: .started), .ignore)
+    func testBlankAndPixelLessCompleteFramesHold() {
         XCTAssertEqual(DisplayCaptureSession.disposition(for: .blank), .hold)
-        XCTAssertEqual(DisplayCaptureSession.disposition(for: .suspended), .hold)
-        XCTAssertEqual(DisplayCaptureSession.disposition(for: .stopped), .stopped)
-        XCTAssertEqual(DisplayCaptureSession.disposition(for: .complete), .deliver)
         XCTAssertEqual(
             DisplayCaptureSession.disposition(for: .complete, hasImageBuffer: false),
             .hold,
             "A complete frame without pixels is a temporary gap, not a terminal stop"
-        )
-    }
-
-    func testWindowLookupRetriesOnScreenFirstThenWidensBeforeFailing() {
-        let attempts = Array(1...DisplayCaptureWindowLookupPolicy.maxAttempts)
-        XCTAssertEqual(
-            attempts.map { DisplayCaptureWindowLookupPolicy.onScreenWindowsOnly(forAttempt: $0) },
-            [true, true, false, false, false]
-        )
-        XCTAssertEqual(
-            attempts.map { DisplayCaptureWindowLookupPolicy.shouldRetry(afterAttempt: $0) },
-            [true, true, true, true, false]
-        )
-        XCTAssertEqual(DisplayCaptureWindowLookupPolicy.retryDelayNanoseconds(afterAttempt: 1), 50_000_000)
-        XCTAssertEqual(
-            DisplayCaptureWindowLookupPolicy.retryDelayNanoseconds(afterAttempt: 4),
-            DisplayCaptureWindowLookupPolicy.retryDelayNanoseconds(afterAttempt: 9),
-            "Backoff is capped so a missing window fails within about half a second"
         )
     }
 

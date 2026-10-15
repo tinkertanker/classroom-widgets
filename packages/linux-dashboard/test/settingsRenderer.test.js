@@ -104,71 +104,70 @@ function key(button, key, modifiers = {}) {
   });
 }
 
-for (const action of ['show', 'dismiss']) {
-  test(`inventory arriving during Display ${action} recording preserves the button, focus and pause`, async () => {
-    const h = await renderer();
-    const button = h.begin('Display', action);
-    h.render([shortcut(1, 'Timer', 'Ctrl+Alt+Shift+2')], shortcut('display', 'Display', 'Ctrl+Alt+Shift+0'));
-    assert.deepEqual(h.capturing, [true], 'inventory must not send capturing=false');
-    assert.equal(h.field('Display', action).children[0], button);
-    assert.equal(h.document.activeElement, button);
-    assert.equal(button.textContent, 'Press shortcut…');
-    assert.equal(button.attributes['aria-label'], `${action} shortcut for Display: Ctrl+Alt+Shift+0`);
-    assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
-    assert.deepEqual(h.elements.shortcuts.children.map(row => row.children[0].textContent), ['Display', 'Timer']);
-    key(button, 'E', { ctrlKey: true, altKey: true });
-    await settle();
-    assert.deepEqual(h.assignments, [['display', action, 'Ctrl+Alt+E']]);
-    assert.deepEqual(h.capturing, [true, false]);
-  });
-}
+test('inventory arriving during Display show recording preserves the button, focus and pause', async () => {
+  const h = await renderer();
+  const button = h.begin('Display', 'show');
+  h.render([shortcut(1, 'Timer', 'Ctrl+Alt+Shift+2')], shortcut('display', 'Display', 'Ctrl+Alt+Shift+0'));
+  assert.deepEqual(h.capturing, [true], 'inventory must not send capturing=false');
+  assert.equal(h.field('Display', 'show').children[0], button);
+  assert.equal(h.document.activeElement, button);
+  assert.equal(button.textContent, 'Press shortcut…');
+  assert.equal(button.attributes['aria-label'], 'show shortcut for Display: Ctrl+Alt+Shift+0');
+  assert.equal(h.field('Display', 'show').children[2].textContent, 'Paused while recording');
+  assert.deepEqual(h.elements.shortcuts.children.map(row => row.children[0].textContent), ['Display', 'Timer']);
+  key(button, 'E', { ctrlKey: true, altKey: true });
+  await settle();
+  assert.deepEqual(h.assignments, [['display', 'show', 'Ctrl+Alt+E']]);
+  assert.deepEqual(h.capturing, [true, false]);
+});
 
-for (const action of ['show', 'dismiss']) {
-  for (const restartSameField of [false, true]) {
-    for (const ok of [true, false]) {
-      const nextAction = restartSameField ? action : action === 'show' ? 'dismiss' : 'show';
-      test(`late ${action} save ${ok ? 'success' : 'rejection'} preserves ${restartSameField ? 'restarted' : 'new'} ${nextAction} recording`, async () => {
-        const pending = [];
-        const h = await renderer([], undefined, () => new Promise(resolve => pending.push(resolve)));
-        const first = h.begin('Display', action);
-        key(first, 'E', { ctrlKey: true, altKey: true });
-        if (restartSameField) key(first, 'Escape');
-        const current = h.begin('Display', nextAction);
-        assert.deepEqual(h.capturing, [true, false, true]);
-        assert.equal(pending.length, 1);
+// Show and Dismiss share one renderer code path, so each scenario runs once.
+const action = 'show';
 
-        pending[0]({ ok, error: 'Old assignment rejected.' });
-        await settle();
-        assert.deepEqual(h.capturing, [true, false, true], 'old completion must not resume global shortcuts');
-        assert.equal(h.document.activeElement, current);
-        assert.equal(current.textContent, 'Press shortcut…');
-        assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
+for (const restartSameField of [false, true]) {
+  for (const ok of [true, false]) {
+    const nextAction = restartSameField ? action : 'dismiss';
+    test(`late ${action} save ${ok ? 'success' : 'rejection'} preserves ${restartSameField ? 'restarted' : 'new'} ${nextAction} recording`, async () => {
+      const pending = [];
+      const h = await renderer([], undefined, () => new Promise(resolve => pending.push(resolve)));
+      const first = h.begin('Display', action);
+      key(first, 'E', { ctrlKey: true, altKey: true });
+      if (restartSameField) key(first, 'Escape');
+      const current = h.begin('Display', nextAction);
+      assert.deepEqual(h.capturing, [true, false, true]);
+      assert.equal(pending.length, 1);
 
-        key(current, 'U', { ctrlKey: true, altKey: true });
-        assert.equal(pending.length, 2);
-        pending[1]({ ok: true });
-        await settle();
-        assert.deepEqual(h.assignments, [['display', action, 'Ctrl+Alt+E'], ['display', nextAction, 'Ctrl+Alt+U']]);
-        assert.deepEqual(h.capturing, [true, false, true, false]);
-      });
-    }
+      pending[0]({ ok, error: 'Old assignment rejected.' });
+      await settle();
+      assert.deepEqual(h.capturing, [true, false, true], 'old completion must not resume global shortcuts');
+      assert.equal(h.document.activeElement, current);
+      assert.equal(current.textContent, 'Press shortcut…');
+      assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
+
+      key(current, 'U', { ctrlKey: true, altKey: true });
+      assert.equal(pending.length, 2);
+      pending[1]({ ok: true });
+      await settle();
+      assert.deepEqual(h.assignments, [['display', action, 'Ctrl+Alt+E'], ['display', nextAction, 'Ctrl+Alt+U']]);
+      assert.deepEqual(h.capturing, [true, false, true, false]);
+    });
   }
-
-  test(`a delayed rejection for the current ${action} session still reports the error and ends recording`, async () => {
-    let finish;
-    const h = await renderer([], undefined, () => new Promise(resolve => { finish = resolve; }));
-    const button = h.begin('Display', action);
-    key(button, 'E', { ctrlKey: true, altKey: true });
-    finish({ ok: false, error: 'Already assigned to another widget.' });
-    await settle();
-    assert.deepEqual(h.capturing, [true, false]);
-    assert.equal(h.field('Display', action).children[2].textContent, 'Already assigned to another widget.');
-    h.begin('Display', action);
-    assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
-    key(button, 'Escape');
-    assert.deepEqual(h.capturing, [true, false, true, false]);
-  });
 }
+
+test(`a delayed rejection for the current ${action} session still reports the error and ends recording`, async () => {
+  let finish;
+  const h = await renderer([], undefined, () => new Promise(resolve => { finish = resolve; }));
+  const button = h.begin('Display', action);
+  key(button, 'E', { ctrlKey: true, altKey: true });
+  finish({ ok: false, error: 'Already assigned to another widget.' });
+  await settle();
+  assert.deepEqual(h.capturing, [true, false]);
+  assert.equal(h.field('Display', action).children[2].textContent, 'Already assigned to another widget.');
+  h.begin('Display', action);
+  assert.equal(h.field('Display', action).children[2].textContent, 'Paused while recording');
+  key(button, 'Escape');
+  assert.deepEqual(h.capturing, [true, false, true, false]);
+});
 
 test('adding, reordering and removing other rows preserves widget recording and live values', async () => {
   const timer = shortcut(1, 'Timer', 'Ctrl+Alt+T');

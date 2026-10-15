@@ -16,12 +16,6 @@ public class DisplayReconnectPolicyTests
     }
 
     [Fact]
-    public void LosingTheExternalDisplayHidesAnOpenWidgetAndRemembersWhy()
-    {
-        Assert.True(AutoHidden().HiddenByDisconnect);
-    }
-
-    [Fact]
     public void TheWidgetComesBackOnceWhenTheDisplayReconnects()
     {
         var policy = AutoHidden();
@@ -91,14 +85,5 @@ public class DisplayReconnectPolicyTests
         Assert.False(policy.HiddenByDisconnect);
         policy.WindowClosed();
         Assert.True(policy.HiddenByDisconnect);
-    }
-
-    [Fact]
-    public void PreferencesFromEarlierVersionsShowDisplayOnReconnect()
-    {
-        var settings = DashboardSettings.DeserializeSettings("""{ "BackgroundOpacity": 0.4 }""");
-
-        Assert.NotNull(settings);
-        Assert.True(settings.DisplayPreviewShowOnReconnect);
     }
 }

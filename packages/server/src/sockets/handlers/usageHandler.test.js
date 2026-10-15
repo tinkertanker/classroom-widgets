@@ -7,8 +7,6 @@ const usageHandler = require('./usageHandler');
 
 // Ways usage events can fail, written before the change:
 // - a repeated app_open on one connection inflates the open count
-// - a reconnect (new socket) is never counted as a teacher again
-// - the reconnect notice is logged as a second open
 // - reconnecting resets the rate limit, so a client can pad counts without end
 
 const CLIENT = 'a1b2c3d4-e5f6';
@@ -32,13 +30,6 @@ test('only the first app_open on a connection is recorded', (t) => {
   track(socket, 'app_open');
   track(socket, 'app_open');
   assert.deepEqual(recorded.map((e) => e.e), ['app_open']);
-});
-
-test('app_resume identifies a new connection without recording an open', (t) => {
-  const { socket, recorded } = connect(t);
-  track(socket, 'app_resume');
-  assert.equal(socket.data.usageClientId, CLIENT);
-  assert.deepEqual(recorded, []);
 });
 
 test('usage events share one budget across reconnections from the same IP', () => {

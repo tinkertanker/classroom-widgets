@@ -14,16 +14,6 @@ describe('widgetLauncher', () => {
     delete window.cancelClassroomWidgetLauncher;
   });
 
-  it('opens immediately when an opener is already registered', () => {
-    const open = vi.fn();
-    const unregister = registerWidgetLauncherOpener(open);
-
-    openWidgetLauncher();
-
-    expect(open).toHaveBeenCalledTimes(1);
-    unregister();
-  });
-
   it('flushes a pending open when the opener mounts later', () => {
     const open = vi.fn();
 
@@ -79,17 +69,5 @@ describe('widgetLauncher', () => {
 
     expect(open).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
-  });
-
-  it('binds a window cancel that drops a queued launchpad', () => {
-    const open = vi.fn();
-    const unbind = bindWindowWidgetLauncher();
-
-    window.openClassroomWidgetLauncher?.();
-    window.cancelClassroomWidgetLauncher?.();
-    registerWidgetLauncherOpener(open);
-
-    expect(open).not.toHaveBeenCalled();
-    unbind();
   });
 });

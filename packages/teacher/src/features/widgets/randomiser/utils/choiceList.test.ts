@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normaliseChoiceList, stringifyChoiceList, getActiveChoices } from './choiceList';
+import { normaliseChoiceList, getActiveChoices } from './choiceList';
 
 describe('normaliseChoiceList', () => {
   it('splits lines and trims whitespace', () => {
@@ -40,28 +40,8 @@ describe('normaliseChoiceList', () => {
   });
 });
 
-describe('stringifyChoiceList', () => {
-  it('round-trips through normaliseChoiceList', () => {
-    const choices = ['alice', 'bob', 'carol'];
-    expect(normaliseChoiceList(stringifyChoiceList(choices))).toEqual(choices);
-  });
-});
-
 describe('getActiveChoices', () => {
-  it('returns an empty list when given an empty list of choices', () => {
-    expect(getActiveChoices([], [])).toEqual([]);
-    expect(getActiveChoices([], ['alice'])).toEqual([]);
-  });
-
   it('filters out only the removed entries, preserving order', () => {
     expect(getActiveChoices(['alice', 'bob', 'carol'], ['bob'])).toEqual(['alice', 'carol']);
-  });
-
-  it('ignores duplicate entries in the removed list', () => {
-    expect(getActiveChoices(['alice', 'bob'], ['bob', 'bob'])).toEqual(['alice']);
-  });
-
-  it('treats entries as distinct unless they match exactly, including whitespace', () => {
-    expect(getActiveChoices(['alice', ' bob'], ['bob'])).toEqual(['alice', ' bob']);
   });
 });

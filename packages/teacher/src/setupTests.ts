@@ -1,22 +1,9 @@
 import '@testing-library/jest-dom'
 
-// Mock Canvas API for face-api.js
-const mockCanvas = {
-  getContext: () => ({
-    fillRect: () => {},
-    clearRect: () => {},
-    drawImage: () => {},
-    // Add other canvas methods as needed
-  }),
-  width: 640,
-  height: 480,
-}
-
-global.HTMLCanvasElement.prototype.getContext = mockCanvas.getContext as any
-
-// Mock WebGL for face-api.js
-global.WebGLRenderingContext = (() => ({
-  canvas: mockCanvas,
-  drawingBufferWidth: 640,
-  drawingBufferHeight: 480,
+// jsdom has no canvas implementation; widgets such as the QR code and slot
+// machine call getContext during render.
+global.HTMLCanvasElement.prototype.getContext = (() => ({
+  fillRect: () => {},
+  clearRect: () => {},
+  drawImage: () => {},
 })) as any

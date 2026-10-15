@@ -29,19 +29,24 @@ final class MoveToNextDisplayTests: XCTestCase {
         XCTAssertEqual(result, CGRect(x: 1920 + 800 - 400, y: 600 - 300, width: 400, height: 300))
     }
 
-    func testPanelMovesToPreviousDisplayPreservingOffset() {
-        let frame = CGRect(x: 2000, y: 80, width: 300, height: 200)
+    func testPreviousDirectionStepsBackAndWrapsFromFirstToLast() {
+        let third = CGRect(x: 3840, y: 0, width: 1920, height: 1080)
+        let workAreas = [left, right, third]
         XCTAssertEqual(
-            WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: [left, right], direction: .previous),
+            WidgetPanelMoveGeometry.nextDisplayFrame(
+                frame: CGRect(x: 2000, y: 80, width: 300, height: 200),
+                workAreas: workAreas,
+                direction: .previous
+            ),
             CGRect(x: 80, y: 80, width: 300, height: 200)
         )
-    }
-
-    func testPanelWrapsFromFirstDisplayToLast() {
-        let frame = CGRect(x: 100, y: 50, width: 400, height: 300)
         XCTAssertEqual(
-            WidgetPanelMoveGeometry.nextDisplayFrame(frame: frame, workAreas: [left, right], direction: .previous),
-            CGRect(x: 2020, y: 50, width: 400, height: 300)
+            WidgetPanelMoveGeometry.nextDisplayFrame(
+                frame: CGRect(x: 100, y: 50, width: 400, height: 300),
+                workAreas: workAreas,
+                direction: .previous
+            ),
+            CGRect(x: 3940, y: 50, width: 400, height: 300)
         )
     }
 

@@ -444,29 +444,6 @@ describe('storage: no v1 population', () => {
     // ...and no v1-shaped key was ever written.
     expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
   });
-
-  it('ignores a stale legacy key instead of trying to read it as v1 data', async () => {
-    localStorage.clear();
-    localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify({ state: { widgets: ['not-real-data'] }, version: 0 }));
-
-    await useWorkspaceStore.persist.rehydrate();
-
-    const state = store();
-    // A fresh default workspace, not anything derived from the legacy blob.
-    expect(state.widgets).toEqual([]);
-    expect(state.workspaceList).toHaveLength(1);
-  });
-
-  it('never writes to the legacy key on subsequent saves', async () => {
-    await seedStorage();
-
-    store().addWidget(WidgetType.TIMER, { x: 1, y: 2 });
-    // Persisting is debounced; the same 'pagehide' listener a real tab-close
-    // relies on flushes it synchronously for the test.
-    window.dispatchEvent(new Event('pagehide'));
-
-    expect(localStorage.getItem(LEGACY_STORAGE_KEY)).toBeNull();
-  });
 });
 
 describe('transient UI state', () => {

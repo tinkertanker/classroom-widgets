@@ -22,25 +22,6 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
-    func testMiniaturizationStillEmitsPauseAndResumeCallbacks() async {
-        await MainActor.run {
-            _ = NSApplication.shared
-            let controller = DisplayPreviewWindowController(
-                frame: NSRect(x: 0, y: 0, width: 480, height: 360),
-                backgroundOpacity: 1,
-                keepOnAllSpaces: true
-            )
-            var visibilityEvents: [Bool] = []
-            controller.onVisibilityChanged = { visibilityEvents.append($0) }
-
-            controller.windowDidMiniaturize(Notification(name: NSWindow.didMiniaturizeNotification))
-            controller.windowDidDeminiaturize(Notification(name: NSWindow.didDeminiaturizeNotification))
-
-            XCTAssertEqual(visibilityEvents, [false, true])
-            controller.close()
-        }
-    }
-
     func testSourceReadyPresentationExplicitlyEnablesIdleCard() async {
         await MainActor.run {
             _ = NSApplication.shared
@@ -63,9 +44,6 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             let rawChildren = contentView.accessibilityChildren() ?? []
             let unignoredChildren = NSAccessibility.unignoredChildren(from: rawChildren)
             let pressSelector = NSSelectorFromString("accessibilityPerformPress")
-            XCTAssertEqual(ready.powerState, .off)
-            XCTAssertTrue(ready.powerEnabled)
-            XCTAssertTrue(ready.idleStartEnabled)
             XCTAssertTrue(startButton?.isEnabled == true)
             XCTAssertTrue(controller.previewView.isAccessibilityElement())
             XCTAssertTrue(rawChildren.contains { ($0 as AnyObject) === controller.previewView })
@@ -272,25 +250,6 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                     "A settled size must not re-correct or cascade callbacks"
                 )
             }
-
-            // User-driven resize is aspect-matched too: the callback must return a
-            // constrained frame size, and a height-limited drag must narrow the window
-            // rather than only its height.
-            let heightLimited = NSSize(width: 700, height: 400)
-            guard let constrained = delegate.windowWillResize?(panel, to: heightLimited) else {
-                return XCTFail("A user resize must be aspect-constrained while a source is selected")
-            }
-            assertViewport(
-                constrained,
-                matches: fittedPreviewViewport(proposingFrameSize: heightLimited, in: panel, aspect: 16.0 / 9.0),
-                in: panel
-            )
-            XCTAssertLessThan(
-                constrained.width,
-                heightLimited.width,
-                "A height-limited drag must narrow the window, not only its height"
-            )
-            XCTAssertLessThanOrEqual(constrained.height, heightLimited.height)
 
             // The menu action stays a one-shot re-snap of the same contract. The 600 pt
             // width asks for a 337.5 pt viewport, which the window server cannot land

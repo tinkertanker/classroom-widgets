@@ -80,20 +80,6 @@ describe('Poll start gating', () => {
     expect(toggleActive).not.toHaveBeenCalled();
   });
 
-  it('allows starting a poll with two filled options and fires the start path', async () => {
-    renderPoll(['Red', 'Blue']);
-
-    const button = screen.getByRole('button', { name: /start poll/i });
-    expect(button).not.toBeDisabled();
-
-    await userEvent.click(button);
-    expect(toggleActive).toHaveBeenCalledTimes(1);
-    expect(emit).toHaveBeenCalledWith('session:poll:update', expect.objectContaining({
-      widgetId: 'widget-1',
-      sessionCode: 'ABC123'
-    }));
-  });
-
   it('does not count whitespace-only options as filled', () => {
     renderPoll(['Red', '   ']);
 

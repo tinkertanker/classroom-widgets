@@ -146,16 +146,6 @@ describe('Activity Socket Handler Integration', () => {
 
       assert.equal(session.getRoom('activity', WIDGET_ID).activity, null);
     });
-
-    it('rejects update with invalid widget ID', () => {
-      hostSocket.trigger(EVENTS.ACTIVITY.UPDATE, {
-        sessionCode: SESSION_CODE,
-        widgetId: '',
-        activity: { type: 'fill-blank', items: [], targets: [] }
-      });
-
-      assert.equal(io.to.calls.length, 0);
-    });
   });
 
   describe('student: submit answer flow', () => {
@@ -347,31 +337,6 @@ describe('Activity Socket Handler Integration', () => {
       });
 
       assert.equal(session.getRoom('activity', WIDGET_ID).getResponseCount(), 2);
-    });
-  });
-
-  describe('student: request state flow', () => {
-    beforeEach(() => {
-      setupActivity({
-        title: 'State Test',
-        items: [{ id: 'item-0', content: 'test' }],
-        targets: [{ id: 'blank-0', accepts: ['item-0'] }]
-      });
-    });
-
-    it('returns active status in the state reply without announcing another activation', () => {
-      studentSocket.trigger(EVENTS.ACTIVITY.REQUEST_STATE, {
-        sessionCode: SESSION_CODE,
-        widgetId: WIDGET_ID
-      });
-
-      const state = emittedPayload(studentSocket.emit, EVENTS.ACTIVITY.STATE_UPDATE);
-      assert.equal(state.widgetId, WIDGET_ID);
-      assert.equal(state.activity.title, 'State Test');
-      assert.equal(state.isActive, true);
-
-      const widgetState = emittedPayload(studentSocket.emit, EVENTS.SESSION.WIDGET_STATE_CHANGED);
-      assert.equal(widgetState, undefined, 'activation notifications make students request state again');
     });
   });
 

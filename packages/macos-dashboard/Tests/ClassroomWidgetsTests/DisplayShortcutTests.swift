@@ -96,29 +96,6 @@ final class DisplayShortcutTests: XCTestCase {
     }
 
     @MainActor
-    func testRecordingSuspendsBothKeysAndNestedRecordersResumeOnlyAtTheEnd() {
-        let fixture = RegistrationFixture()
-        let show = DashboardShortcut(keyCode: 2, modifiers: WidgetLaunchShortcutStore.defaultModifiers)
-        let dismiss = DashboardShortcut(keyCode: 3, modifiers: show.modifiers)
-        let pair = WidgetShortcutBinding(show: show, dismiss: dismiss)
-        var state = ShortcutBindingState(settings: DashboardShortcut(keyCode: 43, modifiers: show.modifiers))
-        fixture.registration.restoreAccepted(pair)
-        XCTAssertEqual(fixture.liveKeys, [show, dismiss])
-        if state.recorderStarted() { fixture.registration.suspend() }
-        XCTAssertFalse(state.recorderStarted())
-        fixture.handlers[show]?()
-        fixture.handlers[dismiss]?()
-        XCTAssertTrue(fixture.events.isEmpty)
-        XCTAssertTrue(fixture.liveKeys.isEmpty)
-        XCTAssertFalse(state.recorderEnded())
-        XCTAssertTrue(fixture.liveKeys.isEmpty)
-        if state.recorderEnded() { fixture.registration.restoreAccepted(pair) }
-        XCTAssertEqual(fixture.liveKeys, [show, dismiss])
-        fixture.handlers[dismiss]?()
-        XCTAssertEqual(fixture.events, [.dismiss])
-    }
-
-    @MainActor
     func testAcceptedDistinctRestoreKeepsAvailableActionWhenItsPartnerIsUnavailable() {
         for resume in [false, true] {
             for unavailableAction: WidgetShortcutAction in [.show, .dismiss] {

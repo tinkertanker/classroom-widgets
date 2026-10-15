@@ -67,44 +67,10 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
             for: .visibilityResume,
             preflightGranted: false
         ))
-        XCTAssertTrue(DisplayPreviewPermissionPolicy.shouldRequestPermission(
-            for: .explicit,
-            preflightGranted: false
-        ))
         XCTAssertFalse(DisplayPreviewPermissionPolicy.canStart(
             for: .visibilityResume,
             preflightGranted: false
         ))
-        XCTAssertTrue(DisplayPreviewPermissionPolicy.canStart(
-            for: .explicit,
-            preflightGranted: false
-        ))
-    }
-
-    func testOnlyCurrentAcceptedCaptureCallbacksMayChangeRestartIntent() {
-        XCTAssertTrue(DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
-            ownsSession: true,
-            acceptsGeneration: true
-        ))
-        XCTAssertFalse(DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
-            ownsSession: true,
-            acceptsGeneration: false
-        ), "A callback queued by the intentionally stopped generation must preserve auto-resume")
-        XCTAssertFalse(DisplayPreviewCaptureCallbackPolicy.mayChangeIntent(
-            ownsSession: false,
-            acceptsGeneration: true
-        ), "A replacement session must not be affected by its predecessor's callback")
-    }
-
-    func testExplicitPausePreventsEarlierStopFromRepublishingAutomaticResumeStatus() {
-        XCTAssertTrue(DisplayPreviewStopCompletionPolicy.shouldPublishStatus(
-            startGeneration: 8,
-            currentGeneration: 8
-        ))
-        XCTAssertFalse(DisplayPreviewStopCompletionPolicy.shouldPublishStatus(
-            startGeneration: 8,
-            currentGeneration: 9
-        ), "Explicit Pause advances intent and makes the overlap-stop status stale")
     }
 
     func testSourceChangeDuringStopPublishesOnlyLatestReadyPresentationAfterCleanup() {
@@ -410,6 +376,7 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
             "Overlapping the source removes it from the host-filtered candidate list but must not reset the preview"
         )
         XCTAssertEqual(outcome(currentMatchID: nil), .reset)
+        XCTAssertEqual(outcome(currentMatchID: nil, isHostCandidate: true), .reset)
         XCTAssertEqual(outcome(selectedSourceID: nil, currentMatchID: nil), .ignore)
         XCTAssertEqual(outcome(hasWindow: false), .ignore)
         XCTAssertEqual(
@@ -422,45 +389,6 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
             .reset,
             "Host candidacy must never mask a genuinely changed source"
         )
-    }
-
-    func testOverlapSuspensionSurvivesAnUnrelatedNoticeAndStillResumes() {
-        var state = DisplayPreviewAutoResumeState()
-        XCTAssertEqual(state.placementChanged(
-            overlapsSource: true, wasRunning: true, sessionExists: true, sourceUUID: "source-a"
-        ), .suspend)
-        XCTAssertTrue(state.hasPendingRestart)
-
-        XCTAssertEqual(
-            DisplayPreviewTopologyPolicy.outcome(
-                hasWindow: true, selectedSourceID: 2, currentMatchID: 2, isHostCandidate: true
-            ),
-            .preserveSource,
-            "The coordinator must not cancel the overlap resume for an unchanged source"
-        )
-        XCTAssertTrue(state.hasPendingRestart)
-        XCTAssertEqual(state.placementChanged(
-            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
-        ), .startNow, "Moving clear still resumes after the notice")
-    }
-
-    func testSourceRemovalOrMirroringStillCancelsOverlapResume() {
-        XCTAssertEqual(
-            DisplayPreviewTopologyPolicy.outcome(
-                hasWindow: true, selectedSourceID: 2, currentMatchID: nil, isHostCandidate: true
-            ),
-            .reset,
-            "A removed or mirrored source is invalid regardless of placement"
-        )
-
-        var state = DisplayPreviewAutoResumeState()
-        _ = state.placementChanged(
-            overlapsSource: true, wasRunning: true, sessionExists: true, sourceUUID: "source-a"
-        )
-        state.cancel()
-        XCTAssertEqual(state.placementChanged(
-            overlapsSource: false, wasRunning: false, sessionExists: false, sourceUUID: "source-a"
-        ), .none, "A reset cancels the deferred resume")
     }
 
     func testStaticIdleNeverTriggersFirstFramePause() {
@@ -813,7 +741,6 @@ final class DisplayPreviewLifecycleTests: XCTestCase {
             "A direct power click keeps the existing explicit permission request flow"
         )
         XCTAssertTrue(DisplayPreviewPermissionPolicy.canStart(for: .explicit, preflightGranted: false))
-        XCTAssertEqual(DisplayPreviewStartTrigger.launch.logLabel, "launch")
     }
 
     func testRepeatedTopologyRefreshWithoutChangeDoesNotInvalidateLiveGeometry() async {

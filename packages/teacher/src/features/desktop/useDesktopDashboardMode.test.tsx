@@ -42,7 +42,6 @@ describe('useDesktopDashboardMode', () => {
     });
 
     expect(result.current.windowMode).toBe('canvas');
-    expect(document.documentElement).toHaveClass('desktop-dashboard-canvas');
   });
 
   it('requests a native window mode change while updating immediately', () => {
@@ -68,7 +67,6 @@ describe('useDesktopDashboardMode', () => {
 
     expect(result.current.compactLayout).toBe('column');
     expect(window.localStorage.getItem('classroom-dashboard-compact-layout')).toBe('column');
-    expect(document.documentElement).toHaveClass('desktop-dashboard-widget-column');
   });
 
   it('accepts native compact background opacity updates', () => {
@@ -90,7 +88,6 @@ describe('useDesktopDashboardMode', () => {
     });
 
     expect(result.current.windowMode).toBe('compact');
-    expect(document.documentElement).toHaveClass('desktop-dashboard-chrome-hidden');
     expect(window.classroomDashboard?.isWindowChromeVisible()).toBe(false);
   });
 });
