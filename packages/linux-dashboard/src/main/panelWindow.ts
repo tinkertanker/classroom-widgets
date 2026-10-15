@@ -75,6 +75,11 @@ export function rendererDir(): string {
 export class WidgetPanelWindow extends EventEmitter {
   static readonly CHROME_HEIGHT = CHROME_HEIGHT;
 
+  // One timer checks the pointer for every shown panel: a timer per panel
+  // woke the main process about eight times a second for each panel.
+  private static readonly hoverPanels = new Set<WidgetPanelWindow>();
+  private static hoverTimer: NodeJS.Timeout | null = null;
+
   private descriptor: WidgetPanelDescriptor;
   private backgroundOpacity: number;
   private options: CompactWidgetOption[] = [];
@@ -87,7 +92,6 @@ export class WidgetPanelWindow extends EventEmitter {
   private lastPushedRevision: number | null = null;
   private lastPushedStateRevision: number | null = null;
   private writesCheckpoint: { resolve: () => void } | null = null;
-  private hoverTimer: NodeJS.Timeout | null = null;
   private frameTimer: NodeJS.Timeout | null = null;
   private pointerLeftAt: number | null = null;
   private menuOpen = false;
@@ -123,7 +127,7 @@ export class WidgetPanelWindow extends EventEmitter {
       webPreferences: {
         preload: chromePreloadPath(),
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         nodeIntegration: false,
       },
     });
@@ -136,7 +140,7 @@ export class WidgetPanelWindow extends EventEmitter {
       webPreferences: {
         preload: bridgePreloadPath(),
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         nodeIntegration: false,
         additionalArguments: ['--classroom-widget-panel', `--classroom-app-version=${appVersion}`],
       },
@@ -477,15 +481,21 @@ export class WidgetPanelWindow extends EventEmitter {
   }
 
   private startHoverTimer(): void {
-    if (this.hoverTimer) return;
-    this.hoverTimer = setInterval(() => this.updateChromeForPointer(), 120);
+    WidgetPanelWindow.hoverPanels.add(this);
+    if (!WidgetPanelWindow.hoverTimer) WidgetPanelWindow.hoverTimer = setInterval(WidgetPanelWindow.pollPointer, 120);
   }
 
   private stopHoverTimer(): void {
-    if (this.hoverTimer) {
-      clearInterval(this.hoverTimer);
-      this.hoverTimer = null;
+    WidgetPanelWindow.hoverPanels.delete(this);
+    if (WidgetPanelWindow.hoverPanels.size === 0 && WidgetPanelWindow.hoverTimer) {
+      clearInterval(WidgetPanelWindow.hoverTimer);
+      WidgetPanelWindow.hoverTimer = null;
     }
+  }
+
+  private static pollPointer(): void {
+    const point = screen.getCursorScreenPoint();
+    for (const panel of WidgetPanelWindow.hoverPanels) panel.updateChromeForPointer(point);
   }
 
   private stopTimers(): void {
@@ -496,9 +506,8 @@ export class WidgetPanelWindow extends EventEmitter {
     }
   }
 
-  private updateChromeForPointer(): void {
+  private updateChromeForPointer(point: { x: number; y: number }): void {
     if (this.win.isDestroyed() || !this.win.isVisible()) return;
-    const point = screen.getCursorScreenPoint();
     const bounds = this.win.getBounds();
     const inside = point.x >= bounds.x && point.x < bounds.x + bounds.width
       && point.y >= bounds.y && point.y < bounds.y + bounds.height;
