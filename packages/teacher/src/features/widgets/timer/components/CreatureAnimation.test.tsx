@@ -26,20 +26,18 @@ describe('CreatureAnimation', () => {
     expect(isCreatureOnColoredArc(-1, 1)).toBe(true);
   });
 
-  it('updates the SVG transform each frame without repeatedly rendering the creature art', () => {
+  it('turns the runner each frame without repeatedly rendering the creature art', () => {
     let renderCount = 0;
 
     const { container } = render(
-      <svg>
-        <Profiler id="creature" onRender={() => { renderCount += 1; }}>
-          <CreatureAnimation isRunning progress={0.5} creature="hamster" />
-        </Profiler>
-      </svg>
+      <Profiler id="creature" onRender={() => { renderCount += 1; }}>
+        <CreatureAnimation isRunning progress={0.5} creature="hamster" />
+      </Profiler>
     );
 
     const initialRenderCount = renderCount;
-    const runner = container.querySelector('svg > g');
-    expect(runner).toHaveAttribute('transform', 'rotate(0 50 50)');
+    const runner = container.querySelector('svg') as SVGSVGElement;
+    expect(runner.style.transform).toBe('rotate(0deg)');
 
     act(() => {
       animationMock.callback?.(16, 16);
@@ -52,7 +50,7 @@ describe('CreatureAnimation', () => {
       animationMock.callback?.(16, 64);
     });
 
-    expect(runner).not.toHaveAttribute('transform', 'rotate(0 50 50)');
+    expect(runner.style.transform).not.toBe('rotate(0deg)');
     expect(renderCountAfterBoundaryChange).toBe(initialRenderCount + 1);
     expect(renderCount).toBe(renderCountAfterBoundaryChange);
   });

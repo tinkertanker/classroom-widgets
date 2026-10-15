@@ -25,6 +25,7 @@ private final class DockMenuAction: NSObject {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var controller: WidgetHostController?
+    private var perfScenario: PerfScenario?
     private var launcherRequested = false
     private var initialActivationPending = false
     private var terminationPending = false
@@ -122,24 +123,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         shortcutState = initialShortcutBindingState()
     }
 
+    func applicationWillFinishLaunching(_ notification: Notification) {
+        PerfProbe.mark("app.willFinishLaunching")
+        // The host page's first load waits about a second for WebKit's helper
+        // processes, so start it before AppKit finishes launching.
+        DashboardDefaults.register()
+        controller = WidgetHostController()
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
+        PerfProbe.mark("app.didFinishLaunching.begin")
         initialActivationPending = Self.shouldOpenLauncherOnInitialActivation(
             arguments: CommandLine.arguments,
             launchedAsLoginItem: Self.launchedAsLoginItem
         )
-        DashboardDefaults.register()
         shortcutState = initialShortcutBindingState()
         let iconVisibility = AppIconVisibility(rawValue: defaults.string(forKey: DashboardSettingKeys.appIconVisibility) ?? "") ?? .both
         NSApp.setActivationPolicy(iconVisibility == .menuBarOnly ? .accessory : .regular)
         NSApp.applicationIconImage = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
         setupMainMenu()
 
-        controller = WidgetHostController()
         controller?.onWidgetOptionsChanged = { [weak self] options in
             self?.widgetOptionsChanged(options)
             if self?.launcherRequested == true { self?.requestOpenLauncher() }
         }
         controller?.onDisplayPreviewRequested = { [weak self] in self?.displayPreviewCoordinator.open() }
+        // Widgets the host listed before these callbacks were set.
+        if let options = controller?.widgetOptions, !options.isEmpty { widgetOptionsChanged(options) }
         applyPresentationSettings()
         if iconVisibility != .dockOnly { setupStatusItem() }
         registerAcceptedSingleActionHotKeys()
@@ -150,6 +160,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             requestOpenLauncher()
         }
         DashboardLog.app.info("Classroom Widgets menu-bar widget launcher launched")
+        PerfProbe.mark("app.didFinishLaunching.end")
+        if let configuration = PerfProbe.configuration, PerfScenario.runs(configuration.scenario), let controller {
+            perfScenario = PerfScenario(host: controller, scenario: configuration.scenario)
+            perfScenario?.start()
+        }
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .seconds(10))
             await self?.updates.check()
@@ -168,11 +183,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidBecomeActive(_ notification: Notification) {
         guard initialActivationPending else { return }
+        PerfProbe.mark("app.didBecomeActive")
         initialActivationPending = false
         requestOpenLauncher()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        PerfProbe.mark("app.willTerminate")
+        PerfProbe.flush()
         controller?.flushPersistedState()
         displayPreviewCoordinator.flushPersistedState()
         singleActionHotKeys.removeAll()
@@ -554,6 +572,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func widgetOptionsChanged(_ options: [CompactWidgetOption]) {
+        PerfProbe.mark("host.options", ["count": options.count])
         let available = Set(options.map(\.widgetType))
         widgetHotKeys = widgetHotKeys.filter { owner, _ in
             switch owner {
@@ -944,8 +963,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func requestOpenLauncher() {
+        PerfProbe.mark("launcher.requested", ["deferred": controller?.widgetOptions.isEmpty != false])
         guard controller?.widgetOptions.isEmpty == false else {
             launcherRequested = true
+            // Load the launcher page alongside the host; it is shown once the host has its widgets.
+            launcherWindowCoordinator.prepare()
             return
         }
         launcherRequested = false

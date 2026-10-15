@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
+using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 
@@ -16,6 +18,7 @@ public sealed class LauncherWindow
     private bool _initialized;
     private bool _ready;
     private bool _replaceWebView;
+    private Window? _staging;
 
     public LauncherWindow(Action<int> addWidget, Action openDisplayPreview)
     {
@@ -34,13 +37,51 @@ public sealed class LauncherWindow
             Content = _webView
         };
         _window.Closing += OnClosing;
+        if (PerfLog.Enabled) _window.ContentRendered += (_, _) => PerfLog.Mark("launcher.rendered");
+    }
+
+    /// <summary>
+    /// Starts loading the launcher page while the widget host is still
+    /// loading, so a launcher requested at startup opens already painted. The
+    /// web view loads in a <see cref="WebViewStaging"/> window until
+    /// <see cref="Show"/> moves it into the launcher.
+    /// </summary>
+    public void Preload()
+    {
+        if (_initialized || _initializing || _staging is not null) return;
+        // Creating the launcher's native window now also leaves less for Show.
+        new WindowInteropHelper(_window).EnsureHandle();
+        var staging = WebViewStaging.CreateWindow(_window.Title, _window.Width, _window.Height);
+        new WindowInteropHelper(staging).EnsureHandle();
+        if (!WebViewStaging.SameDpi(staging, _window))
+        {
+            staging.Close();
+            return;
+        }
+        _window.Content = null;
+        staging.Content = _webView;
+        _staging = staging;
+        staging.Show();
+        _ = InitializeAsync();
     }
 
     public void Show()
     {
+        PerfLog.Mark("launcher.show");
+        AdoptPreloadedWebView();
         ShowWindow();
         if (_ready) return;
         if (!_initializing) _ = InitializeAsync();
+    }
+
+    private void AdoptPreloadedWebView()
+    {
+        if (_staging is not { } staging) return;
+        _staging = null;
+        staging.Content = null;
+        _window.Content = _webView;
+        // Closed once the launcher has re-parented the web view's native window.
+        _window.Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(staging.Close));
     }
 
     public void Hide()
@@ -58,14 +99,16 @@ public sealed class LauncherWindow
             {
                 var closed = _webView;
                 _webView = new WebView2();
-                _window.Content = _webView;
+                (_staging ?? _window).Content = _webView;
                 closed.Dispose();
                 _replaceWebView = false;
                 _initialized = false;
             }
             if (!_initialized)
             {
+                PerfLog.Mark("launcher.init");
                 await DashboardWebView.InitializeAsync(_webView, string.Empty);
+                PerfLog.Mark("launcher.controller.ready");
                 var initializedCore = _webView.CoreWebView2;
                 initializedCore.WebMessageReceived += OnWebMessageReceived;
                 initializedCore.NavigationCompleted += OnNavigationCompleted;
@@ -73,6 +116,7 @@ public sealed class LauncherWindow
                 _initialized = true;
             }
             var core = _webView.CoreWebView2;
+            PerfLog.Mark("launcher.navigate");
             core.Navigate(DashboardWebView.BuildUrl(new Dictionary<string, string>
             {
                 ["surface"] = "widget-launcher"
@@ -102,6 +146,7 @@ public sealed class LauncherWindow
     private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs args)
     {
         _initializing = false;
+        PerfLog.Mark("launcher.navcompleted");
         if (!args.IsSuccess)
         {
             DashboardLog.Error($"Widget launcher navigation failed: {args.WebErrorStatus}");
@@ -155,6 +200,7 @@ public sealed class LauncherWindow
                 && widgetType.ValueKind == JsonValueKind.Number
                 && widgetType.TryGetInt32(out var value))
             {
+                PerfLog.Mark("launcher.add-widget", widgetType: value);
                 _addWidget(value);
                 return;
             }

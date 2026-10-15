@@ -182,6 +182,9 @@ function bootstrap(): void {
     tray = new TrayController(host, settings, shortcuts, version, openLauncher, () => void updates?.check(true), () => void requestQuit(), () => displayPreview?.open());
     updates.on('updateAvailable', (availableVersion: string | null) => tray?.setUpdateAvailable(availableVersion));
     void host.start();
+    // Load the launcher alongside the host instead of after its inventory;
+    // openLauncher still presents it only once the host is ready.
+    if (launcherRequested) launcher.prepare();
     setTimeout(() => void updates?.check(), 10_000);
   });
 

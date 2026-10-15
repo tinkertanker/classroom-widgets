@@ -91,6 +91,15 @@ class QuestionsRoom extends Room {
       unansweredCount: this.getUnansweredCount()
     };
   }
+
+  /**
+   * Students load questions with questions:requestState, so the join reply
+   * does not repeat every question asked so far.
+   */
+  toStudentJSON() {
+    const { questions, ...room } = this.toJSON();
+    return room;
+  }
 }
 
 module.exports = QuestionsRoom;

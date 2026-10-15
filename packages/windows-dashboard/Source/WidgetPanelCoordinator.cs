@@ -73,6 +73,7 @@ public sealed class WidgetPanelCoordinator
         foreach (var (id, panel) in _panels.ToList())
         {
             if (incomingIds.Contains(id)) continue;
+            PerfLog.Mark("panel.close", widgetId: id);
             panel.ClosePermanently();
             _panels.Remove(id);
             _freeformFrames.Remove(id);
@@ -239,6 +240,7 @@ public sealed class WidgetPanelCoordinator
 
     private WidgetPanelWindow MakePanel(WidgetPanelDescriptor descriptor)
     {
+        PerfLog.Mark("panel.create", descriptor.Id, descriptor.PerfWidgetType, detail: descriptor.Hidden ? "hidden" : null);
         var panel = new WidgetPanelWindow(descriptor, _backgroundOpacity, _alwaysOnTop, _settings);
         panel.SetWidgetCreationOptions(_options);
         panel.PanelStateChanged += change => PanelStateChanged?.Invoke(change);

@@ -22,6 +22,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     var onWidgetOptionsChanged: (@MainActor ([CompactWidgetOption]) -> Void)?
 
     init(websiteDataStore: WKWebsiteDataStore = .default(), panelCoordinator: WidgetPanelCoordinator? = nil) {
+        PerfProbe.mark("host.init.begin")
         let appVersion = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
         let appVersionJSON = (try? JSONEncoder().encode(appVersion))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "\"unknown\""
@@ -77,6 +78,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
         applySettings()
         loadHost()
+        PerfProbe.mark("host.init.end")
     }
 
     deinit {
@@ -270,7 +272,16 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         resumeAfterFailedDeactivation()
     }
 
+    func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+        PerfProbe.mark("host.nav.start")
+    }
+
+    func webView(_ webView: WKWebView, didCommit navigation: WKNavigation!) {
+        PerfProbe.mark("host.nav.commit")
+    }
+
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        PerfProbe.mark("host.nav.finish")
         setWebBackgroundOpacity(backgroundOpacity)
         webView.evaluateJavaScript(DashboardShortenerSettings.script(), completionHandler: nil)
         webView.evaluateJavaScript(DashboardAudioSettings.script(), completionHandler: nil)
@@ -347,6 +358,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     private func reconcileWidgetPanels(_ inventory: WidgetPanelInventoryPayload) {
+        PerfProbe.mark("host.inventory", ["widgets": inventory.widgets.count, "revision": inventory.revision])
         let descriptors = inventory.widgets.compactMap(Self.widgetPanelDescriptor(from:))
         guard widgetPanelCoordinator.reconcile(snapshot: WidgetPanelSnapshot(
             hostInstanceID: inventory.hostInstanceID,
@@ -507,6 +519,16 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     private var backgroundOpacity: Double {
         min(max(UserDefaults.standard.double(forKey: DashboardSettingKeys.compactBackgroundOpacity), 0), 1)
+    }
+
+    // MARK: Benchmark hooks for PerfScenario
+
+    var perfPanels: WidgetPanelCoordinator { widgetPanelCoordinator }
+
+    func perfApplyState(widgetID: String, state: [String: Any]) {
+        applyPanelStateChange(WidgetPanelStateChange(widgetID: widgetID, payload: [
+            "schemaVersion": 1, "widgetId": widgetID, "baseRevision": 0, "state": state, "flush": true
+        ]))
     }
 
     private func setWebBackgroundOpacity(_ opacity: Double) {

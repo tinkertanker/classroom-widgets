@@ -315,8 +315,10 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
 
   return (
     <div ref={rootRef} className="relative w-full h-full overflow-hidden bg-gradient-to-br from-purple-400 via-pink-400 to-yellow-400 dark:from-purple-600 dark:via-pink-600 dark:to-yellow-600 rounded-lg">
-      {/* Colorful background overlay for slot machine effect */}
-      <div className="absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent animate-pulse" />
+      {/* Colorful background overlay for slot machine effect. It pulses only while
+          spinning: an endless pulse redraws the blurred pills every frame, which
+          kept an idle Randomiser busy on the GPU. */}
+      <div className={`absolute inset-0 bg-gradient-to-t from-transparent via-white/20 to-transparent${isSpinning ? ' animate-pulse' : ''}`} />
       
       {/* Gradient masks for fade effect */}
       <div className="absolute inset-0 pointer-events-none z-10">

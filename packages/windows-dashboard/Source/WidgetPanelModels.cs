@@ -31,6 +31,9 @@ public sealed record WidgetPanelDescriptor(
     bool Hidden,
     JsonElement SnapshotPayload)
 {
+    /// <summary>The snapshot's widget type, for <see cref="PerfLog"/> marks only.</summary>
+    public int? PerfWidgetType => PerfLog.Enabled && SnapshotPayload.TryGetProperty("widgetType", out var type) && type.TryGetInt32(out var value) ? value : null;
+
     public static WidgetPanelDescriptor? FromPayload(JsonElement payload)
     {
         if (payload.ValueKind != JsonValueKind.Object) return null;

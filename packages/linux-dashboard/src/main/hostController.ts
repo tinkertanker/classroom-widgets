@@ -58,7 +58,7 @@ export class WidgetHostController extends EventEmitter {
       webPreferences: {
         preload: bridgePreloadPath(),
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         nodeIntegration: false,
         additionalArguments: [`--classroom-app-version=${appVersion}`],
       },

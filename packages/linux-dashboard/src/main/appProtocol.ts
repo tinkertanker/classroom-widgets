@@ -1,7 +1,7 @@
-import { net, protocol } from 'electron';
+import { protocol } from 'electron';
 import { existsSync, statSync } from 'node:fs';
+import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, resolve, sep } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { log } from './log';
 import { resolveWebRoot } from './webRoot';
 
@@ -62,10 +62,14 @@ export function installProtocolHandler(): void {
     const mime = MIME_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
 
     try {
-      const res = await net.fetch(pathToFileURL(file).toString());
-      const headers = new Headers(res.headers);
-      headers.set('content-type', mime);
-      return new Response(res.body, { status: res.status, headers });
+      // Read the file directly: going through net.fetch(file://) streamed every
+      // body from the network service into this process and back out, which
+      // took ~3 ms per file when idle and ~10 ms under a page load's burst.
+      const [body, info] = await Promise.all([readFile(file), stat(file)]);
+      return new Response(body, {
+        status: 200,
+        headers: { 'content-type': mime, 'last-modified': info.mtime.toUTCString() },
+      });
     } catch (error) {
       log.error(`app:// fetch failed for ${file}: ${error instanceof Error ? error.message : String(error)}`);
       return new Response('Not found', { status: 404 });

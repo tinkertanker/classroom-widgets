@@ -1,7 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+// Self-hosted web fonts. Browsers fetch a face only when text uses it, so the
+// Text Banner families cost nothing until a banner shows them.
+import '@shared/assets/fonts/poppins.css';
+import '@shared/assets/fonts/lora.css';
+import '@shared/assets/fonts/roboto-slab.css';
+import '@shared/assets/fonts/jetbrains-mono.css';
 import './index.css';
-import { redirectFirstVisitToLanding } from './app/firstVisit';
+import { redirectFirstVisitToLanding, rememberLandingSeen } from './app/firstVisit';
 
 const surface = new URLSearchParams(window.location.search).get('surface');
 const isCompactWidgetPanel = surface === 'widget-panel';
@@ -53,16 +59,30 @@ async function renderApp() {
     return;
   }
 
+  // The board (also every desktop dashboard host) needs neither the router nor
+  // Helmet: its only route is `/`, and index.html already carries its tags.
+  if (window.location.pathname === '/') {
+    const { default: App } = await import('./app/App');
+    root.render(
+      <React.StrictMode>
+        <React.Suspense fallback={null}>
+          <App />
+        </React.Suspense>
+      </React.StrictMode>
+    );
+    return;
+  }
+
+  rememberLandingSeen();
   const [
-    { default: App },
     { Helmet, HelmetProvider },
     { BrowserRouter, Routes, Route },
   ] = await Promise.all([
-    import('./app/App'),
     import('react-helmet-async'),
     import('react-router-dom'),
   ]);
 
+  const App = React.lazy(() => import('./app/App'));
   const About = React.lazy(() => import('./pages/About'));
   const WidgetsHub = React.lazy(() => import('./pages/WidgetsHub'));
   const PollPage = React.lazy(() => import('./pages/widgets/PollPage'));
