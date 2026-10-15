@@ -260,6 +260,11 @@ async function launcher(env) {
   }
 }
 
+// The widget-panel URL a desktop shell loads. With --panel-widget-type it also
+// names the widget's type, for a build that starts loading that widget early.
+const panelUrl = (env, snapshot) => `${env.baseUrl}/?surface=widget-panel&widgetId=${encodeURIComponent(snapshot.widgetId)}&backgroundOpacity=1`
+  + (env.panelWidgetType ? `&widgetType=${snapshot.widgetType}` : '');
+
 async function panel(env, type, state, watch, viewport) {
   const snapshot = panelSnapshot(type, state);
   const session = await openPage(env, {
@@ -267,7 +272,7 @@ async function panel(env, type, state, watch, viewport) {
     probe: { native: true, panel: true, snapshot, watch: [{ name: 'content', test: watch }] },
   });
   try {
-    const url = `${env.baseUrl}/?surface=widget-panel&widgetId=${encodeURIComponent(snapshot.widgetId)}&backgroundOpacity=1`;
+    const url = panelUrl(env, snapshot);
     const { result } = await measureLoad(env, session, url, 'content', ['panel-ready', 'panel-content-ready', 'panel-content-painted']);
     const warm = await reloadWarm(env, session, 'content');
     return { ...result, ...warm };
@@ -377,7 +382,7 @@ async function timerRunning(env, surface) {
   const { page, cdp } = session;
   try {
     const url = isPanel
-      ? `${env.baseUrl}/?surface=widget-panel&widgetId=${encodeURIComponent(snapshot.widgetId)}&backgroundOpacity=1`
+      ? panelUrl(env, snapshot)
       : `${env.baseUrl}/`;
     await page.goto(url, { waitUntil: 'commit' });
     await waitForMark(page, 'timer');
@@ -399,7 +404,7 @@ async function randomiserSpin(env, count, surface = 'board') {
   const { page, cdp } = session;
   try {
     const url = isPanel
-      ? `${env.baseUrl}/?surface=widget-panel&widgetId=${encodeURIComponent(snapshot.widgetId)}&backgroundOpacity=1`
+      ? panelUrl(env, snapshot)
       : `${env.baseUrl}/`;
     await page.goto(url, { waitUntil: 'commit' });
     await waitForMark(page, 'ready');

@@ -21,6 +21,8 @@
 //   --settle ms        idle time after "ready" for late work and LCP [1500]
 //   --window ms        measuring window for a running Timer [10000]
 //   --no-compress      serve without gzip, like the desktop apps' disk reads
+//   --panel-widget-type  also put `widgetType=<n>` in widget-panel URLs, for a build
+//                      that preloads the named widget (others ignore it)
 //   --out dir          writes raw.jsonl, summary.json and summary.md
 // Set CHROME_BIN to use a particular Chromium.
 //
@@ -54,7 +56,7 @@ const teacherDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 function parseArgs(argv) {
   const options = {
     app: 'teacher', builds: [], servers: {}, scenarios: null, runs: 10, warmup: 1, cpu: [1, 4], fonts: 'replay:100',
-    settle: 1500, window: 10000, compress: true, out: null, submissions: 300, questions: 200, joins: 20, network: 'none', historyPort: 3001,
+    settle: 1500, window: 10000, compress: true, panelWidgetType: false, out: null, submissions: 300, questions: 200, joins: 20, network: 'none', historyPort: 3001,
   };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -87,6 +89,7 @@ function parseArgs(argv) {
       case '--settle': options.settle = Number(value()); break;
       case '--window': options.window = Number(value()); break;
       case '--no-compress': options.compress = false; break;
+      case '--panel-widget-type': options.panelWidgetType = true; break;
       case '--out': options.out = value(); break;
       default:
         throw new Error(`unknown option ${arg}`);
@@ -159,7 +162,7 @@ function markdown(summary, builds, options) {
     '',
     `Builds: ${builds.map((build) => `\`${build.name}\` = ${build.dir}${build.serverDir ? ` (server ${build.serverDir})` : ''}`).join(', ')}`,
     ...(options.app === 'student' || options.scenarioList.includes('board-history') ? [`Session history: ${options.submissions} Drop Box entries, ${options.questions} questions.${options.app === 'student' ? ` server-join: ${options.joins} joins per sample.` : ''}`] : []),
-    `Runs: ${options.runs} measured (+${options.warmup} warm-up) per build, scenario and CPU rate, interleaved. Fonts: ${options.fonts}. Network: ${options.network}. Compression: ${options.compress ? 'gzip' : 'none'}. Each cell: median (p90) [n].`,
+    `Runs: ${options.runs} measured (+${options.warmup} warm-up) per build, scenario and CPU rate, interleaved. Fonts: ${options.fonts}. Network: ${options.network}. Compression: ${options.compress ? 'gzip' : 'none'}.${options.panelWidgetType ? ' Panel URLs name the widget type.' : ''} Each cell: median (p90) [n].`,
     '',
   ];
   let current = '';
@@ -229,7 +232,7 @@ async function main() {
         for (const scenario of options.scenarioList) {
           for (const build of order) {
             const env = {
-              browser, baseUrl: build.server.url, cpu, settleMs: options.settle, windowMs: options.window,
+              browser, baseUrl: build.server.url, cpu, settleMs: options.settle, windowMs: options.window, panelWidgetType: options.panelWidgetType,
               installFonts: fontsInstaller(fonts, network), errors: [], target: build.target, joins: options.joins, network, history,
             };
             const started = Date.now();
