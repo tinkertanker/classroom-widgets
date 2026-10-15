@@ -4,8 +4,9 @@
 const { app, BrowserWindow, contentTracing, ipcMain, protocol, session, webContents: allContents } = require('electron');
 const { readdirSync, readFileSync, writeFileSync } = require('node:fs');
 const { join, resolve } = require('node:path');
+const { readProcessCpu, cpuNsBetween } = require('./processCpu.cjs');
 
-const now = () => performance.timeOrigin + performance.now();
+const now =() => performance.timeOrigin + performance.now();
 const entryTime = now();
 const appDir = resolve(process.env.BENCH_APP_DIR);
 const profile = resolve(process.env.BENCH_PROFILE);
@@ -81,8 +82,12 @@ function sampleProcesses() {
   }
   return processTree().map((pid) => {
     const entry = { pid, kind: processKind(pid), role: roles.get(pid) ?? null, cpuNs: 0, pssKiB: 0, privateKiB: 0 };
+    // CPU of every thread, not only the leader; the reading itself stays out of the JSON.
+    const cpu = readProcessCpu(pid);
+    Object.defineProperty(entry, 'cpu', { value: cpu });
     try {
-      entry.cpuNs = Number(readFileSync(`/proc/${pid}/schedstat`, 'utf8').split(' ')[0]);
+      if (!cpu) throw new Error('gone');
+      entry.cpuNs = cpu.ns;
       const rollup = readFileSync(`/proc/${pid}/smaps_rollup`, 'utf8');
       entry.pssKiB = Number(/^Pss:\s+(\d+)/m.exec(rollup)?.[1] ?? 0);
       for (const match of rollup.matchAll(/^Private_(?:Clean|Dirty):\s+(\d+) kB/gm)) entry.privateKiB += Number(match[1]);
@@ -104,7 +109,7 @@ function snapshot(label) {
   return processes;
 }
 async function cpuOver(label, ms, during) {
-  const before = new Map(sampleProcesses().map((entry) => [entry.pid, entry]));
+  const before = new Map(sampleProcesses().map((entry) => [entry.pid, entry.cpu]));
   const started = now();
   const extra = during ? await during() : null;
   const remaining = ms - (now() - started);
@@ -114,7 +119,7 @@ async function cpuOver(label, ms, during) {
   const byKind = {};
   let total = 0;
   for (const entry of after) {
-    const delta = (entry.cpuNs - (before.get(entry.pid)?.cpuNs ?? 0)) / 1e6;
+    const delta = cpuNsBetween(before.get(entry.pid), entry.cpu) / 1e6;
     total += delta;
     const key = entry.role ? `${entry.kind}:${entry.role}` : entry.kind;
     byKind[key] = (byKind[key] ?? 0) + delta;
@@ -288,11 +293,8 @@ async function openWidget(type, label) {
   // CPU the panel's renderers used from spawn to painted content: a companion
   // to wall-clock that is less sensitive to other load on the machine.
   const cpuOf = (contents) => {
-    try {
-      return Number(readFileSync(`/proc/${contents.getOSProcessId()}/schedstat`, 'utf8').split(' ')[0]) / 1e6;
-    } catch {
-      return null;
-    }
+    const cpu = readProcessCpu(contents.getOSProcessId());
+    return cpu ? cpu.ns / 1e6 : null;
   };
   const viewCpuMs = cpuOf(allContents.fromId(viewWc));
   const chromeCpuMs = chromeWindow ? cpuOf(chromeWindow.webContents) : null;
