@@ -98,12 +98,16 @@ export async function hostSession(serverUrl, { dropBox, questionsRoom, submissio
     await Promise.all(Array.from({ length: Math.min(25, helpers - start) }, async (_, offset) => {
       const index = start + offset;
       const { socket } = await join(serverUrl, code, `Student ${index + 1}`);
-      for (let k = 0; k < 3 && links < submissions; k++, links++) {
+      // Claim each slot before awaiting, so helpers running at the same time
+      // cannot all pass the check and overshoot the configured totals.
+      for (let k = 0; k < 3 && links < submissions; k++) {
+        links++;
         const submitted = once(socket, 'session:linkShare:submitted');
         socket.emit('session:linkShare:submit', { sessionCode: code, widgetId: dropBox, content: `https://example.com/lesson/notes/${index}-${k}?ref=student-${index + 1}&topic=photosynthesis-and-respiration` });
         await submitted;
       }
-      for (let k = 0; k < 2 && asked < questions; k++, asked++) {
+      for (let k = 0; k < 2 && asked < questions; k++) {
+        asked++;
         const submitted = once(socket, 'session:questions:submitted');
         socket.emit('session:questions:submit', { sessionCode: code, widgetId: questionsRoom, question: `Question ${index}-${k}: why does the light-dependent stage need water, and where does the oxygen we breathe come from?` });
         await submitted;

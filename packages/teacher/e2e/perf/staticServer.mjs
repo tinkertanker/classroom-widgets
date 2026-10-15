@@ -73,7 +73,14 @@ export async function serveBuild(directory, { compress = true, base = '/', proxy
       return;
     }
     const path = url.pathname.slice(base.length - 1) || '/';
-    const candidate = resolve(normalize(join(root, decodeURIComponent(path))));
+    let decoded;
+    try {
+      decoded = decodeURIComponent(path);
+    } catch {
+      response.writeHead(400).end('Bad request');
+      return;
+    }
+    const candidate = resolve(normalize(join(root, decoded)));
     const isFile = candidate.startsWith(root + sep) && existsSync(candidate) && statSync(candidate).isFile();
     if (!isFile && path.startsWith('/assets/')) {
       response.writeHead(404).end('Not found');
