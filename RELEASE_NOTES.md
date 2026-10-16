@@ -1,5 +1,10 @@
-Choose where Classroom Widgets lives on your Mac.
+Faster startup and widget opening, plus a round of widget fixes.
 
-- macOS: show the app in the Dock, the menu bar, or both. Choose App Icon in Settings → General, then quit and reopen to apply.
-- macOS: right-click the Dock icon to add and arrange widgets, open the launcher or Settings, and access the other menu-bar actions.
-- Windows and Linux: rebuilt at the same version; existing tray behavior is unchanged.
+- All platforms: the app starts sooner and widgets open faster, because the launcher now loads alongside the hidden widget host.
+- All platforms: fonts are bundled with the app, so widgets no longer fetch them from Google Fonts and look the same offline.
+- Timer: adding time no longer drifts, and the countdown animation is smoother.
+- Randomiser: a spin no longer restarts unexpectedly, and the overlay only animates while it is spinning.
+- Sound Effects: keyboard shortcuts no longer swallow typed digits.
+- Task Cue: the cue sound no longer repeats.
+- macOS: the compact panel keeps accepting edits after its state changes.
+- Linux: widget renderers now run sandboxed.
