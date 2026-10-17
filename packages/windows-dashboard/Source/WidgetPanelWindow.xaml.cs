@@ -275,7 +275,7 @@ public partial class WidgetPanelWindow : Window
         {
             await DashboardWebView.InitializeAsync(
                 WebView,
-                "window.__CLASSROOM_WIDGET_PANEL__ = true;" + DashboardAudioSettings.Script(_settings));
+                DashboardAudioSettings.Script(_settings));
         }
         catch (Exception error) when (error is WebView2RuntimeNotFoundException or COMException)
         {

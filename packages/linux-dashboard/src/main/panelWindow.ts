@@ -123,7 +123,7 @@ export class WidgetPanelWindow extends EventEmitter {
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
-        additionalArguments: ['--classroom-widget-panel', `--classroom-app-version=${appVersion}`],
+        additionalArguments: [`--classroom-app-version=${appVersion}`],
       },
     });
     this.view.setBackgroundColor('#00000000');

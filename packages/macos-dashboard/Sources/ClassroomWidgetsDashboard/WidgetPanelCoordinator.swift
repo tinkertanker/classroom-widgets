@@ -1247,7 +1247,7 @@ private final class WidgetPanelWebViewFactory {
 
         let userContentController = WKUserContentController()
         userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGET_PANEL__ = true; \(DashboardAudioSettings.script())",
+            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; \(DashboardAudioSettings.script())",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))

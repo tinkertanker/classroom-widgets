@@ -13,6 +13,3 @@ contextBridge.exposeInMainWorld('classroomNativeBridge', {
 });
 contextBridge.exposeInMainWorld('__CLASSROOM_WIDGETS_LINUX__', true);
 contextBridge.exposeInMainWorld('__CLASSROOM_WIDGETS_LINUX_VERSION__', appVersion);
-if (args.includes('--classroom-widget-panel')) {
-  contextBridge.exposeInMainWorld('__CLASSROOM_WIDGET_PANEL__', true);
-}
