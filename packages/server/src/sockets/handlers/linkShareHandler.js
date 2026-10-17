@@ -38,7 +38,7 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('ROOM_NOT_FOUND'));
       return;
     }
-    const { room, roomId: linkShareRoomId } = guard;
+    const { room } = guard;
 
     const participant = session.participants.get(socket.id);
     if (!participant) {
@@ -91,7 +91,8 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     }
 
     // Validate student name if provided
-    const studentName = data.studentName || participant.name;
+    // Trimmed, as the validator measured it: padding cannot oversize the name.
+    const studentName = data.studentName ? data.studentName.trim() : participant.name;
     if (data.studentName) {
       const nameValidation = validators.studentName(data.studentName);
       if (!nameValidation.valid) {
@@ -101,8 +102,8 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     }
 
     // Update participant name if provided
-    if (data.studentName && data.studentName !== participant.name) {
-      participant.name = data.studentName;
+    if (data.studentName && studentName !== participant.name) {
+      participant.name = studentName;
     }
 
     const submission = room.addSubmission(studentName, content, isLink);
@@ -112,13 +113,14 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    // Notify all in the room
-    const submissionData = {
-      ...submission,
-      widgetId: data.widgetId
-    };
-
-    io.to(`${session.code}:${linkShareRoomId}`).emit(EVENTS.LINK_SHARE.SUBMISSION_ADDED, submissionData);
+    // Submissions are for the teacher only (see LinkShareRoom#toStudentJSON):
+    // classmates in the room must not receive each other's work and names.
+    if (session.hostSocketId) {
+      io.to(session.hostSocketId).emit(EVENTS.LINK_SHARE.SUBMISSION_ADDED, {
+        ...submission,
+        widgetId: data.widgetId
+      });
+    }
 
     // Send confirmation to submitter
     socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createSuccessResponse());

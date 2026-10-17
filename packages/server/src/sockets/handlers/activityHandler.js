@@ -59,7 +59,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     // Broadcast state update to all participants
     const stateData = {
       widgetId: data.widgetId,
-      activity: room.activity,
+      activity: room.getStudentActivity(),
       isActive: room.isActive,
       actions: room.getActions(null),
       responseCount: room.getResponseCount()
@@ -146,7 +146,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     // Broadcast state update to all participants
     const stateData = {
       widgetId: data.widgetId,
-      activity: room.activity,
+      activity: room.getStudentActivity(),
       isActive: room.isActive,
       actions: room.getActions(null),
       responseCount: 0,
@@ -298,7 +298,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
           widgetId,
           studentId: socket.id,
           studentName: participant.name,
-          response: answers,
+          response: result.answers,
           results: result.results
         });
       }

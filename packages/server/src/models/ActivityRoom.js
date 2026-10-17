@@ -1,5 +1,8 @@
 const Room = require('./Room');
 
+const MAX_TEXT_INPUT_LENGTH = 2000;
+const MAX_ANSWER_ID_LENGTH = 100;
+
 /**
  * Room class to manage interactive activity sessions
  * Supports fill-in-the-blank, sorting, sequencing, and matching activities
@@ -77,12 +80,16 @@ class ActivityRoom extends Room {
       return { success: false, error: 'Already submitted' };
     }
 
+    // Keep only the fields grading reads, capped to this activity's targets,
+    // so a student cannot park megabytes of junk in server memory.
+    const normalized = this.normalizeAnswers(answers);
+
     // Evaluate the submission
-    const results = this.evaluateAnswers(answers);
+    const results = this.evaluateAnswers(normalized);
 
     // Store the response
     this.responses.set(socketId, {
-      answers,
+      answers: normalized,
       results,
       submittedAt: Date.now()
     });
@@ -91,8 +98,56 @@ class ActivityRoom extends Room {
 
     return {
       success: true,
+      answers: normalized,
       results,
       showFeedback: this.showImmediateFeedback
+    };
+  }
+
+  /**
+   * Reduce a student's submission to `{ placements, textInputs }` with one
+   * placement and one text input per known target, and bounded text.
+   */
+  normalizeAnswers(answers) {
+    const source = answers && typeof answers === 'object' ? answers : {};
+    const targets = this.activity && Array.isArray(this.activity.targets) ? this.activity.targets : [];
+    const targetIds = new Set(targets.map(target => target && target.id).filter(id => typeof id === 'string'));
+
+    const placements = [];
+    const placedTargets = new Set();
+    for (const p of Array.isArray(source.placements) ? source.placements : []) {
+      if (placements.length >= targetIds.size) break;
+      if (!p || typeof p.itemId !== 'string' || typeof p.targetId !== 'string') continue;
+      if (!targetIds.has(p.targetId) || placedTargets.has(p.targetId)) continue;
+      placedTargets.add(p.targetId);
+      placements.push({ itemId: p.itemId.slice(0, MAX_ANSWER_ID_LENGTH), targetId: p.targetId });
+    }
+
+    const textInputs = {};
+    const rawInputs = source.textInputs && typeof source.textInputs === 'object' ? source.textInputs : {};
+    for (const id of targetIds) {
+      if (Object.prototype.hasOwnProperty.call(rawInputs, id) && typeof rawInputs[id] === 'string') {
+        textInputs[id] = rawInputs[id].slice(0, MAX_TEXT_INPUT_LENGTH);
+      }
+    }
+
+    return { placements, textInputs };
+  }
+
+  /**
+   * The activity as students may see it: targets without the `accepts`
+   * answer key. Grading and reveals stay on the server.
+   */
+  getStudentActivity() {
+    if (!this.activity) return this.activity;
+    const targets = Array.isArray(this.activity.targets) ? this.activity.targets : [];
+    return {
+      ...this.activity,
+      targets: targets.map(target => {
+        if (!target || typeof target !== 'object') return target;
+        const { accepts, ...rest } = target;
+        return rest;
+      })
     };
   }
 
@@ -283,7 +338,7 @@ class ActivityRoom extends Room {
     const response = this.responses.get(socketId);
 
     return {
-      activity: this.activity,
+      activity: this.getStudentActivity(),
       isActive: this.isActive,
       actions: this.getActions(socketId),
       // Results are only shown to students when immediate feedback is on
@@ -314,6 +369,10 @@ class ActivityRoom extends Room {
       // Include default actions for initial state (without specific student context)
       actions: this.getActions(null)
     };
+  }
+
+  toStudentJSON() {
+    return { ...this.toJSON(), activity: this.getStudentActivity() };
   }
 }
 
