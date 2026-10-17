@@ -1,7 +1,6 @@
 const { EVENTS, LIMITS } = require('../../config/constants');
 const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
-const { createErrorResponse, createSuccessResponse, ERROR_CODES } = require('../../utils/errors');
 const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
 const { closeRoomAndNotify } = require('../closeRoom');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
@@ -420,7 +419,7 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       }
       
       // Notify all participants that session is closing
-      io.to(`session:${session.code}`).emit('session:closed');
+      io.to(`session:${session.code}`).emit(EVENTS.SESSION.CLOSED);
       
       // Remove all participants from session rooms
       session.activeRooms.forEach((room, roomId) => {

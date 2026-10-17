@@ -138,7 +138,6 @@ module.exports = {
       FEEDBACK: 'activity:feedback',
       REVEALED: 'activity:revealed',
       RESPONSE_RECEIVED: 'activity:responseReceived',
-      SUBMITTED: 'session:activity:submitted',
       RETRY_READY: 'activity:retryReady'
     }
   }

@@ -8,7 +8,6 @@
 const fs = require('fs');
 const path = require('path');
 
-const SHARED_DIR = path.join(__dirname, '../shared');
 const SRC_DIR = path.join(__dirname, '../packages/shared/constants');
 const SERVER_DIR = path.join(__dirname, '../packages/server/src/shared/constants');
 

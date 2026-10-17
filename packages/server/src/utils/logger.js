@@ -152,17 +152,6 @@ class Logger {
   debug(message, meta) {
     this.log('debug', message, meta);
   }
-
-  /**
-   * Log errors with stack trace
-   */
-  logError(error, context = {}) {
-    this.error(error.message, {
-      ...context,
-      stack: error.stack,
-      code: error.code
-    });
-  }
 }
 
 // Create singleton instance
