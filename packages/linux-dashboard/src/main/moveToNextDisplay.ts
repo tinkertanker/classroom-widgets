@@ -1,26 +1,4 @@
-export interface MoveRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-function intersectionArea(a: MoveRect, b: MoveRect): number {
-  const width = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
-  const height = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
-  return width > 0 && height > 0 ? width * height : 0;
-}
-
-function clampInto(frame: MoveRect, bounds: MoveRect): MoveRect {
-  const width = Math.min(frame.width, bounds.width);
-  const height = Math.min(frame.height, bounds.height);
-  return {
-    x: Math.min(Math.max(frame.x, bounds.x), bounds.x + bounds.width - width),
-    y: Math.min(Math.max(frame.y, bounds.y), bounds.y + bounds.height - height),
-    width,
-    height,
-  };
-}
+import { clampRect, intersectionArea, type Rect } from './displayGeometry';
 
 export type MoveDirection = 'previous' | 'next';
 
@@ -31,7 +9,7 @@ export type MoveDirection = 'previous' | 'next';
  * area. Returns null with fewer than two displays or when the panel overlaps
  * no work area.
  */
-export function nextDisplayFrame(frame: MoveRect, workAreas: MoveRect[], direction: MoveDirection = 'next'): MoveRect | null {
+export function nextDisplayFrame(frame: Rect, workAreas: Rect[], direction: MoveDirection = 'next'): Rect | null {
   if (workAreas.length < 2) return null;
   const sorted = [...workAreas].sort((a, b) => a.x - b.x || a.y - b.y);
   let sourceIndex = -1;
@@ -47,7 +25,7 @@ export function nextDisplayFrame(frame: MoveRect, workAreas: MoveRect[], directi
   const step = direction === 'next' ? 1 : -1;
   const source = sorted[sourceIndex];
   const target = sorted[(sourceIndex + step + sorted.length) % sorted.length];
-  return clampInto({
+  return clampRect({
     x: target.x + frame.x - source.x,
     y: target.y + frame.y - source.y,
     width: frame.width,

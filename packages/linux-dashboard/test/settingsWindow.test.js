@@ -34,7 +34,7 @@ function harness() {
     exports, process,
     require(name) {
       if (name === 'electron') return { BrowserWindow, ipcMain, app: { getAppPath: () => '.' } };
-      if (name === './panelWindow') return { rendererDir: () => '.' };
+      if (name === './paths') return { preloadPath: () => '.', rendererPath: () => '.' };
       if (name.startsWith('./')) return require('../out/main/' + name.slice(2));
       return require(name);
     },

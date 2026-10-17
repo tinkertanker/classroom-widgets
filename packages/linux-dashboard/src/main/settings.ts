@@ -45,13 +45,28 @@ export interface DashboardSettingsData {
   moveWidgetNextShortcut?: string | null;
 }
 
+function readShortcutMap(raw: unknown, target: Record<string, string | null>): void {
+  if (!raw || typeof raw !== 'object') return;
+  for (const [widgetType, shortcut] of Object.entries(raw)) {
+    if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
+      target[widgetType] = shortcut;
+    }
+  }
+}
+
+function readFrame(frame: unknown): PanelFrame | null {
+  if (!frame || typeof frame !== 'object') return null;
+  const { left, top, width, height } = frame as Record<string, unknown>;
+  if (typeof left !== 'number' || typeof top !== 'number' || typeof width !== 'number' || typeof height !== 'number') return null;
+  return { left, top, width, height };
+}
+
 /**
  * User preferences persisted as pretty JSON under the Electron userData
  * directory (~/.config/ClassroomWidgets). Panel frames are keyed by widget ID
  * so widgets reopen where they were left. Mirrors DashboardSettings.cs.
  */
 export class DashboardSettings extends EventEmitter {
-  readonly backgroundOpacityDefault = 1;
   backgroundOpacity = 1;
   outputVolume = 1;
   alwaysOnTop = true;
@@ -91,45 +106,23 @@ export class DashboardSettings extends EventEmitter {
         settings.linkShortener = readShortenerSettings(raw.linkShortener);
         if (raw.widgetShortcutsInitialized === true) settings.widgetShortcutsInitialized = true;
         if (raw.widgetShortcutMenuOrderApplied === true) settings.widgetShortcutMenuOrderApplied = true;
-        if (raw.widgetShortcuts && typeof raw.widgetShortcuts === 'object') {
-          for (const [widgetType, shortcut] of Object.entries(raw.widgetShortcuts)) {
-            if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
-              settings.widgetShortcuts[widgetType] = shortcut;
-            }
-          }
-        }
-        if (raw.widgetDismissShortcuts && typeof raw.widgetDismissShortcuts === 'object') {
-          for (const [widgetType, shortcut] of Object.entries(raw.widgetDismissShortcuts)) {
-            if (/^-?\d+$/.test(widgetType) && (typeof shortcut === 'string' || shortcut === null)) {
-              settings.widgetDismissShortcuts[widgetType] = shortcut;
-            }
-          }
-        }
+        readShortcutMap(raw.widgetShortcuts, settings.widgetShortcuts);
+        readShortcutMap(raw.widgetDismissShortcuts, settings.widgetDismissShortcuts);
         if (raw.panelFrames && typeof raw.panelFrames === 'object') {
           for (const [id, frame] of Object.entries(raw.panelFrames)) {
-            if (
-              frame && typeof frame === 'object'
-              && typeof frame.left === 'number' && typeof frame.top === 'number'
-              && typeof frame.width === 'number' && typeof frame.height === 'number'
-            ) {
-              settings.panelFrames[id] = { left: frame.left, top: frame.top, width: frame.width, height: frame.height };
-            }
+            const parsed = readFrame(frame);
+            if (parsed) settings.panelFrames[id] = parsed;
           }
         }
-        if (raw.displayPreviewFrame && typeof raw.displayPreviewFrame === 'object') {
-          const frame = raw.displayPreviewFrame;
-          if (
-            typeof frame.left === 'number' && typeof frame.top === 'number'
-            && typeof frame.width === 'number' && typeof frame.height === 'number'
-          ) settings.displayPreviewFrame = { left: frame.left, top: frame.top, width: frame.width, height: frame.height };
-        }
+        const displayPreviewFrame = readFrame(raw.displayPreviewFrame);
+        if (displayPreviewFrame) settings.displayPreviewFrame = displayPreviewFrame;
         if (typeof raw.displayPreviewSourceId === 'number' && Number.isFinite(raw.displayPreviewSourceId)) {
           settings.displayPreviewSourceId = raw.displayPreviewSourceId;
         }
-        if (typeof raw.displayPreviewShortcut === 'string' || raw.displayPreviewShortcut === null) settings.displayPreviewShortcut = raw.displayPreviewShortcut;
-        if (typeof raw.displayPreviewDismissShortcut === 'string' || raw.displayPreviewDismissShortcut === null) settings.displayPreviewDismissShortcut = raw.displayPreviewDismissShortcut;
-        if (typeof raw.moveWidgetPreviousShortcut === 'string' || raw.moveWidgetPreviousShortcut === null) settings.moveWidgetPreviousShortcut = raw.moveWidgetPreviousShortcut;
-        if (typeof raw.moveWidgetNextShortcut === 'string' || raw.moveWidgetNextShortcut === null) settings.moveWidgetNextShortcut = raw.moveWidgetNextShortcut;
+        for (const key of ['displayPreviewShortcut', 'displayPreviewDismissShortcut', 'moveWidgetPreviousShortcut', 'moveWidgetNextShortcut'] as const) {
+          const value = raw[key];
+          if (typeof value === 'string' || value === null) settings[key] = value;
+        }
       }
     } catch (error) {
       log.warn(`Unable to read settings: ${error instanceof Error ? error.message : String(error)}`);
@@ -197,10 +190,6 @@ export class DashboardSettings extends EventEmitter {
   setDisplayPreviewSourceId(id: number | null): void {
     this.displayPreviewSourceId = id ?? undefined;
     this.save();
-  }
-
-  getDisplayPreviewShortcut(): string | null {
-    return this.displayPreviewShortcut ?? null;
   }
 
   setDisplayPreviewShortcut(shortcut: string | null): void {

@@ -1,7 +1,7 @@
 import { BrowserWindow } from 'electron';
 import { buildUrl } from './appProtocol';
 import { registerNativeMessages } from './nativeMessages';
-import { bridgePreloadPath } from './panelWindow';
+import { preloadPath } from './paths';
 import { configureWebContents } from './webContentsSetup';
 
 export class LauncherWindow {
@@ -55,7 +55,7 @@ export class LauncherWindow {
       autoHideMenuBar: true,
       backgroundColor: '#F5F3F1',
       webPreferences: {
-        preload: bridgePreloadPath(),
+        preload: preloadPath('bridge'),
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,

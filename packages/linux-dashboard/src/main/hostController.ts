@@ -10,7 +10,7 @@ import {
 } from './models';
 import { HostWriteTracker } from './hostWriteTracker';
 import { registerNativeMessages } from './nativeMessages';
-import { bridgePreloadPath } from './panelWindow';
+import { preloadPath } from './paths';
 import { WidgetPanelCoordinator } from './panelCoordinator';
 import { audioSettingsScript, DashboardSettings } from './settings';
 import { configureWebContents, evaluateBool } from './webContentsSetup';
@@ -37,6 +37,7 @@ export class WidgetHostController extends EventEmitter {
   private pendingRecoveryChanges: WidgetPanelStateChange[] | null = null;
   private reloadInProgress = false;
   private initialized = false;
+  private shuttingDown = false;
 
   widgetOptions: CompactWidgetOption[] = [];
 
@@ -56,7 +57,7 @@ export class WidgetHostController extends EventEmitter {
       height: 800,
       skipTaskbar: true,
       webPreferences: {
-        preload: bridgePreloadPath(),
+        preload: preloadPath('bridge'),
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
@@ -80,7 +81,12 @@ export class WidgetHostController extends EventEmitter {
     });
   }
 
-  private shuttingDown = false;
+  private callHost(method: string, argument: unknown): Promise<boolean> {
+    return evaluateBool(
+      this.window.webContents,
+      `(() => { const host = window.classroomPanelHost; return host?.${method} ? host.${method}(${JSON.stringify(argument)}) : false; })()`,
+    );
+  }
 
   markShuttingDown(): void {
     this.shuttingDown = true;
@@ -109,35 +115,23 @@ export class WidgetHostController extends EventEmitter {
 
   async addWidget(widgetType: number): Promise<void> {
     if (!this.initialized) return;
-    const applied = await evaluateBool(
-      this.window.webContents,
-      `(() => { const host = window.classroomPanelHost; return host?.addWidget ? host.addWidget(${JSON.stringify(widgetType)}) : false; })()`,
-    );
+    const applied = await this.callHost('addWidget', widgetType);
     if (!applied) log.warn(`Host refused to add widget type ${widgetType}`);
   }
 
   async showWidget(widgetType: number): Promise<void> {
     if (!this.initialized) return;
-    await evaluateBool(
-      this.window.webContents,
-      `(() => { const host = window.classroomPanelHost; return host?.showWidget ? host.showWidget(${JSON.stringify(widgetType)}) : false; })()`,
-    );
+    await this.callHost('showWidget', widgetType);
   }
 
   async dismissWidget(widgetType: number): Promise<void> {
     if (!this.initialized) return;
-    await evaluateBool(
-      this.window.webContents,
-      `(() => { const host = window.classroomPanelHost; return host?.dismissWidget ? host.dismissWidget(${JSON.stringify(widgetType)}) : false; })()`,
-    );
+    await this.callHost('dismissWidget', widgetType);
   }
 
   async toggleWidget(widgetType: number): Promise<void> {
     if (!this.initialized) return;
-    await evaluateBool(
-      this.window.webContents,
-      `(() => { const host = window.classroomPanelHost; return host?.toggleWidget ? host.toggleWidget(${JSON.stringify(widgetType)}) : false; })()`,
-    );
+    await this.callHost('toggleWidget', widgetType);
   }
 
   async reloadWidgets(): Promise<void> {
@@ -175,7 +169,7 @@ export class WidgetHostController extends EventEmitter {
     for (let attempt = 0; attempt <= 20; attempt++) {
       const apply = this.applyFinalPanelStateChanges(preparation.changes);
       const result = await raceTimeout(apply, 1000);
-      if (result !== 'timeout' && result === true) {
+      if (result === true) {
         if (preparation.prepared) this.coordinator.deactivate();
         else this.resumeAfterFailedDeactivation();
         return preparation.prepared;
@@ -264,11 +258,7 @@ export class WidgetHostController extends EventEmitter {
 
   private async applyPanelStateChange(change: WidgetPanelStateChange): Promise<boolean> {
     if (!this.initialized) return false;
-    const payload = JSON.stringify(change.payload);
-    return evaluateBool(
-      this.window.webContents,
-      `(() => { const host = window.classroomPanelHost; return host?.applyStateChange ? host.applyStateChange(${payload}) : false; })()`,
-    );
+    return this.callHost('applyStateChange', change.payload);
   }
 
   private async applyRandomiserListChange(change: unknown): Promise<void> {
@@ -276,10 +266,7 @@ export class WidgetHostController extends EventEmitter {
     const generation = this.hostWrites.begin();
     let applied = false;
     try {
-      applied = await evaluateBool(
-        this.window.webContents,
-        `(() => { const host = window.classroomPanelHost; return host?.applyRandomiserListChange ? host.applyRandomiserListChange(${JSON.stringify(change)}) : false; })()`,
-      );
+      applied = await this.callHost('applyRandomiserListChange', change);
     } finally {
       this.hostWrites.finish(applied, generation);
     }
@@ -288,11 +275,7 @@ export class WidgetHostController extends EventEmitter {
 
   private async removeWidget(widgetId: string): Promise<void> {
     if (!this.initialized) return;
-    const idJson = JSON.stringify(widgetId);
-    await evaluateBool(
-      this.window.webContents,
-      `(() => { const host = window.classroomPanelHost; return host?.removeWidget ? host.removeWidget(${idJson}) : false; })()`,
-    );
+    await this.callHost('removeWidget', widgetId);
   }
 
   private async applyFinalPanelStateChanges(changes: WidgetPanelStateChange[]): Promise<boolean> {

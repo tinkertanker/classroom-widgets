@@ -1,7 +1,6 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
-import { join } from 'node:path';
+import { BrowserWindow, ipcMain } from 'electron';
 import { DashboardSettings, outputVolumePresets } from './settings';
-import { rendererDir } from './panelWindow';
+import { preloadPath, rendererPath } from './paths';
 import { readShortenerSettings } from './shortenerSettings';
 import { WidgetShortcutController } from './widgetShortcuts';
 
@@ -117,7 +116,7 @@ export function openSettingsWindow(settings: DashboardSettings, shortcuts: Widge
     alwaysOnTop: true,
     backgroundColor: '#F5F5F7',
     webPreferences: {
-      preload: join(app.getAppPath(), 'out', 'preload', 'settings.js'),
+      preload: preloadPath('settings'),
       contextIsolation: true,
       sandbox: false,
       nodeIntegration: false,
@@ -129,5 +128,5 @@ export function openSettingsWindow(settings: DashboardSettings, shortcuts: Widge
     shortcuts.setCapturing(false);
     settingsWindow = null;
   });
-  void win.loadFile(join(rendererDir(), 'settings.html'));
+  void win.loadFile(rendererPath('settings.html'));
 }

@@ -116,9 +116,7 @@ export class UpdateController extends EventEmitter {
     const response = await net.fetch(asset.browser_download_url, { redirect: 'follow' });
     if (!response.ok || !response.body) throw new Error(`Update download returned ${response.status}`);
     await pipeline(Readable.fromWeb(response.body as import('node:stream/web').ReadableStream<Uint8Array>), createWriteStream(destination));
-    const hash = createHash('sha256');
-    for await (const chunk of createReadStream(destination)) hash.update(chunk);
-    if (`sha256:${hash.digest('hex')}` !== asset.digest) throw new Error('Update checksum verification failed');
+    if (`sha256:${await this.sha256(destination)}` !== asset.digest) throw new Error('Update checksum verification failed');
     return destination;
   }
 

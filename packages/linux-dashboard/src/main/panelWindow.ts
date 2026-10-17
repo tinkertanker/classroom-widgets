@@ -1,12 +1,12 @@
 import { BrowserWindow, ipcMain, Menu, screen, WebContentsView } from 'electron';
 import { EventEmitter } from 'node:events';
-import { join } from 'node:path';
-import { app } from 'electron';
+import type { Rect } from './displayGeometry';
 import { buildUrl, ORIGIN } from './appProtocol';
 import { log } from './log';
 import {
   clampSize,
   CompactWidgetOption,
+  isRecord,
   WidgetPanelDescriptor,
   WidgetPanelLayout,
   WidgetPanelStateChange,
@@ -16,18 +16,7 @@ import { configureWebContents, evaluate, evaluateBool } from './webContentsSetup
 import { audioSettingsScript, outputVolumeLabel, outputVolumePresets, type DashboardSettings } from './settings';
 import { shortenerSettingsScript } from './shortenerSettings';
 import { widgetMenuItems } from './widgetMenu';
-
-export interface RectFrame {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-interface ChromeAction {
-  action?: unknown;
-  payload?: unknown;
-}
+import { preloadPath, rendererPath } from './paths';
 
 interface ChromeUpdate {
   title: string;
@@ -55,16 +44,15 @@ function installChromeListener(): void {
   });
 }
 
-export function bridgePreloadPath(): string {
-  return join(app.getAppPath(), 'out', 'preload', 'bridge.js');
-}
-
-export function chromePreloadPath(): string {
-  return join(app.getAppPath(), 'out', 'preload', 'chrome.js');
-}
-
-export function rendererDir(): string {
-  return join(app.getAppPath(), 'src', 'renderer');
+function sizeLimits(descriptor: WidgetPanelDescriptor) {
+  const minimum = clampSize(descriptor.minimumContentSize);
+  const maximum = descriptor.maximumContentSize ? clampSize(descriptor.maximumContentSize) : null;
+  return {
+    minWidth: Math.round(minimum.width),
+    minHeight: Math.round(minimum.height + CHROME_HEIGHT),
+    maxWidth: maximum ? Math.round(Math.max(maximum.width, minimum.width)) : undefined,
+    maxHeight: maximum ? Math.round(Math.max(maximum.height, minimum.height) + CHROME_HEIGHT) : undefined,
+  };
 }
 
 /**
@@ -73,8 +61,6 @@ export function rendererDir(): string {
  * is over the window and fades out shortly after it leaves.
  */
 export class WidgetPanelWindow extends EventEmitter {
-  static readonly CHROME_HEIGHT = CHROME_HEIGHT;
-
   // One timer checks the pointer for every shown panel: a timer per panel
   // woke the main process about eight times a second for each panel.
   private static readonly hoverPanels = new Set<WidgetPanelWindow>();
@@ -88,7 +74,7 @@ export class WidgetPanelWindow extends EventEmitter {
   private chromeVisible = false;
   private panelReady = false;
   private closingPermanently = false;
-  private lastProgrammaticBounds: RectFrame | null = null;
+  private lastProgrammaticBounds: Rect | null = null;
   private lastPushedRevision: number | null = null;
   private lastPushedStateRevision: number | null = null;
   private writesCheckpoint: { resolve: () => void } | null = null;
@@ -106,8 +92,6 @@ export class WidgetPanelWindow extends EventEmitter {
     this.backgroundOpacity = Math.min(1, Math.max(0, backgroundOpacity));
 
     const preferred = this.preferredFrameSize();
-    const minimum = clampSize(descriptor.minimumContentSize);
-    const maximum = descriptor.maximumContentSize ? clampSize(descriptor.maximumContentSize) : null;
 
     this.win = new BrowserWindow({
       frame: false,
@@ -118,14 +102,11 @@ export class WidgetPanelWindow extends EventEmitter {
       resizable: descriptor.isResizable,
       width: Math.round(preferred.width),
       height: Math.round(preferred.height),
-      minWidth: Math.round(minimum.width),
-      minHeight: Math.round(minimum.height + CHROME_HEIGHT),
-      maxWidth: maximum ? Math.round(Math.max(maximum.width, minimum.width)) : undefined,
-      maxHeight: maximum ? Math.round(Math.max(maximum.height + CHROME_HEIGHT, minimum.height + CHROME_HEIGHT)) : undefined,
+      ...sizeLimits(descriptor),
       backgroundColor: '#00000000',
       title: descriptor.title,
       webPreferences: {
-        preload: chromePreloadPath(),
+        preload: preloadPath('chrome'),
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
@@ -138,7 +119,7 @@ export class WidgetPanelWindow extends EventEmitter {
 
     this.view = new WebContentsView({
       webPreferences: {
-        preload: bridgePreloadPath(),
+        preload: preloadPath('bridge'),
         contextIsolation: true,
         sandbox: true,
         nodeIntegration: false,
@@ -153,7 +134,7 @@ export class WidgetPanelWindow extends EventEmitter {
     configureWebContents(this.view.webContents);
     registerNativeMessages(this.view.webContents, (message) => this.handlePanelMessage(message));
 
-    void this.win.loadFile(join(rendererDir(), 'panel-chrome.html'));
+    void this.win.loadFile(rendererPath('panel-chrome.html'));
     this.win.webContents.once('did-finish-load', () => this.pushChromeUpdate());
     this.view.webContents.on('did-finish-load', () => this.applyWebPresentation());
     this.view.webContents.on('render-process-gone', (_event, details) => {
@@ -208,7 +189,7 @@ export class WidgetPanelWindow extends EventEmitter {
     return !this.win.isDestroyed() && this.win.isFocused();
   }
 
-  get currentFrame(): RectFrame {
+  get currentFrame(): Rect {
     return this.win.getBounds();
   }
 
@@ -254,9 +235,9 @@ export class WidgetPanelWindow extends EventEmitter {
     this.pushChromeUpdate();
   }
 
-  setFrame(frame: RectFrame, initializing = false): void {
+  setFrame(frame: Rect, initializing = false): void {
     if (this.win.isDestroyed()) return;
-    const bounds: RectFrame = {
+    const bounds: Rect = {
       x: Math.round(frame.x),
       y: Math.round(frame.y),
       width: Math.max(Math.round(frame.width), this.win.getMinimumSize()[0]),
@@ -273,7 +254,7 @@ export class WidgetPanelWindow extends EventEmitter {
     }
   }
 
-  defaultFrame(): RectFrame {
+  defaultFrame(): Rect {
     const workArea = screen.getPrimaryDisplay().workArea;
     const size = this.preferredFrameSize();
     const width = Math.min(size.width, workArea.width);
@@ -396,17 +377,9 @@ export class WidgetPanelWindow extends EventEmitter {
     if (this.win.isDestroyed()) return;
     this.win.setTitle(this.descriptor.title);
 
-    const minimum = clampSize(this.descriptor.minimumContentSize);
-    this.win.setMinimumSize(Math.round(minimum.width), Math.round(minimum.height + CHROME_HEIGHT));
-    if (this.descriptor.maximumContentSize) {
-      const maximum = clampSize(this.descriptor.maximumContentSize);
-      this.win.setMaximumSize(
-        Math.round(Math.max(maximum.width, minimum.width)),
-        Math.round(Math.max(maximum.height + CHROME_HEIGHT, minimum.height + CHROME_HEIGHT)),
-      );
-    } else {
-      this.win.setMaximumSize(100_000, 100_000);
-    }
+    const limits = sizeLimits(this.descriptor);
+    this.win.setMinimumSize(limits.minWidth, limits.minHeight);
+    this.win.setMaximumSize(limits.maxWidth ?? 100_000, limits.maxHeight ?? 100_000);
     this.win.setResizable(this.descriptor.isResizable);
     if (this.descriptor.aspectRatio && this.descriptor.aspectRatio > 0) {
       this.win.setAspectRatio(this.descriptor.aspectRatio, { width: 0, height: CHROME_HEIGHT });
@@ -473,7 +446,7 @@ export class WidgetPanelWindow extends EventEmitter {
     this.emit('frameChanged', this.widgetId, bounds);
   }
 
-  private isAspectRatioSettled(bounds: RectFrame, target: RectFrame): boolean {
+  private isAspectRatioSettled(bounds: Rect, target: Rect): boolean {
     return this.descriptor.aspectRatio !== null
       && Math.abs(bounds.x - target.x) <= 2
       && Math.abs(bounds.y - target.y) <= 2
@@ -579,9 +552,7 @@ export class WidgetPanelWindow extends EventEmitter {
             this.settings.notifyChanged('outputVolume');
           },
         });
-        const menu = Menu.buildFromTemplate([
-          ...outputVolumePresets.map(({ label, volume }) => preset(label, volume)),
-        ]);
+        const menu = Menu.buildFromTemplate(outputVolumePresets.map(({ label, volume }) => preset(label, volume)));
         this.trackMenu(menu);
         const bounds = this.win.getBounds();
         menu.popup({ window: this.win, x: Math.max(0, bounds.width - 100), y: CHROME_HEIGHT });
@@ -591,13 +562,9 @@ export class WidgetPanelWindow extends EventEmitter {
   }
 }
 
-function boundsMatch(a: RectFrame, b: RectFrame): boolean {
+function boundsMatch(a: Rect, b: Rect): boolean {
   return Math.abs(a.x - b.x) <= 2
     && Math.abs(a.y - b.y) <= 2
     && Math.abs(a.width - b.width) <= 2
     && Math.abs(a.height - b.height) <= 2;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

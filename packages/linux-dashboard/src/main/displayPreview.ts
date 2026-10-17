@@ -369,7 +369,6 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       statusMessage,
       powerState: this.wantsCapture ? 'on' : 'off',
       powerEnabled,
-      idleStartEnabled: powerEnabled && !this.wantsCapture,
       sourceId: this.selectedSource?.id ?? null,
     };
     this.window.setState(state);

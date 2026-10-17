@@ -8,29 +8,15 @@ import {
   WidgetPanelLayout,
   WidgetPanelStateChange,
 } from './models';
-import { RectFrame, WidgetPanelWindow } from './panelWindow';
+import { WidgetPanelWindow } from './panelWindow';
+import { clampRect, type Rect } from './displayGeometry';
 import { nextDisplayFrame, type MoveDirection } from './moveToNextDisplay';
 
 const GAP = 12;
 const OVERFLOW_STEP = 28;
 
-interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-function intersect(a: Rect, b: Rect): Rect {
-  const x = Math.max(a.x, b.x);
-  const y = Math.max(a.y, b.y);
-  const right = Math.min(a.x + a.width, b.x + b.width);
-  const bottom = Math.min(a.y + a.height, b.y + b.height);
-  return { x, y, width: Math.max(0, right - x), height: Math.max(0, bottom - y) };
-}
-
 /** Work area of the monitor holding most of the frame. */
-export function workAreaContaining(frame: Rect): Rect {
+function workAreaContaining(frame: Rect): Rect {
   try {
     return screen.getDisplayMatching(frame).workArea;
   } catch {
@@ -38,20 +24,12 @@ export function workAreaContaining(frame: Rect): Rect {
   }
 }
 
-export function primaryWorkArea(): Rect {
+function primaryWorkArea(): Rect {
   return screen.getPrimaryDisplay().workArea;
 }
 
-export function clampFrame(frame: Rect, bounds: Rect): Rect {
-  const width = Math.min(frame.width, bounds.width);
-  const height = Math.min(frame.height, bounds.height);
-  const x = Math.min(Math.max(frame.x, bounds.x), bounds.x + bounds.width - width);
-  const y = Math.min(Math.max(frame.y, bounds.y), bounds.y + bounds.height - height);
-  return { x, y, width, height };
-}
-
 /** Lays out panels in a row or column inside the usable area; overflow cascades. */
-export function layoutFrames(
+function layoutFrames(
   panels: Array<{ id: string; size: { width: number; height: number } }>,
   layout: Exclude<WidgetPanelLayout, 'freeform'>,
   usable: Rect,
@@ -325,7 +303,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     );
     for (const panel of panels) {
       const frame = frames.get(panel.widgetId);
-      if (frame) panel.setFrame(clampFrame(frame, target));
+      if (frame) panel.setFrame(clampRect(frame, target));
     }
     this.emit('changed');
   }
@@ -336,7 +314,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
       const frame = saved
         ? (panel.isResizable ? saved : { x: saved.x, y: saved.y, ...panel.preferredFrameSize() })
         : panel.defaultFrame();
-      panel.setFrame(clampFrame(frame, workAreaContaining(frame)));
+      panel.setFrame(clampRect(frame, workAreaContaining(frame)));
     }
   }
 
@@ -367,7 +345,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     panel.on('openSettingsRequested', () => this.emit('openSettingsRequested'));
     panel.on('layoutRequested', (layout: WidgetPanelLayout) => this.arrange(layout, workAreaContaining(panel.currentFrame)));
     panel.on('focused', (widgetId: string) => { this.lastFocusedId = widgetId; });
-    panel.on('frameChanged', (widgetId: string, frame: RectFrame) => {
+    panel.on('frameChanged', (widgetId: string, frame: Rect) => {
       if (this.layout !== 'freeform') {
         this.layout = 'freeform';
         this.freeformFrames.clear();
@@ -379,7 +357,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     const initial = stored
       ? (descriptor.isResizable ? stored : { x: stored.x, y: stored.y, ...panel.preferredFrameSize() })
       : this.initialFrame(panel);
-    panel.setFrame(clampFrame(initial, workAreaContaining(initial)), true);
+    panel.setFrame(clampRect(initial, workAreaContaining(initial)), true);
     return panel;
   }
 
@@ -401,7 +379,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     return { x: usable.x, y: nextY, width: size.width, height: size.height };
   }
 
-  private persist(frame: RectFrame, widgetId: string): void {
+  private persist(frame: Rect, widgetId: string): void {
     this.settings.panelFrames[widgetId] = { left: frame.x, top: frame.y, width: frame.width, height: frame.height };
     this.framesDirty = true;
   }
