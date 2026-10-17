@@ -11,22 +11,19 @@ enum DashboardShortenerSettings {
     // This is a public client-side key, not a Short.io secret key. Keep the
     // native preferences authoritative; compact WebViews have ephemeral storage.
     static func script(defaults: UserDefaults = .standard) -> String {
-        let provider = defaults.string(forKey: providerKey) ?? "tinyurl"
         let settings = [
-            "provider": ["tinyurl", "spoo", "shortio"].contains(provider) ? provider : "tinyurl",
+            "provider": DesktopHostScripts.normalizeShortenerProvider(defaults.string(forKey: providerKey)),
             "shortioApiKey": defaults.string(forKey: apiKeyKey) ?? "",
             "shortioDomain": defaults.string(forKey: domainKey) ?? ""
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: settings, options: [.sortedKeys]),
               let json = String(data: data, encoding: .utf8) else { return "" }
-        return "window.classroomShortenerSettings = \(json); window.dispatchEvent(new Event('classroom-shortener-settings-changed'));"
+        return DesktopHostScripts.shortenerSettings(settings: json)
     }
 }
 
 enum DashboardAudioSettings {
-    static let presets: [(label: String, volume: Double)] = [
-        ("Mute", 0), ("1 ■□□□", 0.1), ("2 ■■□□", 0.25), ("3 ■■■□", 0.5), ("4 ■■■■", 1)
-    ]
+    static let presets = DesktopHostScripts.outputVolumePresets
 
     static func label(for volume: Double) -> String {
         presets.first { $0.volume == volume }?.label ?? "Custom"
@@ -34,7 +31,7 @@ enum DashboardAudioSettings {
 
     static func script(defaults: UserDefaults = .standard) -> String {
         let volume = min(max(defaults.double(forKey: DashboardSettingKeys.outputVolume), 0), 1)
-        return "window.__CLASSROOM_WIDGETS_AUDIO_VOLUME__ = \(volume); window.classroomAudio?.setVolume(\(volume));"
+        return DesktopHostScripts.audioVolume(volume: "\(volume)")
     }
 }
 
@@ -479,7 +476,7 @@ struct DashboardSettingsView: View {
 }
 
 struct DashboardShortenerSettingsView: View {
-    @AppStorage(DashboardShortenerSettings.providerKey) private var provider = "tinyurl"
+    @AppStorage(DashboardShortenerSettings.providerKey) private var provider = DesktopHostScripts.defaultShortenerProvider
     @AppStorage(DashboardShortenerSettings.apiKeyKey) private var apiKey = ""
     @AppStorage(DashboardShortenerSettings.domainKey) private var domain = ""
     let context: DashboardSettingsContext

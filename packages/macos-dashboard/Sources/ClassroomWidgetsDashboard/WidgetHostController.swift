@@ -34,7 +34,9 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         )
         DashboardWebKitShared.schemeHandler.prewarmCriticalAssets()
         configuration.userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGETS_MACOS_VERSION__ = \(appVersionJSON); \(DashboardAudioSettings.script())",
+            source: DesktopHostScripts.macosFlag
+                + DesktopHostScripts.macosVersion(version: appVersionJSON)
+                + DashboardAudioSettings.script(),
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))
@@ -89,12 +91,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     func addWidget(_ widgetType: Int) {
         webView.callAsyncJavaScript(
-            """
-            return (() => {
-              const host = window.classroomPanelHost;
-              return host?.addWidget ? host.addWidget(widgetType) : false;
-            })()
-            """,
+            "return " + DesktopHostScripts.panelHostCall(.addWidget, argument: "widgetType"),
             arguments: ["widgetType": widgetType],
             in: nil,
             in: .page
@@ -106,21 +103,21 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     }
 
     func showWidget(_ widgetType: Int) {
-        callWidgetHostFunction("showWidget", widgetType: widgetType)
+        callWidgetHostFunction(.showWidget, widgetType: widgetType)
     }
 
     func dismissWidget(_ widgetType: Int) {
-        callWidgetHostFunction("dismissWidget", widgetType: widgetType)
+        callWidgetHostFunction(.dismissWidget, widgetType: widgetType)
     }
 
     func toggleWidget(_ widgetType: Int) {
-        callWidgetHostFunction("toggleWidget", widgetType: widgetType)
+        callWidgetHostFunction(.toggleWidget, widgetType: widgetType)
     }
 
-    private func callWidgetHostFunction(_ methodName: String, widgetType: Int) {
+    private func callWidgetHostFunction(_ method: DesktopHostScripts.PanelHostMethod, widgetType: Int) {
         webView.callAsyncJavaScript(
-            "return window.classroomPanelHost?.[methodName]?.(widgetType) ?? false;",
-            arguments: ["methodName": methodName, "widgetType": widgetType],
+            "return " + DesktopHostScripts.panelHostCall(method, argument: "widgetType"),
+            arguments: ["widgetType": widgetType],
             in: nil,
             in: .page
         ) { result in
@@ -392,12 +389,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
         completion: (@MainActor (Bool) -> Void)? = nil
     ) {
         webView.callAsyncJavaScript(
-            """
-            return (() => {
-              const host = window.classroomPanelHost;
-              return host?.applyStateChange ? host.applyStateChange(change) : false;
-            })()
-            """,
+            "return " + DesktopHostScripts.panelHostCall(.applyStateChange, argument: "change"),
             arguments: ["change": change.payload],
             in: nil,
             in: .page
@@ -416,12 +408,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
     private func applyRandomiserListChange(_ change: WidgetPanelRandomiserListChange) {
         let generation = hostWrites.begin()
         webView.callAsyncJavaScript(
-            """
-            return (() => {
-              const host = window.classroomPanelHost;
-              return host?.applyRandomiserListChange ? host.applyRandomiserListChange(change) : false;
-            })()
-            """,
+            "return " + DesktopHostScripts.panelHostCall(.applyRandomiserListChange, argument: "change"),
             arguments: ["change": change.payload],
             in: nil,
             in: .page
@@ -441,12 +428,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     private func removeWidget(_ widgetID: String) {
         webView.callAsyncJavaScript(
-            """
-            return (() => {
-              const host = window.classroomPanelHost;
-              return host?.removeWidget ? host.removeWidget(widgetID) : false;
-            })()
-            """,
+            "return " + DesktopHostScripts.panelHostCall(.removeWidget, argument: "widgetID"),
             arguments: ["widgetID": widgetID],
             in: nil,
             in: .page
@@ -533,7 +515,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     private func setWebBackgroundOpacity(_ opacity: Double) {
         webView.evaluateJavaScript(
-            "window.classroomDashboard?.setBackgroundOpacity?.(\(opacity)); true"
+            DesktopHostScripts.dashboardBackgroundOpacity(opacity: "\(opacity)") + "; true"
         )
     }
 

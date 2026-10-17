@@ -1,5 +1,7 @@
+import { desktopHostScripts, normalizeShortenerProvider, ShortenerProviderId } from './generated/desktopHostScripts';
+
 export interface ShortenerSettings {
-  provider: 'tinyurl' | 'spoo' | 'shortio';
+  provider: ShortenerProviderId;
   shortioApiKey: string;
   shortioDomain: string;
 }
@@ -7,13 +9,12 @@ export interface ShortenerSettings {
 export function readShortenerSettings(value?: unknown): ShortenerSettings {
   const raw = value && typeof value === 'object' ? value as Record<string, unknown> : {};
   return {
-    provider: raw.provider === 'spoo' || raw.provider === 'shortio' ? raw.provider : 'tinyurl',
+    provider: normalizeShortenerProvider(raw.provider),
     shortioApiKey: typeof raw.shortioApiKey === 'string' ? raw.shortioApiKey : '',
     shortioDomain: typeof raw.shortioDomain === 'string' ? raw.shortioDomain : '',
   };
 }
 
 export function shortenerSettingsScript(settings: ShortenerSettings): string {
-  return `window.classroomShortenerSettings = ${JSON.stringify(settings)};`
-    + `window.dispatchEvent(new Event('classroom-shortener-settings-changed'));`;
+  return desktopHostScripts.shortenerSettings(JSON.stringify(settings));
 }

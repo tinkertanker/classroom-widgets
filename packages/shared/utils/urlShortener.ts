@@ -16,7 +16,9 @@
  * and their own docs steer cross-origin callers to JSONP.
  */
 
-export type ShortenerProvider = 'tinyurl' | 'spoo' | 'shortio';
+import { DEFAULT_SHORTENER_PROVIDER_ID, type ShortenerProviderId } from '../constants/desktopHostScripts';
+
+export type ShortenerProvider = ShortenerProviderId;
 
 export interface ShortenerSettings {
   provider: ShortenerProvider;
@@ -63,7 +65,7 @@ export const SHORTENER_PROVIDERS: readonly ShortenerProviderInfo[] = [
   }
 ] as const;
 
-export const DEFAULT_SHORTENER_PROVIDER: ShortenerProvider = 'tinyurl';
+export const DEFAULT_SHORTENER_PROVIDER: ShortenerProvider = DEFAULT_SHORTENER_PROVIDER_ID;
 
 export function createDefaultShortenerSettings(): ShortenerSettings {
   return { provider: DEFAULT_SHORTENER_PROVIDER, shortioApiKey: '', shortioDomain: '' };

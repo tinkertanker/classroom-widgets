@@ -6,14 +6,9 @@ import { dirname, join } from 'node:path';
 import { log } from './log';
 import { readShortenerSettings, ShortenerSettings } from './shortenerSettings';
 import { migrateAutostartDesktopEntry } from './startup';
+import { desktopHostScripts, OUTPUT_VOLUME_PRESETS } from './generated/desktopHostScripts';
 
-export const outputVolumePresets = [
-  { label: 'Mute', volume: 0 },
-  { label: '1 ■□□□', volume: 0.1 },
-  { label: '2 ■■□□', volume: 0.25 },
-  { label: '3 ■■■□', volume: 0.5 },
-  { label: '4 ■■■■', volume: 1 },
-];
+export const outputVolumePresets = OUTPUT_VOLUME_PRESETS;
 
 export function outputVolumeLabel(volume: number): string {
   return outputVolumePresets.find(preset => preset.volume === volume)?.label ?? 'Custom';
@@ -246,5 +241,5 @@ export class DashboardSettings extends EventEmitter {
 
 export function audioSettingsScript(outputVolume: number): string {
   const volume = Math.min(1, Math.max(0, outputVolume));
-  return `window.__CLASSROOM_WIDGETS_AUDIO_VOLUME__ = ${JSON.stringify(volume)}; window.classroomAudio?.setVolume(${JSON.stringify(volume)});`;
+  return desktopHostScripts.audioVolume(JSON.stringify(volume));
 }

@@ -7,6 +7,7 @@ import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
 import { WidgetType } from '../types';
 import { isNativeDesktop } from '../utils/nativeBridge';
 import { createDefaultShortenerSettings, type ShortenerSettings } from '../utils/urlShortener';
+import { SHORTENER_SETTINGS_CHANGED_EVENT } from '../constants/desktopHostScripts';
 
 declare global {
   interface Window {
@@ -18,8 +19,8 @@ declare global {
 const defaultNativeShortenerSettings = createDefaultShortenerSettings();
 const getNativeShortenerSettings = () => window.classroomShortenerSettings ?? defaultNativeShortenerSettings;
 const subscribeNativeShortenerSettings = (listener: () => void) => {
-  window.addEventListener('classroom-shortener-settings-changed', listener);
-  return () => window.removeEventListener('classroom-shortener-settings-changed', listener);
+  window.addEventListener(SHORTENER_SETTINGS_CHANGED_EVENT, listener);
+  return () => window.removeEventListener(SHORTENER_SETTINGS_CHANGED_EVENT, listener);
 };
 
 // Main workspace hook

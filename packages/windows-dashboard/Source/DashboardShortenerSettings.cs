@@ -9,14 +9,12 @@ namespace ClassroomWidgets;
 /// </summary>
 public static class DashboardShortenerSettings
 {
-    public const string DefaultProvider = "tinyurl";
+    public const string DefaultProvider = DesktopHostScripts.DefaultShortenerProvider;
     public const string ShortioProvider = "shortio";
-
-    private static readonly string[] SupportedProviders = { "tinyurl", "spoo", "shortio" };
 
     /// <summary>Keeps the published provider within the supported set.</summary>
     public static string NormalizeProvider(string? provider)
-        => SupportedProviders.Contains(provider) ? provider! : DefaultProvider;
+        => DesktopHostScripts.NormalizeShortenerProvider(provider);
 
     /// <summary>
     /// JavaScript that assigns the shortener settings onto <c>window</c> and
@@ -32,7 +30,6 @@ public static class DashboardShortenerSettings
             ["shortioApiKey"] = settings.LinkShortenerPublicApiKey ?? "",
             ["shortioDomain"] = settings.LinkShortenerDomain ?? ""
         });
-        return $"window.classroomShortenerSettings = {payload}; "
-            + "window.dispatchEvent(new Event('classroom-shortener-settings-changed'));";
+        return DesktopHostScripts.ShortenerSettings(payload);
     }
 }

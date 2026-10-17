@@ -711,7 +711,7 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
             finishIfReady()
         }
         webView.callAsyncJavaScript(
-            "return window.classroomWidgetPanel?.takePendingState?.() ?? null",
+            "return " + DesktopHostScripts.widgetPanelTakePendingState,
             arguments: [:],
             in: nil,
             in: .page
@@ -796,16 +796,11 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         lastPushedStateRevision = stateRevision
         currentSnapshot = snapshot
         webView.callAsyncJavaScript(
-            """
-            \(DashboardShortenerSettings.script())
-            \(DashboardAudioSettings.script())
-            (() => {
-              const panel = window.classroomWidgetPanel;
-              if (!panel?.receiveSnapshot) return false;
-              panel.receiveSnapshot(snapshot);
-              return true;
-            })()
-            """,
+            [
+                DashboardShortenerSettings.script(),
+                DashboardAudioSettings.script(),
+                DesktopHostScripts.widgetPanelReceiveSnapshot(snapshot: "snapshot")
+            ].joined(separator: "\n"),
             arguments: ["snapshot": snapshot],
             in: nil,
             in: .page
@@ -935,13 +930,13 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
 
     private func setWebChromeVisibility() {
         webView.evaluateJavaScript(
-            "document.documentElement.dataset.widgetChromeVisible = '\(chromeVisible ? "true" : "false")'"
+            DesktopHostScripts.widgetPanelChromeVisible(visible: chromeVisible ? "\"true\"" : "\"false\"")
         )
     }
 
     private func setWebBackgroundOpacity() {
         webView.evaluateJavaScript(
-            "document.documentElement.style.setProperty('--compact-widget-background-opacity', '\(backgroundOpacity)')"
+            DesktopHostScripts.widgetPanelBackgroundOpacity(opacity: "\"\(backgroundOpacity)\"")
         )
     }
 
@@ -1247,7 +1242,7 @@ private final class WidgetPanelWebViewFactory {
 
         let userContentController = WKUserContentController()
         userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; \(DashboardAudioSettings.script())",
+            source: DesktopHostScripts.macosFlag + DashboardAudioSettings.script(),
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))

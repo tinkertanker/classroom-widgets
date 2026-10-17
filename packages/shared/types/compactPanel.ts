@@ -1,5 +1,6 @@
 import type { Size, WidgetType } from './index';
 import type { SavedRandomiserList } from './storage';
+import type { PanelHostMethod } from '../constants/desktopHostScripts';
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
@@ -82,6 +83,14 @@ export interface CompactPanelHostBridge {
   toggleWidget: (widgetType: WidgetType) => boolean;
   removeWidget: (widgetId: string) => boolean;
 }
+
+// The desktop apps call exactly the methods listed in desktopHostScripts.json.
+type AssertTrue<T extends true> = T;
+export type PanelHostMethodsMatchDesktopScripts = AssertTrue<
+  [keyof CompactPanelHostBridge] extends [PanelHostMethod]
+    ? [PanelHostMethod] extends [keyof CompactPanelHostBridge] ? true : false
+    : false
+>;
 
 export interface CompactWidgetPanelBridge {
   receiveSnapshot: (snapshot: CompactWidgetSnapshot) => void;

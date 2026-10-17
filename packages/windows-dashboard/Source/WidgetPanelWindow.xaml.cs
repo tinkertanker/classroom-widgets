@@ -218,7 +218,7 @@ public partial class WidgetPanelWindow : Window
     {
         if (!_webReady) return (null, true);
         _writesCheckpoint = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var scriptTask = DashboardWebView.EvaluateAsync(WebView, "window.classroomWidgetPanel?.takePendingState?.() ?? null");
+        var scriptTask = DashboardWebView.EvaluateAsync(WebView, DesktopHostScripts.WidgetPanelTakePendingState);
         await Task.WhenAny(Task.WhenAll(scriptTask, _writesCheckpoint.Task), Task.Delay(900));
         var checkpoint = _writesCheckpoint;
         _writesCheckpoint = null;
@@ -403,7 +403,7 @@ public partial class WidgetPanelWindow : Window
         _ = DashboardWebView.EvaluateBoolAsync(WebView,
             DashboardShortenerSettings.Script(_settings)
             + DashboardAudioSettings.Script(_settings)
-            + $"(() => {{ const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot({snapshot}); return true; }})()");
+            + DesktopHostScripts.WidgetPanelReceiveSnapshot(snapshot));
     }
 
     private void ApplyDescriptorPresentation()
@@ -440,8 +440,8 @@ public partial class WidgetPanelWindow : Window
     {
         if (!_webReady) return;
         _ = WebView.CoreWebView2.ExecuteScriptAsync(
-            $"document.documentElement.dataset.widgetChromeVisible = '{(_chromeVisible ? "true" : "false")}';"
-            + $"document.documentElement.style.setProperty('--compact-widget-background-opacity', '{OpacityText}');");
+            DesktopHostScripts.WidgetPanelChromeVisible(JsonSerializer.Serialize(_chromeVisible ? "true" : "false"))
+            + DesktopHostScripts.WidgetPanelBackgroundOpacity(JsonSerializer.Serialize(OpacityText)));
     }
 
     private string OpacityText => _backgroundOpacity.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
