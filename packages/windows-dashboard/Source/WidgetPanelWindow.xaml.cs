@@ -177,7 +177,7 @@ public partial class WidgetPanelWindow : Window
         foreach (var (option, separatorBefore) in CompactWidgetMenu.Entries(options))
         {
             if (separatorBefore) AddMenu.Items.Add(new Separator());
-            var item = new MenuItem { Header = CompactWidgetMenu.Label(option), Tag = option.WidgetType };
+            var item = new MenuItem { Header = CompactWidgetMenu.Label(option) };
             item.Click += (_, _) => WidgetCreationRequested?.Invoke(option.WidgetType);
             AddMenu.Items.Add(item);
         }

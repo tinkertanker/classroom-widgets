@@ -133,7 +133,7 @@ public sealed class WidgetShortcutManager : IDisposable
     public bool IsDuplicate(int widgetType, string shortcut)
     {
         if (widgetType == DisplayShortcutLogic.WidgetType) return IsDisplayShortcutDuplicate(shortcut);
-        if (widgetType is MoveWidgetShortcutLogic.PreviousWidgetType or MoveWidgetShortcutLogic.NextWidgetType) return IsMoveWidgetDuplicate(widgetType, shortcut);
+        if (MoveWidgetShortcutLogic.IsMoveWidgetType(widgetType)) return IsMoveWidgetDuplicate(widgetType, shortcut);
         if (!WidgetShortcutGesture.TryParse(shortcut, out var candidate)) return false;
         var widgetDuplicate = new[] { _settings.WidgetShortcuts, _settings.WidgetDismissShortcuts }.Any(bindings =>
             bindings.Any(entry => entry.Key != widgetType &&

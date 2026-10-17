@@ -124,30 +124,26 @@ public sealed class WidgetHostController
     {
         PerfLog.Mark("host.add-widget", widgetType: widgetType, detail: IsAvailable ? null : "unavailable");
         if (!_initialized || !IsAvailable) return;
-        var applied = await DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.addWidget ? host.addWidget({widgetType}) : false; }})()");
+        var applied = await CallHostAsync("addWidget", widgetType.ToString());
         if (!applied) DashboardLog.Warn($"Host refused to add widget type {widgetType}");
     }
 
     public async Task ShowWidgetAsync(int widgetType)
     {
         if (!_initialized || !IsAvailable) return;
-        await DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.showWidget ? host.showWidget({widgetType}) : false; }})()");
+        await CallHostAsync("showWidget", widgetType.ToString());
     }
 
     public async Task DismissWidgetAsync(int widgetType)
     {
         if (!_initialized || !IsAvailable) return;
-        await DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.dismissWidget ? host.dismissWidget({widgetType}) : false; }})()");
+        await CallHostAsync("dismissWidget", widgetType.ToString());
     }
 
     public async Task ToggleWidgetAsync(int widgetType)
     {
         if (!_initialized || !IsAvailable) return;
-        await DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.toggleWidget ? host.toggleWidget({widgetType}) : false; }})()");
+        await CallHostAsync("toggleWidget", widgetType.ToString());
     }
 
     public void MoveSelectedWidget(MoveDirection direction) => _coordinator.MoveSelectedPanel(direction);
@@ -410,9 +406,7 @@ public sealed class WidgetHostController
     private async Task<bool> ApplyPanelStateChangeAsync(WidgetPanelStateChange change)
     {
         if (!_initialized) return false;
-        var payload = change.Payload.GetRawText();
-        return await DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.applyStateChange ? host.applyStateChange({payload}) : false; }})()");
+        return await CallHostAsync("applyStateChange", change.Payload.GetRawText());
     }
 
     private async Task ApplyRandomiserListChangeAsync(JsonElement change)
@@ -422,8 +416,7 @@ public sealed class WidgetHostController
         var applied = false;
         try
         {
-            applied = await DashboardWebView.EvaluateBoolAsync(_webView,
-                $"(() => {{ const host = window.classroomPanelHost; return host?.applyRandomiserListChange ? host.applyRandomiserListChange({change.GetRawText()}) : false; }})()");
+            applied = await CallHostAsync("applyRandomiserListChange", change.GetRawText());
         }
         finally
         {
@@ -435,10 +428,12 @@ public sealed class WidgetHostController
     private async Task RemoveWidgetAsync(string widgetId)
     {
         if (!_initialized) return;
-        var idJson = JsonSerializer.Serialize(widgetId);
-        await DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.removeWidget ? host.removeWidget({idJson}) : false; }})()");
+        await CallHostAsync("removeWidget", JsonSerializer.Serialize(widgetId));
     }
+
+    private Task<bool> CallHostAsync(string method, string argumentJson) =>
+        DashboardWebView.EvaluateBoolAsync(_webView,
+            $"(() => {{ const host = window.classroomPanelHost; return host?.{method} ? host.{method}({argumentJson}) : false; }})()");
 
     private async Task<bool> ApplyFinalPanelStateChangesAsync(IReadOnlyList<WidgetPanelStateChange> changes)
     {
