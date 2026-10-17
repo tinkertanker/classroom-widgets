@@ -127,14 +127,7 @@ export function useSessionRecovery({
     if (socket.connected) {
       handleConnect();
     }
-
-    return () => {
-      // Cleanup not needed as socket event listeners are managed elsewhere
-    };
   }, [socket, isConnected, onSessionRestored, onSessionLost]);
 
-  return {
-    isRecovering,
-    lastSessionCode: lastSessionCode.current
-  };
+  return { isRecovering };
 }

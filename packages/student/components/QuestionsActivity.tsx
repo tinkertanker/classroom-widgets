@@ -47,7 +47,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   });
 
   useEffect(() => {
-    // Request current state when joining - use sessionCode (new) format
+    // Request current state when joining
     socket.emit('questions:requestState', { sessionCode: sessionCode, widgetId });
 
     // Handle combined state update
@@ -107,12 +107,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
       }
     };
 
-    // Handle submission error
-    const handleError = (data: { error: string }) => {
-      setError(data.error);
-      setIsSubmitting(false);
-    };
-
     // Register event listeners
     socket.on('questions:stateUpdate', handleStateUpdate);
     socket.on('questions:questionAdded', handleQuestionAdded);
@@ -120,7 +114,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     socket.on('questions:questionDeleted', handleQuestionDeleted);
     socket.on('questions:allCleared', handleAllCleared);
     socket.on('session:questions:submitted', handleSubmitted);
-    socket.on('questions:error', handleError);
 
     return () => {
       socket.off('questions:stateUpdate', handleStateUpdate);
@@ -129,7 +122,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
       socket.off('questions:questionDeleted', handleQuestionDeleted);
       socket.off('questions:allCleared', handleAllCleared);
       socket.off('session:questions:submitted', handleSubmitted);
-      socket.off('questions:error', handleError);
     };
   }, [socket, sessionCode, studentId, widgetId]);
 

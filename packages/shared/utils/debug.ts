@@ -8,7 +8,7 @@
  * - Use debug.error() instead of console.error() for debug errors
  * 
  * Example:
- * import { debug } from '@/shared/utils/debug';
+ * import { debug } from '@shared/utils/debug';
  * debug('[Session] Connecting to server', { url, sessionCode });
  */
 
