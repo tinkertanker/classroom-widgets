@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { FaCode, FaClipboardCheck } from 'react-icons/fa6';
+import { FaClipboardCheck } from 'react-icons/fa6';
 import { useModal } from '../../../../contexts/ModalContext';
 import { useNetworkedWidget } from '../../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../../session/hooks/useNetworkedWidgetState';
@@ -7,13 +7,12 @@ import { NetworkedWidgetEmpty } from '../../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
 import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../../shared/components';
 import { useSocketEvents } from '../../../session/hooks/useSocketEvents';
-import CodeFillBlankEditor from './CodeFillBlankEditor';
+import FillBlankEditor from './FillBlankEditor';
+import { renderBlankPreview } from './blankPreview';
+import type { FillBlankData, FillBlankVariant } from './variants';
 import { debug } from '@shared/utils/debug';
-import { withWidgetProvider, WidgetProps } from '../../shared/withWidgetProvider';
+import type { WidgetProps } from '../../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../../shared/utils/networkedWidgetHelpers';
-import type { ActivityDefinition } from '@shared/types/activity.types';
-import { buildCodeFillBlankActivity } from '../shared/activityBuilders';
-import type { CodeFillBlankState } from '../shared/activityBuilders';
 import type { ActivityResponseReceivedData } from '@shared/types/socket.types';
 
 
@@ -25,16 +24,13 @@ interface StudentResponse {
   timestamp: number;
 }
 
-function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
+/**
+ * The Fill in the Blanks and Code Fill-in-the-Blanks widgets. Everything that
+ * differs between them comes from `variant` (see ./variants).
+ */
+export function FillBlankWidget({ variant, widgetId, savedState, onStateChange }: WidgetProps & { variant: FillBlankVariant }) {
   // State
-  const [activityData, setActivityData] = useState<CodeFillBlankState>(() => savedState?.activityData || {
-    template: '',
-    answers: [],
-    distractors: [],
-    title: 'Code Fill-in-the-Blanks',
-    instructions: 'Complete the code by filling in the blanks.',
-    language: 'python'
-  });
+  const [activityData, setActivityData] = useState<FillBlankData>(() => savedState?.activityData || variant.defaults);
 
   const [responseCount, setResponseCount] = useState(0);
   const [responses, setResponses] = useState<StudentResponse[]>([]);
@@ -70,30 +66,24 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Wrap toggleActive to prevent starting without a template
   const toggleActive = useCallback(() => {
+    // If trying to activate but no template, don't allow
     if (!isWidgetActive && !activityData.template) {
       return;
     }
     rawToggleActive();
   }, [isWidgetActive, activityData.template, rawToggleActive]);
 
-  // Build activity definition for server (includes UI recipe generation).
-  // Logic lives in shared/activityBuilders so it is unit-testable.
-  const buildActivityDefinition = useCallback(
-    (data: CodeFillBlankState): Partial<ActivityDefinition> => buildCodeFillBlankActivity(data),
-    []
-  );
-
   // Socket event handlers
   const socketEvents = useMemo(() => ({
     'activity:stateUpdate': (data: any) => {
       if (data.widgetId === widgetId) {
-        debug('[CodeFillBlank] Received stateUpdate:', data);
+        debug(`[${variant.debugName}] Received stateUpdate:`, data);
         setResponseCount(data.responseCount || 0);
       }
     },
     'activity:responseReceived': (data: ActivityResponseReceivedData) => {
       if (data.widgetId === widgetId) {
-        debug('[CodeFillBlank] Response received:', data);
+        debug(`[${variant.debugName}] Response received:`, data);
         setResponseCount(prev => prev + 1);
         setResponses(prev => [...prev, {
           studentId: data.studentId,
@@ -104,7 +94,7 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
         }].slice(-5));
       }
     }
-  }), [widgetId]);
+  }), [widgetId, variant.debugName]);
 
   const { emit } = useSocketEvents({
     events: socketEvents,
@@ -115,13 +105,14 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
   const sendActivityUpdate = useCallback(() => {
     if (!hasRoom || !session.sessionCode || !widgetId) return;
 
-    const activity = buildActivityDefinition(activityData);
+    // Builders live in shared/activityBuilders so they are unit-testable.
+    const activity = variant.buildActivity(activityData);
     emit('session:activity:update', {
       sessionCode: session.sessionCode,
       widgetId,
       activity
     });
-  }, [hasRoom, session.sessionCode, widgetId, activityData, buildActivityDefinition, emit]);
+  }, [hasRoom, session.sessionCode, widgetId, activityData, variant, emit]);
 
   // Toggle reveal answers
   const toggleRevealAnswers = useCallback(() => {
@@ -154,9 +145,10 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
   // Open settings modal
   const openSettings = useCallback(() => {
     showModal({
-      title: 'Code Fill-in-the-Blanks Editor',
+      title: `${variant.title} Editor`,
       content: (
-        <CodeFillBlankEditor
+        <FillBlankEditor
+          variant={variant}
           editorScope={editorScope}
           initialData={activityData}
           onSave={(data) => {
@@ -169,7 +161,7 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
       ),
       onClose: hideModal
     });
-  }, [showModal, hideModal, activityData, canEdit, editorScope]);
+  }, [showModal, hideModal, activityData, canEdit, editorScope, variant]);
 
   // Save state
   useEffect(() => {
@@ -183,7 +175,7 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
   // The server keeps the activity across a teacher refresh or a remount, and
   // re-sending identical data would reshuffle it under students mid-activity
   // and clear a reveal on the server while this widget still shows it.
-  const sentActivityRef = useRef<CodeFillBlankState | null>(hasRoom ? activityData : null);
+  const sentActivityRef = useRef<FillBlankData | null>(hasRoom ? activityData : null);
   useEffect(() => {
     if (!hasRoom) {
       sentActivityRef.current = null;
@@ -203,19 +195,20 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
   // Handle recovery data
   useEffect(() => {
     if (recoveryData?.roomData) {
-      debug('[CodeFillBlank] Recovery data:', recoveryData);
+      debug(`[${variant.debugName}] Recovery data:`, recoveryData);
       setResponseCount(recoveryData.roomData.responseCount || 0);
       setAnswersRevealed(recoveryData.roomData.answersRevealed || false);
     }
-  }, [recoveryData]);
+  }, [recoveryData, variant.debugName]);
 
-  // Empty state
+  // Empty state - show when no room OR no valid session
+  // This catches cases where hasRoom is stale but session is gone
   if (!hasRoom || !session.sessionCode) {
     return (
       <NetworkedWidgetEmpty
-        icon={FaCode}
-        title="Code Fill-in-the-Blanks"
-        description="Create interactive code completion activities"
+        icon={variant.icon}
+        title={variant.title}
+        description={variant.description}
         buttonText={getEmptyStateButtonText({
           isStarting,
           isRecovering: session.isRecovering,
@@ -235,27 +228,13 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
     );
   }
 
-  // Render preview with gray blocks for blanks
-  const renderCodePreview = (template: string) => {
-    const parts = template.split(/(\{\{[^}]+\}\})/);
-    return parts.map((part, index) => {
-      if (part.match(/^\{\{[^}]+\}\}$/)) {
-        return (
-          <span
-            key={index}
-            className="inline-block w-16 h-5 mx-0.5 bg-warm-gray-600 dark:bg-warm-gray-500 rounded align-middle"
-          />
-        );
-      }
-      return <span key={index}>{part}</span>;
-    });
-  };
+  const monoClass = variant.mono ? ' font-mono' : '';
 
   return (
     <div className={widgetWrapper}>
       <div className={`${widgetContainer} relative`}>
         {/* Statistics */}
-        <NetworkedWidgetStats label="Code Fill-in-the-Blanks">
+        <NetworkedWidgetStats label={variant.title}>
           {responseCount} response{responseCount !== 1 ? 's' : ''}
         </NetworkedWidgetStats>
 
@@ -272,16 +251,8 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
 
           {activityData.template ? (
             <div className="flex flex-col gap-4">
-              {/* Code Preview */}
-              <div className="bg-warm-gray-900 dark:bg-warm-gray-950 p-4 rounded-lg overflow-x-auto">
-                <pre className={`text-sm font-mono whitespace-pre-wrap ${
-                  activityData.language === 'python' ? 'text-blue-300' :
-                  activityData.language === 'javascript' ? 'text-yellow-300' :
-                  'text-warm-gray-200'
-                }`}>
-                  {renderCodePreview(activityData.template)}
-                </pre>
-              </div>
+              {/* Preview with blocks for blanks */}
+              {variant.renderPreview(activityData, renderBlankPreview(activityData.template, variant.blankClassName))}
 
               {/* Answers (when revealed) */}
               {answersRevealed && (
@@ -293,9 +264,28 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
                     {activityData.answers.map((answer, index) => (
                       <span
                         key={index}
-                        className="px-2 py-1 bg-sage-200 dark:bg-sage-800 text-sage-800 dark:text-sage-200 rounded text-sm font-mono"
+                        className={`px-2 py-1 bg-sage-200 dark:bg-sage-800 text-sage-800 dark:text-sage-200 rounded text-sm${monoClass}`}
                       >
                         {index + 1}. {answer}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Word bank preview */}
+              {variant.showWordBank && (
+                <div className="bg-warm-gray-100 dark:bg-warm-gray-800 p-3 rounded-lg">
+                  <p className="text-xs text-warm-gray-500 dark:text-warm-gray-400 mb-2">
+                    Word Bank ({activityData.answers.length + activityData.distractors.length} words):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {[...activityData.answers, ...activityData.distractors].map((word, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-sage-100 dark:bg-sage-900/40 text-sage-800 dark:text-sage-200 rounded text-sm"
+                      >
+                        {word}
                       </span>
                     ))}
                   </div>
@@ -364,4 +354,4 @@ function CodeFillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-export default withWidgetProvider(CodeFillBlank, 'CodeFillBlank');
+export default FillBlankWidget;

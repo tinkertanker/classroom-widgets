@@ -13,7 +13,7 @@ import SessionBanner from '../features/session/components/SessionBanner';
 import Poll from '../features/widgets/poll/poll';
 import LinkShare from '../features/widgets/linkShare/LinkShare';
 import FillBlank from '../features/widgets/activity/fillBlank/FillBlank';
-import CodeFillBlank from '../features/widgets/activity/codeFillBlank/CodeFillBlank';
+import CodeFillBlank from '../features/widgets/activity/fillBlank/CodeFillBlank';
 import Questions from '../features/widgets/questions/Questions';
 import RTFeedback from '../features/widgets/rtFeedback/rtFeedback';
 import Handout from '../features/widgets/handout/Handout';

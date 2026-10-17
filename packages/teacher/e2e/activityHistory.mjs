@@ -14,7 +14,8 @@ const violations = [];
 // DOM alone cannot distinguish bounded retention from the old slice-at-render
 // implementation. Inspect the actual mounted component's response-array hook
 // as a memory diagnostic, in addition to driving/asserting the public UI below.
-async function retainedResponses(teacher, componentName) {
+// Both widget types render through FillBlankWidget, which owns that hook.
+async function retainedResponses(teacher, componentName = 'FillBlankWidget') {
   return teacher.evaluate(name => {
     const element = document.querySelector('#root').firstElementChild;
     const key = Object.keys(element).find(key => key.startsWith('__reactFiber$'));
@@ -99,7 +100,7 @@ try {
       await student.getByRole('button', { name: 'Try Again' }).waitFor();
       await teacher.getByText(`${name} · ${index + 1} response${index ? 's' : ''}`, { exact: true }).waitFor();
       expected.push({ studentName: names[studentIndex], score: component === 'FillBlank' || index % 2 === 0 ? 1 : 0, total: 1 });
-      const retained = await retainedResponses(teacher, component);
+      const retained = await retainedResponses(teacher);
       const latest = expected.slice(-5);
       step(`${name} attempt${index + 1}: retained=${retained.length}, counter=${index + 1}`);
       if (JSON.stringify(retained) !== JSON.stringify(latest)) violations.push(`${name} attempt${index + 1}: retained history is not the exact latest five`);
@@ -112,7 +113,7 @@ try {
     await teacher.getByTitle('Reset responses').click();
     await teacher.getByText(`${name} · 0 responses`, { exact: true }).waitFor();
     await teacher.getByText('Recent Responses:', { exact: true }).waitFor({ state: 'hidden' });
-    assert.deepEqual(await retainedResponses(teacher, component), []);
+    assert.deepEqual(await retainedResponses(teacher), []);
     step(`PASS ${name}: eight submissions from three students incl retries; exact recent rows/scores/newest-first, uncapped counter and reset`);
     for (const student of students) await student.close();
     await context.close();

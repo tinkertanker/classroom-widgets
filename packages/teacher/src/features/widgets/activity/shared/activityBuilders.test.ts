@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { buildFillBlankActivity, parseAnswers } from '../shared/activityBuilders';
-import type { FillBlankState } from '../shared/activityBuilders';
+import { buildCodeFillBlankActivity, buildFillBlankActivity, parseAnswers } from './activityBuilders';
+import type { CodeFillBlankState, FillBlankState } from './activityBuilders';
 
 /**
- * Tests for the REAL fill-blank activity builder that is sent to the server
- * and drives student scoring (previously these tests exercised an in-file
- * copy that had silently diverged from the shipping code).
+ * Tests for the REAL fill-blank and code-fill-blank activity builders that are
+ * sent to the server and drive student scoring (previously these tests
+ * exercised in-file copies that had silently diverged from the shipping code,
+ * one with a different blank-marker syntax).
  */
 
 function makeState(overrides: Partial<FillBlankState> = {}): FillBlankState {
@@ -129,6 +130,115 @@ describe('buildFillBlankActivity', () => {
   });
 });
 
+function makeCodeState(overrides: Partial<CodeFillBlankState> = {}): CodeFillBlankState {
+  return {
+    template: 'def {{greet}}(name):\n    return {{"Hello, "}} + name',
+    answers: ['greet', '"Hello, "'],
+    distractors: [],
+    title: 'Python Functions',
+    instructions: 'Fill in the code.',
+    language: 'python',
+    ...overrides
+  };
+}
+
+describe('buildCodeFillBlankActivity', () => {
+  it('returns an empty activity when there is no template or no answers', () => {
+    for (const state of [makeCodeState({ template: '' }), makeCodeState({ answers: [] })]) {
+      const activity = buildCodeFillBlankActivity(state);
+      expect(activity.type).toBe('code-fill-blank');
+      expect(activity.items).toEqual([]);
+      expect(activity.targets).toEqual([]);
+      expect(activity.uiRecipe).toEqual([]);
+    }
+  });
+
+  it('creates one item per answer in blank order (no shuffling for typed input)', () => {
+    const activity = buildCodeFillBlankActivity(makeCodeState());
+
+    expect(activity.items).toEqual([
+      { id: 'item-0', content: 'greet' },
+      { id: 'item-1', content: '"Hello, "' }
+    ]);
+  });
+
+  it('creates targets with whitespace-flexible evaluation pointing at their item', () => {
+    const activity = buildCodeFillBlankActivity(makeCodeState());
+
+    expect(activity.targets).toEqual([
+      { id: 'blank-0', accepts: ['item-0'], evaluationMode: 'whitespace-flexible' },
+      { id: 'blank-1', accepts: ['item-1'], evaluationMode: 'whitespace-flexible' }
+    ]);
+  });
+
+  it('renders one container line per template line with inline text inputs', () => {
+    const activity = buildCodeFillBlankActivity(makeCodeState());
+    const codeContainer = (activity.uiRecipe ?? [])[0];
+
+    expect(codeContainer.children).toHaveLength(2);
+
+    const firstLine = codeContainer.children?.[0];
+    const inputBlocks = (firstLine?.children ?? []).filter(c => c.type === 'text-input');
+    expect(inputBlocks).toHaveLength(1);
+    expect(inputBlocks[0].props.targetId).toBe('blank-0');
+
+    const secondLine = codeContainer.children?.[1];
+    const secondInputs = (secondLine?.children ?? []).filter(c => c.type === 'text-input');
+    expect(secondInputs[0].props.targetId).toBe('blank-1');
+  });
+
+  it('numbers blanks continuously across lines', () => {
+    const activity = buildCodeFillBlankActivity(makeCodeState({
+      template: '{{a}} {{b}}\n{{c}}',
+      answers: ['a', 'b', 'c']
+    }));
+    const codeContainer = (activity.uiRecipe ?? [])[0];
+
+    const targetIds = (codeContainer.children ?? []).flatMap(line =>
+      (line.children ?? []).filter(c => c.type === 'text-input').map(c => c.props.targetId)
+    );
+    expect(targetIds).toEqual(['blank-0', 'blank-1', 'blank-2']);
+  });
+
+  it('preserves code indentation in text blocks', () => {
+    const activity = buildCodeFillBlankActivity(makeCodeState({
+      template: 'def foo():\n    return {{1}}',
+      answers: ['1']
+    }));
+    const codeContainer = (activity.uiRecipe ?? [])[0];
+    const secondLine = codeContainer.children?.[1];
+    const textBlock = secondLine?.children?.[0];
+
+    expect(textBlock?.type).toBe('text');
+    expect(textBlock?.props.content).toBe('    return ');
+  });
+
+  it('keeps empty template lines as empty containers so line numbers align', () => {
+    const activity = buildCodeFillBlankActivity(makeCodeState({
+      template: 'def foo():\n\n    return {{1}}',
+      answers: ['1']
+    }));
+    const codeContainer = (activity.uiRecipe ?? [])[0];
+
+    expect(codeContainer.children).toHaveLength(3);
+    expect(codeContainer.children?.[1].children).toEqual([]);
+  });
+
+  it('handles answers containing underscores', () => {
+    // The old ___marker___ syntax could not express snake_case answers;
+    // {{}} markers must.
+    const activity = buildCodeFillBlankActivity(makeCodeState({
+      template: '{{my_var}} = compute()',
+      answers: ['my_var']
+    }));
+
+    expect(activity.items).toEqual([{ id: 'item-0', content: 'my_var' }]);
+    const codeContainer = (activity.uiRecipe ?? [])[0];
+    const inputs = (codeContainer.children?.[0].children ?? []).filter(c => c.type === 'text-input');
+    expect(inputs).toHaveLength(1);
+  });
+});
+
 describe('parseAnswers', () => {
   it('extracts answers from {{}} markers in order', () => {
     expect(parseAnswers('The {{mitochondria}} of the {{cell}}')).toEqual(['mitochondria', 'cell']);
@@ -153,5 +263,10 @@ describe('parseAnswers', () => {
 
   it('supports punctuation and unicode inside markers', () => {
     expect(parseAnswers('{{"Hello, "}} {{H₂O}} {{a+b=c}}')).toEqual(['"Hello, "', 'H₂O', 'a+b=c']);
+  });
+
+  it('works across multiple lines of code', () => {
+    const code = 'const {{add}} = (a, b) => {\n  {{return}} a + b;\n}';
+    expect(parseAnswers(code)).toEqual(['add', 'return']);
   });
 });

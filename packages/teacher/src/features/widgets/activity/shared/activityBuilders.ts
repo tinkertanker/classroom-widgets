@@ -14,8 +14,41 @@ export interface FillBlankState {
   instructions: string;
 }
 
+export type CodeLanguage = 'python' | 'javascript' | 'text';
+
 export interface CodeFillBlankState extends FillBlankState {
-  language: 'python' | 'javascript' | 'text';
+  language: CodeLanguage;
+}
+
+/**
+ * Text colour for code in a given language. Used by the student code block
+ * (via the UI recipe) and the teacher's code preview.
+ */
+export function codeLanguageClass(language: CodeLanguage | undefined): string {
+  return language === 'python' ? 'text-blue-300' :
+    language === 'javascript' ? 'text-yellow-300' :
+    'text-warm-gray-200';
+}
+
+type FillBlankActivityType = 'fill-blank' | 'code-fill-blank';
+
+function emptyActivity(type: FillBlankActivityType, { title, instructions }: FillBlankState): Partial<ActivityDefinition> {
+  return { type, title, instructions, items: [], targets: [], uiRecipe: [] };
+}
+
+function completeActivity(
+  type: FillBlankActivityType,
+  { title, instructions }: FillBlankState,
+  parts: Pick<ActivityDefinition, 'items' | 'targets' | 'uiRecipe'>
+): Partial<ActivityDefinition> {
+  return {
+    type,
+    title,
+    instructions,
+    ...parts,
+    showImmediateFeedback: true,
+    allowRetry: true
+  };
 }
 
 /**
@@ -34,10 +67,8 @@ export function parseAnswers(text: string): string[] {
  * UI recipe so item IDs match their content consistently.
  */
 export function buildFillBlankActivity(data: FillBlankState): Partial<ActivityDefinition> {
-  const { template, answers, distractors, title, instructions } = data;
-  if (!template || answers.length === 0) {
-    return { type: 'fill-blank', title, instructions, items: [], targets: [], uiRecipe: [] };
-  }
+  const { template, answers, distractors } = data;
+  if (!template || answers.length === 0) return emptyActivity('fill-blank', data);
 
   // Create items - shuffle ONCE and use everywhere
   // Fisher-Yates: sorting with a random comparator is biased towards the input
@@ -116,26 +147,15 @@ export function buildFillBlankActivity(data: FillBlankState): Partial<ActivityDe
     children: wordBankChildren
   });
 
-  return {
-    type: 'fill-blank',
-    title,
-    instructions,
-    items,
-    targets,
-    uiRecipe: recipe,
-    showImmediateFeedback: true,
-    allowRetry: true
-  };
+  return completeActivity('fill-blank', data, { items, targets, uiRecipe: recipe });
 }
 
 /**
  * Build the typed-input code fill-blank activity definition.
  */
 export function buildCodeFillBlankActivity(data: CodeFillBlankState): Partial<ActivityDefinition> {
-  const { template, answers, title, instructions, language } = data;
-  if (!template || answers.length === 0) {
-    return { type: 'code-fill-blank', title, instructions, items: [], targets: [], uiRecipe: [] };
-  }
+  const { template, answers, language } = data;
+  if (!template || answers.length === 0) return emptyActivity('code-fill-blank', data);
 
   // Create items - each answer becomes an item (no need to shuffle for typed input)
   const items = answers.map((content, i) => ({
@@ -206,23 +226,10 @@ export function buildCodeFillBlankActivity(data: CodeFillBlankState): Partial<Ac
     props: {
       layout: 'column' as const,
       gap: '0',
-      className: `font-mono text-sm bg-warm-gray-900 dark:bg-warm-gray-950 p-4 rounded-lg ${
-        language === 'python' ? 'text-blue-300' :
-        language === 'javascript' ? 'text-yellow-300' :
-        'text-warm-gray-200'
-      }`
+      className: `font-mono text-sm bg-warm-gray-900 dark:bg-warm-gray-950 p-4 rounded-lg ${codeLanguageClass(language)}`
     },
     children: codeLines
   });
 
-  return {
-    type: 'code-fill-blank',
-    title,
-    instructions,
-    items,
-    targets,
-    uiRecipe: recipe,
-    showImmediateFeedback: true,
-    allowRetry: true
-  };
+  return completeActivity('code-fill-blank', data, { items, targets, uiRecipe: recipe });
 }
