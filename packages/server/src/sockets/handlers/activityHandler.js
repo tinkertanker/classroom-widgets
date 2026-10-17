@@ -106,7 +106,9 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     if (data.reveal) {
       io.to(`${session.code}:${roomId}`).emit(EVENTS.ACTIVITY.REVEALED, {
         widgetId: data.widgetId,
-        correctAnswers: room.getCorrectAnswers()
+        correctAnswers: room.getCorrectAnswers(),
+        // Typed activities send their answer items only now (see getStudentActivity)
+        items: room.getStudentActivity()?.items || []
       });
     }
 

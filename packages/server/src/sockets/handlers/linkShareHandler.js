@@ -91,8 +91,6 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     }
 
     // Validate student name if provided
-    // Trimmed, as the validator measured it: padding cannot oversize the name.
-    const studentName = data.studentName ? data.studentName.trim() : participant.name;
     if (data.studentName) {
       const nameValidation = validators.studentName(data.studentName);
       if (!nameValidation.valid) {
@@ -100,6 +98,8 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
         return;
       }
     }
+    // Trimmed, as the validator measured it: padding cannot oversize the name.
+    const studentName = data.studentName ? data.studentName.trim() : participant.name;
 
     // Update participant name if provided
     if (data.studentName && studentName !== participant.name) {

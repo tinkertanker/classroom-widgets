@@ -1,7 +1,17 @@
 const Room = require('./Room');
 
 const MAX_TEXT_INPUT_LENGTH = 2000;
-const MAX_ANSWER_ID_LENGTH = 100;
+
+// Item IDs the UI recipe renders (draggable word-bank items)
+function collectRecipeItemIds(blocks, ids = new Set()) {
+  if (!Array.isArray(blocks)) return ids;
+  for (const block of blocks) {
+    if (!block || typeof block !== 'object') continue;
+    if (block.props && typeof block.props.itemId === 'string') ids.add(block.props.itemId);
+    collectRecipeItemIds(block.children, ids);
+  }
+  return ids;
+}
 
 /**
  * Room class to manage interactive activity sessions
@@ -106,28 +116,35 @@ class ActivityRoom extends Room {
 
   /**
    * Reduce a student's submission to `{ placements, textInputs }` with one
-   * placement and one text input per known target, and bounded text.
+   * placement (of a known item) and one text input per known target, and
+   * text no longer than the activity needs.
    */
   normalizeAnswers(answers) {
     const source = answers && typeof answers === 'object' ? answers : {};
     const targets = this.activity && Array.isArray(this.activity.targets) ? this.activity.targets : [];
+    const items = this.activity && Array.isArray(this.activity.items) ? this.activity.items : [];
     const targetIds = new Set(targets.map(target => target && target.id).filter(id => typeof id === 'string'));
+    const itemIds = new Set(items.map(item => item && item.id).filter(id => typeof id === 'string'));
+    // Never shorter than a real answer, so the cap cannot turn a right answer wrong
+    const maxText = items.reduce(
+      (max, item) => Math.max(max, typeof item?.content === 'string' ? item.content.length : 0),
+      MAX_TEXT_INPUT_LENGTH
+    );
 
     const placements = [];
     const placedTargets = new Set();
     for (const p of Array.isArray(source.placements) ? source.placements : []) {
       if (placements.length >= targetIds.size) break;
-      if (!p || typeof p.itemId !== 'string' || typeof p.targetId !== 'string') continue;
-      if (!targetIds.has(p.targetId) || placedTargets.has(p.targetId)) continue;
+      if (!p || !targetIds.has(p.targetId) || !itemIds.has(p.itemId) || placedTargets.has(p.targetId)) continue;
       placedTargets.add(p.targetId);
-      placements.push({ itemId: p.itemId.slice(0, MAX_ANSWER_ID_LENGTH), targetId: p.targetId });
+      placements.push({ itemId: p.itemId, targetId: p.targetId });
     }
 
     const textInputs = {};
     const rawInputs = source.textInputs && typeof source.textInputs === 'object' ? source.textInputs : {};
     for (const id of targetIds) {
       if (Object.prototype.hasOwnProperty.call(rawInputs, id) && typeof rawInputs[id] === 'string') {
-        textInputs[id] = rawInputs[id].slice(0, MAX_TEXT_INPUT_LENGTH);
+        textInputs[id] = rawInputs[id].slice(0, maxText);
       }
     }
 
@@ -136,13 +153,22 @@ class ActivityRoom extends Room {
 
   /**
    * The activity as students may see it: targets without the `accepts`
-   * answer key. Grading and reveals stay on the server.
+   * answer key, and, until answers are revealed, only the items the UI
+   * shows as draggables. Typed activities keep their answers in `items`,
+   * so those stay on the server until the teacher reveals them.
    */
   getStudentActivity() {
     if (!this.activity) return this.activity;
     const targets = Array.isArray(this.activity.targets) ? this.activity.targets : [];
+    const items = Array.isArray(this.activity.items) ? this.activity.items : [];
+    let visibleItems = items;
+    if (!this.answersRevealed) {
+      const shown = collectRecipeItemIds(this.activity.uiRecipe);
+      visibleItems = items.filter(item => item && shown.has(item.id));
+    }
     return {
       ...this.activity,
+      items: visibleItems,
       targets: targets.map(target => {
         if (!target || typeof target !== 'object') return target;
         const { accepts, ...rest } = target;

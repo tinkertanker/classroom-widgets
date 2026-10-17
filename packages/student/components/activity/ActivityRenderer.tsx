@@ -153,6 +153,11 @@ export function ActivityRenderer({
 
     const handleRevealed = (data: ActivityRevealedData) => {
       if (data.widgetId !== widgetId) return;
+      // Typed answers reach students only with the reveal
+      const revealedItems = data.items;
+      if (revealedItems) {
+        setActivity(prev => (prev ? { ...prev, items: revealedItems } : prev));
+      }
       setCorrectAnswers(data.correctAnswers);
     };
 
