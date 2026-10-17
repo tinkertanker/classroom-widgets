@@ -141,7 +141,6 @@ export const findAvailablePosition = (
     placementArea.bottom - placementArea.top
   ) / 2;
   const radiusStep = 30; // Smaller steps for tighter spiral
-  const angleStepBase = Math.PI / 8; // Start with 22.5 degrees
   
   for (let radius = 0; radius <= maxRadius; radius += radiusStep) {
     // More angles at larger radii for better coverage

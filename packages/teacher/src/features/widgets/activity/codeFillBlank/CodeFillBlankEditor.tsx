@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import { FaPlus, FaXmark } from 'react-icons/fa6';
 import { buttons } from '@shared/utils/styles';
 import { parseAnswers } from '../shared/activityBuilders';

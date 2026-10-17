@@ -894,7 +894,7 @@ final class DisplayPreviewCoordinator: NSObject {
                 pause(message: "Preview suspended while its window is hidden.", preservingDeferredRestart: true)
                 publishStopStatus("Preview suspended while its window is hidden.")
             }
-        } else if visible {
+        } else {
             switch autoResume.revealed(
                 sessionExists: session != nil,
                 currentSourceUUID: selectedSource?.uuid

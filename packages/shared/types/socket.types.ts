@@ -507,7 +507,6 @@ export interface ServerToClientEvents {
   'activity:feedback': (data: ActivityFeedbackData) => void;
   'activity:revealed': (data: ActivityRevealedData) => void;
   'activity:responseReceived': (data: ActivityResponseReceivedData) => void;
-  'session:activity:submitted': (data: SessionActivitySubmittedResponse) => void;
 }
 
 /** Request state data for RT Feedback */

@@ -258,46 +258,9 @@ const validators = {
       return { valid: false, error: 'Invalid poll option' };
     }
     return { valid: true };
-  },
-
-  /**
-   * Validate request state data format
-   * All widgets should use the same format
-   * @param {Object} data - Request state data
-   * @returns {ValidationResult}
-   */
-  requestStateData: (data) => {
-    if (!data || typeof data !== 'object') {
-      return { valid: false, error: 'Request data is required' };
-    }
-    const codeResult = validators.sessionCode(data.sessionCode);
-    if (!codeResult.valid) {
-      return codeResult;
-    }
-    const widgetResult = validators.widgetId(data.widgetId);
-    if (!widgetResult.valid) {
-      return widgetResult;
-    }
-    return { valid: true };
   }
 };
 
-/**
- * Run validation and return standardized result
- * @param {string} validatorName - Name of the validator to use
- * @param {any} value - Value to validate
- * @param {any} [extra] - Extra parameter for some validators (e.g., maxOptions for pollOption)
- * @returns {ValidationResult}
- */
-function validate(validatorName, value, extra) {
-  const validator = validators[validatorName];
-  if (!validator) {
-    return { valid: false, error: `Unknown validator: ${validatorName}` };
-  }
-  return validator(value, extra);
-}
-
 module.exports = {
-  validators,
-  validate
+  validators
 };

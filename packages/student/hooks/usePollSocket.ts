@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { useWidgetStateChange } from './useWidgetStateChange';
 
-interface PollData {
+export interface PollData {
   question: string;
   options: string[];
   votes?: Record<number, number>;
@@ -19,7 +19,6 @@ interface UsePollSocketProps {
   socket: Socket;
   roomCode: string;
   widgetId?: string;
-  isSession?: boolean;
   initialPollData?: PollData;
   initialIsActive?: boolean;
 }
@@ -41,7 +40,6 @@ export const usePollSocket = ({
   socket,
   roomCode,
   widgetId,
-  isSession = false,
   initialPollData,
   initialIsActive = false
 }: UsePollSocketProps): UsePollSocketReturn => {
@@ -55,7 +53,6 @@ export const usePollSocket = ({
   const [results, setResults] = useState<Results | null>(null);
   const optionsRef = useRef(initialPollData?.options);
   
-  console.log(`[usePollSocket ${widgetId}] Initialized with isActive:`, initialIsActive);
 
   // Use shared hook for widget state changes
   useWidgetStateChange({
@@ -65,7 +62,6 @@ export const usePollSocket = ({
     widgetId,
     initialIsActive,
     onStateChange: (newIsActive) => {
-      console.log('[Student Poll] Received widget state change:', newIsActive);
       // Don't reset vote state when poll is paused/resumed - preserve voting data
       setIsActive(newIsActive);
     }
@@ -79,7 +75,6 @@ export const usePollSocket = ({
     const handleDataUpdate = (data: { pollData: PollData; results?: Results; widgetId?: string }) => {
       // Only process if this update is for our widget
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-        console.log('[Student Poll] Processing dataUpdate for widget:', widgetId);
         if (data.pollData) {
           // The zero-vote broadcast may have been missed while disconnected.
           // Changed options still mean a new poll, even if others voted since.
@@ -106,12 +101,10 @@ export const usePollSocket = ({
     const handleVoteUpdate = (data: Results & { widgetId?: string }) => {
       // Only process if this update is for our widget
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-        console.log('[Student Poll] Processing voteUpdate for widget:', widgetId);
         setResults(data);
         
         // If total votes is 0, this is a reset - clear the student's selection
         if (data.totalVotes === 0) {
-          console.log('[Student Poll] Votes reset, clearing selection');
           setHasVoted(false);
           setSelectedOption(null);
         }
@@ -122,7 +115,6 @@ export const usePollSocket = ({
     const handleVoteConfirmed = (data: { success: boolean; error?: string; widgetId?: string }) => {
       // Only process if this confirmation is for our widget
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-        console.log('[Student Poll] Processing vote confirmation for widget:', widgetId);
         if (data.success) {
           setHasVoted(true);
         }
@@ -134,7 +126,7 @@ export const usePollSocket = ({
     socket.on('poll:voteUpdate', handleVoteUpdate);
     socket.on('session:poll:voteConfirmed', handleVoteConfirmed);
 
-    // Request initial state if needed - use sessionCode (new) format
+    // Request initial state if needed
     let timer: NodeJS.Timeout | undefined;
     const hasInitialData = initialPollData && initialPollData.question && initialPollData.options;
     if (!hasInitialData) {
@@ -155,10 +147,8 @@ export const usePollSocket = ({
   }, [socket, roomCode, widgetId, initialPollData]);
 
   const handleVote = (optionIndex: number) => {
-    console.log(`[usePollSocket ${widgetId}] handleVote called - hasVoted: ${hasVoted}, isActive: ${isActive}`);
     if (!socket || hasVoted || !isActive) return;
     
-    console.log(`[usePollSocket ${widgetId}] Sending vote for option ${optionIndex}`);
     setSelectedOption(optionIndex);
     
     socket.emit('session:poll:vote', { 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Socket } from 'socket.io-client';
-import { usePollSocket } from '../hooks/usePollSocket';
+import { usePollSocket, type PollData } from '../hooks/usePollSocket';
 import { getStudentPollColor } from '@shared/constants/studentPollColors';
 
 interface PollActivityProps {
@@ -8,39 +8,21 @@ interface PollActivityProps {
   roomCode: string;
   initialPollData?: PollData;
   initialIsActive?: boolean;
-  studentName?: string;
-  isSession?: boolean;
   widgetId?: string;
 }
 
-interface PollData {
-  question: string;
-  options: string[];
-  votes?: Record<number, number>;
-}
-
-interface Results {
-  question: string;
-  options: string[];
-  votes: Record<number, number>;
-  totalVotes: number;
-}
-
-const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, initialIsActive, studentName, isSession = false, widgetId }) => {
-  console.log(`[PollActivity ${widgetId}] Mounting with initialPollData:`, initialPollData, 'initialIsActive:', initialIsActive);
+const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, initialIsActive, widgetId }) => {
 
   // Use our custom hook for all socket logic
   const { pollData, isActive, hasVoted, selectedOption, results, handleVote } = usePollSocket({
     socket,
     roomCode,
     widgetId,
-    isSession,
     initialPollData,
     initialIsActive
   });
 
   const renderContent = () => {
-    console.log(`[PollActivity ${widgetId}] Rendering - hasVoted: ${hasVoted}, selectedOption: ${selectedOption}, isActive: ${isActive}`);
     
     if (!pollData.question || pollData.options.length === 0) {
       return (

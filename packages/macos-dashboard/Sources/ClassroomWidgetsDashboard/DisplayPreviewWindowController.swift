@@ -21,7 +21,6 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     private let statusBackdrop = DisplayStatusEffectView()
     private let chromeBackground = DisplayStatusEffectView()
     private var compactControls: NSView?
-    private var compactAccessoryController: NSTitlebarAccessoryViewController?
     private weak var chromeTrackingView: NSView?
     private var chromeTrackingArea: NSTrackingArea?
     private var chromeHideGeneration = 0
@@ -388,7 +387,6 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         accessory.layoutAttribute = .right
         panel.addTitlebarAccessoryViewController(accessory)
         compactControls = container
-        compactAccessoryController = accessory
     }
 
     @objc private func showControlsMenu(_ sender: NSButton) {

@@ -288,7 +288,7 @@ async function panel(env, type, state, watch, viewport) {
   const snapshot = panelSnapshot(type, state);
   const session = await openPage(env, {
     viewport,
-    probe: { native: true, panel: true, snapshot, watch: [{ name: 'content', test: watch }] },
+    probe: { native: true, snapshot, watch: [{ name: 'content', test: watch }] },
   });
   try {
     const url = panelUrl(env, snapshot);
@@ -395,7 +395,7 @@ async function timerRunning(env, surface) {
   const snapshot = isPanel ? panelSnapshot(WidgetType.TIMER, state) : null;
   const session = await openPage(env, {
     viewport: isPanel ? { width: 350, height: 415 } : BOARD_VIEWPORT,
-    probe: { native: isPanel, panel: isPanel, snapshot, watch: [{ name: 'timer', test: `() => document.querySelector('[data-testid="timer-face"]')` }] },
+    probe: { native: isPanel, snapshot, watch: [{ name: 'timer', test: `() => document.querySelector('[data-testid="timer-face"]')` }] },
     localStorage: isPanel ? {} : { [STORAGE_KEY]: JSON.stringify(timerBoard({ seconds: 3600, running: true, now })) },
   });
   const { page, cdp } = session;
@@ -417,7 +417,7 @@ async function randomiserSpin(env, count, surface = 'board') {
   const snapshot = isPanel ? panelSnapshot(WidgetType.RANDOMISER, randomiserState(count)) : null;
   const session = await openPage(env, {
     viewport: isPanel ? { width: 350, height: 250 } : BOARD_VIEWPORT,
-    probe: { native: isPanel, panel: isPanel, snapshot, watch: [{ name: 'ready', test: `() => document.querySelector('.backdrop-blur-sm')` }] },
+    probe: { native: isPanel, snapshot, watch: [{ name: 'ready', test: `() => document.querySelector('.backdrop-blur-sm')` }] },
     localStorage: isPanel ? {} : { [STORAGE_KEY]: JSON.stringify(randomiserBoard(count)) },
   });
   const { page, cdp } = session;

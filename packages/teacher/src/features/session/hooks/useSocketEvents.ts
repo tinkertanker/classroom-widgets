@@ -1,6 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { useSession } from '../../../contexts/SessionContext';
-import { ServerEventName, ClientEventName, ServerEventData, ClientEventData } from '@shared/types/socket.types';
+import { ServerEventName, ClientEventName, ClientEventData } from '@shared/types/socket.types';
 
 interface UseSocketEventsProps {
   events: Partial<Record<ServerEventName, (data: any) => void>>;

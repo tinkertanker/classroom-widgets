@@ -10,13 +10,8 @@ export function useAutoResizeTextarea() {
   // Auto-resize textarea to fit content
   const adjustHeight = useCallback((element: HTMLTextAreaElement) => {
     // Temporarily set to auto to get the true scrollHeight
-    const previousHeight = element.style.height;
     element.style.height = 'auto';
-    const newHeight = element.scrollHeight;
-
-    // Only apply if content needs more space than min-height
-    // Otherwise, let CSS min-height handle it
-    element.style.height = newHeight + 'px';
+    element.style.height = element.scrollHeight + 'px';
   }, []);
 
   // Handle input event for auto-resize

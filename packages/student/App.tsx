@@ -23,7 +23,7 @@ interface JoinedRoom {
   code: string;
   type: RoomType;
   studentName: string;
-  studentId: string; // Added studentId to the interface
+  studentId: string;
   socket: Socket;
   joinedAt: number;
   initialData?: any; // Store initial poll/activity data
@@ -99,7 +99,6 @@ const App: React.FC = () => {
   const SCROLL_THRESHOLD_ENTER = 100; // pixels before header becomes compact
   const SCROLL_THRESHOLD_EXIT = 50; // pixels before header exits compact mode (hysteresis)
   const COMPACT_HEADER_HEIGHT_MOBILE = 56; // height in pixels for mobile compact mode
-  // const DEFAULT_HEADER_HEIGHT = 180; // default height estimate - unused
 
   // Save student name to localStorage when it changes
   useEffect(() => {
@@ -239,240 +238,201 @@ const App: React.FC = () => {
   }, []);
 
   const handleJoin = async (code: string, name: string) => {
-    try {
-      // Check for admin mode
-      if (code.toUpperCase() === 'ADMIN') {
-        const socket = getSocket();
-        setAdminSocket(socket);
-        setIsAdminMode(true);
-        return;
-      }
+    // Check for admin mode
+    if (code.toUpperCase() === 'ADMIN') {
+      const socket = getSocket();
+      setAdminSocket(socket);
+      setIsAdminMode(true);
+      return;
+    }
 
-      // Check if already joined this session
-      if (joinedRooms.some(room => room.code === code)) {
-        throw new Error('Already joined this session');
-      }
+    // Check if already joined this session
+    if (joinedRooms.some(room => room.code === code)) {
+      throw new Error('Already joined this session');
+    }
 
-      // Only allow one session at a time
-      if (currentSessionCode) {
-        throw new Error('You can only join one session at a time. Please leave the current session first.');
-      }
+    // Only allow one session at a time
+    if (currentSessionCode) {
+      throw new Error('You can only join one session at a time. Please leave the current session first.');
+    }
 
-      // Update student name if provided
-      if (name && name !== studentName) {
-        setStudentName(name);
-      }
+    // Update student name if provided
+    if (name && name !== studentName) {
+      setStudentName(name);
+    }
 
-      // Check if session exists
-      const response = await fetch(`/api/sessions/${code}/exists`);
-      if (response.status === 429) {
-        throw new Error('Too many attempts. Please wait a moment and try again.');
-      }
-      const data = await response.json();
+    // Check if session exists
+    const response = await fetch(`/api/sessions/${code}/exists`);
+    if (response.status === 429) {
+      throw new Error('Too many attempts. Please wait a moment and try again.');
+    }
+    const data = await response.json();
 
-      if (!data.exists) {
-        throw new Error('Invalid session code');
-      }
+    if (!data.exists) {
+      throw new Error('Invalid session code');
+    }
 
-      // Create new socket connection for this session
-      const newSocket = getSocket();
-      const sessionId = `${code}-${Date.now()}`;
-      
-      // Store socket reference
-      socketRefs.current.set(sessionId, newSocket);
-      setPrimarySocket(newSocket);
+    // Create new socket connection for this session
+    const newSocket = getSocket();
+    const sessionId = `${code}-${Date.now()}`;
+    
+    // Store socket reference
+    socketRefs.current.set(sessionId, newSocket);
+    setPrimarySocket(newSocket);
 
-      // Set up socket event handlers
-      newSocket.on('connect', () => {
-        setIsConnected(true);
-        newSocket.emit('session:join', { code, name: name || studentName, studentId: newSocket.id });
-      });
+    // Set up socket event handlers
+    newSocket.on('connect', () => {
+      setIsConnected(true);
+      newSocket.emit('session:join', { code, name: name || studentName, studentId: newSocket.id });
+    });
 
-      newSocket.on('session:joined', (joinData) => {
-        console.log('[Student App] session:joined data:', joinData);
+    newSocket.on('session:joined', (joinData) => {
+      if (joinData.success && joinData.activeRooms) {
+        // Set current session code
+        setCurrentSessionCode(code);
         
-        if (joinData.success && joinData.activeRooms) {
-          // Set current session code
-          setCurrentSessionCode(code);
+        // Join all active rooms in the session
+        joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
+          const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
+          const roomId = `${code}-${computedRoomId}-${Date.now()}`;
           
-          // Join all active rooms in the session
-          joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
-            console.log('[Student App] Processing room:', roomData);
-            console.log('[Student App] Room data structure:', {
-              roomType: roomData.roomType,
-              room: roomData.room,
-              isActive: roomData.room?.isActive,
-              pollData: roomData.room?.pollData,
-              fullRoom: JSON.stringify(roomData.room)
-            });
-            const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
-            const roomId = `${code}-${computedRoomId}-${Date.now()}`;
-            
-            const newRoom: JoinedRoom = {
-              id: roomId,
-              code,
-              type: roomData.roomType,
-              studentName: name || studentName,
-              studentId: newSocket.id || '', // Populate studentId
-              socket: newSocket,
-              joinedAt: Date.now(),
-              initialData: roomData.room || {},
-              widgetId: roomData.widgetId,
-              isActive: roomData.room?.isActive || false
-            };
-            
-            console.log('[Student App] Created room with isActive:', newRoom.isActive, 'from roomData.room:', roomData.room);
-            
-            // Insert (newest first) or refresh - a reconnect replays this event for every
-            // room we already joined, so this must never append blindly
-            setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
-            
-            // Animate room entry. If the room was already in the list it kept its old id,
-            // so this freshly-generated roomId matches nothing and no card re-animates.
-            animateRoomEnter(roomId);
-          });
-        } else {
-          // Clean up on failure. The reason reaches the join form through
-          // joinOutcome below; throwing here would only be an uncaught error.
-          newSocket.close();
-          socketRefs.current.delete(sessionId);
-          setCurrentSessionCode(''); // Clear session code
-          setIsConnected(false);
-        }
-      });
-
-      // Settle the join on the server's first answer so the form can say why
-      // it failed (session full, too many attempts, ...)
-      const joinOutcome = new Promise<void>((resolve, reject) => {
-        const settle = (joinData: { success?: boolean; error?: string; message?: string }) => {
-          clearTimeout(timer);
-          if (joinData?.success) {
-            resolve();
-          } else {
-            reject(new Error(joinData?.message || joinData?.error || 'Failed to join session'));
-          }
-        };
-        const timer = setTimeout(() => {
-          newSocket.off('session:joined', settle);
-          newSocket.close();
-          socketRefs.current.delete(sessionId);
-          setIsConnected(false);
-          reject(new Error('Could not connect to the session. Please try again.'));
-        }, 15000);
-        newSocket.once('session:joined', settle);
-      });
-
-      // Handle new rooms being created in the session
-      newSocket.on('session:roomCreated', (data) => {
-        const computedRoomId = data.widgetId ? `${data.roomType}:${data.widgetId}` : data.roomType;
-        const roomId = `${code}-${computedRoomId}-${Date.now()}`;
-        
-        const newRoom: JoinedRoom = {
-          id: roomId,
-          code,
-          type: data.roomType,
-          studentName: name || studentName,
-          studentId: newSocket.id || '',
-          socket: newSocket,
-          joinedAt: Date.now(),
-          initialData: data.roomData || {},
-          widgetId: data.widgetId,
-          isActive: data.roomData?.isActive || false
-        };
-        
-        // Add room if not already exists
-        setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
-        
-        animateRoomEnter(roomId);
-      });
-
-      // Handle rooms being closed in the session
-      newSocket.on('session:roomClosed', (data) => {
-        console.log('[Student App] Received session:roomClosed:', data);
-        // Find and remove the room of this type for this session
-        setJoinedRooms(prev => {
-          const roomToRemove = prev.find(r => 
-            r.code === code && 
-            r.type === data.roomType && 
-            r.widgetId === data.widgetId
-          );
-          if (roomToRemove) {
-            console.log('[Student App] Found room to remove:', roomToRemove);
-            animateRoomLeave(roomToRemove.id, () => {
-              console.log('[Student App] Removing room from state:', roomToRemove.id);
-              setJoinedRooms(rooms => rooms.filter(r => r.id !== roomToRemove.id));
-            });
-          } else {
-            console.log('[Student App] No matching room found to remove');
-          }
-          return prev;
+          const newRoom: JoinedRoom = {
+            id: roomId,
+            code,
+            type: roomData.roomType,
+            studentName: name || studentName,
+            studentId: newSocket.id || '', // Populate studentId
+            socket: newSocket,
+            joinedAt: Date.now(),
+            initialData: roomData.room || {},
+            widgetId: roomData.widgetId,
+            isActive: roomData.room?.isActive || false
+          };
+          
+          // Insert (newest first) or refresh - a reconnect replays this event for every
+          // room we already joined, so this must never append blindly
+          setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
+          
+          // Animate room entry. If the room was already in the list it kept its old id,
+          // so this freshly-generated roomId matches nothing and no card re-animates.
+          animateRoomEnter(roomId);
         });
-      });
-
-      // Handle unified widget state changes
-      newSocket.on('session:widgetStateChanged', (data) => {
-        // Update the isActive state for the specific widget
-        setJoinedRooms(prev => prev.map(room => {
-          if (room.code === code && room.type === data.roomType && room.widgetId === data.widgetId) {
-            return { 
-              ...room, 
-              isActive: data.isActive,
-              initialData: { ...room.initialData, isActive: data.isActive } 
-            };
-          }
-          return room;
-        }));
-      });
-
-      // Handle host disconnect/reconnect
-      newSocket.on('session:hostDisconnected', () => {
-        setHostConnected(false);
-      });
-
-      newSocket.on('session:hostReconnected', () => {
-        setHostConnected(true);
-      });
-
-      // Handle session closed (host disconnected for too long)
-      newSocket.on('session:closed', () => {
-        console.log('Session closed by server');
-        // Clear session state
-        setJoinedRooms([]);
-        setCurrentSessionCode('');
-        setHostConnected(true);
-        // Close socket connections
-        socketRefs.current.forEach((socket) => socket.close());
-        socketRefs.current.clear();
-      });
-      
-      newSocket.on('disconnect', () => {
+      } else {
+        // Clean up on failure. The reason reaches the join form through
+        // joinOutcome below; throwing here would only be an uncaught error.
+        newSocket.close();
+        socketRefs.current.delete(sessionId);
+        setCurrentSessionCode(''); // Clear session code
         setIsConnected(false);
-      });
+      }
+    });
+
+    // Settle the join on the server's first answer so the form can say why
+    // it failed (session full, too many attempts, ...)
+    const joinOutcome = new Promise<void>((resolve, reject) => {
+      const settle = (joinData: { success?: boolean; error?: string; message?: string }) => {
+        clearTimeout(timer);
+        if (joinData?.success) {
+          resolve();
+        } else {
+          reject(new Error(joinData?.message || joinData?.error || 'Failed to join session'));
+        }
+      };
+      const timer = setTimeout(() => {
+        newSocket.off('session:joined', settle);
+        newSocket.close();
+        socketRefs.current.delete(sessionId);
+        setIsConnected(false);
+        reject(new Error('Could not connect to the session. Please try again.'));
+      }, 15000);
+      newSocket.once('session:joined', settle);
+    });
+
+    // Handle new rooms being created in the session
+    newSocket.on('session:roomCreated', (data) => {
+      const computedRoomId = data.widgetId ? `${data.roomType}:${data.widgetId}` : data.roomType;
+      const roomId = `${code}-${computedRoomId}-${Date.now()}`;
       
-      newSocket.on('connect', () => {
-        setIsConnected(true);
-        // If we were in a session, try to rejoin
-        if (currentSessionCode && name) {
-          newSocket.emit('session:join', { 
-            code: currentSessionCode, 
-            name,
-            studentId: newSocket.id
+      const newRoom: JoinedRoom = {
+        id: roomId,
+        code,
+        type: data.roomType,
+        studentName: name || studentName,
+        studentId: newSocket.id || '',
+        socket: newSocket,
+        joinedAt: Date.now(),
+        initialData: data.roomData || {},
+        widgetId: data.widgetId,
+        isActive: data.roomData?.isActive || false
+      };
+      
+      // Add room if not already exists
+      setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
+      
+      animateRoomEnter(roomId);
+    });
+
+    // Handle rooms being closed in the session
+    newSocket.on('session:roomClosed', (data) => {
+      // Find and remove the room of this type for this session
+      setJoinedRooms(prev => {
+        const roomToRemove = prev.find(r => 
+          r.code === code && 
+          r.type === data.roomType && 
+          r.widgetId === data.widgetId
+        );
+        if (roomToRemove) {
+          animateRoomLeave(roomToRemove.id, () => {
+            setJoinedRooms(rooms => rooms.filter(r => r.id !== roomToRemove.id));
           });
         }
+        return prev;
       });
-      
-      newSocket.on('reconnect_attempt', () => {
-        // Reconnection attempts are now indicated by the warning icon
-      });
+    });
 
-      try {
-        await joinOutcome;
-      } catch (error) {
-        setPrimarySocket(current => (current === newSocket ? null : current));
-        throw error;
-      }
+    // Handle unified widget state changes
+    newSocket.on('session:widgetStateChanged', (data) => {
+      // Update the isActive state for the specific widget
+      setJoinedRooms(prev => prev.map(room => {
+        if (room.code === code && room.type === data.roomType && room.widgetId === data.widgetId) {
+          return { 
+            ...room, 
+            isActive: data.isActive,
+            initialData: { ...room.initialData, isActive: data.isActive } 
+          };
+        }
+        return room;
+      }));
+    });
 
+    // Handle host disconnect/reconnect
+    newSocket.on('session:hostDisconnected', () => {
+      setHostConnected(false);
+    });
+
+    newSocket.on('session:hostReconnected', () => {
+      setHostConnected(true);
+    });
+
+    // Handle session closed (host disconnected for too long)
+    newSocket.on('session:closed', () => {
+      // Clear session state
+      setJoinedRooms([]);
+      setCurrentSessionCode('');
+      setHostConnected(true);
+      // Close socket connections
+      socketRefs.current.forEach((socket) => socket.close());
+      socketRefs.current.clear();
+    });
+    
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    try {
+      await joinOutcome;
     } catch (error) {
+      setPrimarySocket(current => (current === newSocket ? null : current));
       throw error;
     }
   };
@@ -627,7 +587,6 @@ const App: React.FC = () => {
                         roomCode={room.code}
                         initialPollData={room.initialData?.pollData}
                         initialIsActive={room.isActive}
-                        isSession={true}
                         widgetId={room.widgetId}
                       />
                     )}
@@ -636,7 +595,6 @@ const App: React.FC = () => {
                         socket={room.socket}
                         roomCode={room.code}
                         studentName={studentName}
-                        isSession={true}
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}
                         initialAcceptMode={room.initialData?.acceptMode || 'all'}
@@ -646,9 +604,7 @@ const App: React.FC = () => {
                       <RTFeedbackActivity 
                         socket={room.socket} 
                         roomCode={room.code}
-                        studentName={studentName}
                         initialIsActive={room.initialData?.isActive}
-                        isSession={true}
                         widgetId={room.widgetId}
                       />
                     )}
@@ -666,7 +622,6 @@ const App: React.FC = () => {
                       <HandoutActivity
                         socket={room.socket}
                         roomCode={room.code}
-                        isSession={true}
                         widgetId={room.widgetId}
                         initialIsActive={room.initialData?.isActive}
                         initialItems={room.initialData?.items || []}

@@ -144,7 +144,6 @@ public sealed class TrayController : IDisposable
             if (separatorBefore) widgetItems.Add(new ToolStripSeparator());
             var item = new ToolStripMenuItem(CompactWidgetMenu.Label(option))
             {
-                Tag = option.WidgetType,
                 ShortcutKeyDisplayString = ShowShortcutHint(option.WidgetType, _settings.WidgetShortcuts.GetValueOrDefault(option.WidgetType))
             };
             item.Click += (_, _) => _ = _host.AddWidgetAsync(option.WidgetType);

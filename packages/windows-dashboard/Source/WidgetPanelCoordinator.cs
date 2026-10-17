@@ -396,12 +396,6 @@ public static class ScreenGeometry
     /// DPI, so mixed-DPI setups (e.g. a 150% laptop screen driving a 100%
     /// projector) map to the right WPF coordinates.
     /// </summary>
-    /// <summary>Every monitor's work area in DIPs, ordered by origin (x, then y).</summary>
-    public static IReadOnlyList<Rect> AllWorkAreas() => System.Windows.Forms.Screen.AllScreens
-        .Select(WorkAreaInDips)
-        .OrderBy(area => area.X).ThenBy(area => area.Y)
-        .ToList();
-
     internal static Rect WorkAreaInDips(System.Windows.Forms.Screen screen)
     {
         var bounds = screen.Bounds;

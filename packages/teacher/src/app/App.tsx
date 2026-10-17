@@ -21,7 +21,7 @@ import { CanvasWidgetList, ColumnWidgetList } from '../features/board/components
 import GlobalErrorBoundary from '@shared/components/GlobalErrorBoundary';
 import SmallScreenWarning from '@shared/components/SmallScreenWarning';
 import { HudProximityProvider } from '@shared/hooks/useHudProximity';
-import { WidgetType, WidgetCategory } from '@shared/types';
+import { WidgetType } from '@shared/types';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { getReleaseLabel } from '../version';
 import { useDesktopDashboardMode } from '../features/desktop/useDesktopDashboardMode';

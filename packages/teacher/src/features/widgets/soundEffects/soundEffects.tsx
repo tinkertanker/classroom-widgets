@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useMemo, useCallback } from 'react';
-// @ts-ignore
 import {
   FaTrophy,        // Victory
   FaXmark,         // Wrong (X icon)

@@ -3,18 +3,11 @@ import { Socket } from 'socket.io-client';
 import { FaFileLines, FaCopy, FaArrowUpRightFromSquare, FaCheck } from 'react-icons/fa6';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 import { isSafeHttpUrl } from '@shared/utils/validation';
-
-interface HandoutItem {
-  id: string;
-  content: string;
-  isLink: boolean;
-  timestamp: number;
-}
+import type { HandoutItem } from '@shared/types/socket.types';
 
 interface HandoutActivityProps {
   socket: Socket;
   roomCode: string;
-  isSession?: boolean;
   widgetId?: string;
   initialIsActive?: boolean;
   initialItems?: HandoutItem[];
@@ -23,7 +16,6 @@ interface HandoutActivityProps {
 const HandoutActivity: React.FC<HandoutActivityProps> = ({
   socket,
   roomCode,
-  isSession = false,
   widgetId,
   initialIsActive = true,
   initialItems = []

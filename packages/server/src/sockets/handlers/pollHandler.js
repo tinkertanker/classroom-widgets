@@ -1,8 +1,8 @@
-const { EVENTS, LIMITS } = require('../../config/constants');
+const { EVENTS } = require('../../config/constants');
 const PollRoom = require('../../models/PollRoom');
 const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
-const { createErrorResponse, createSuccessResponse, createRateLimitResponse, ERROR_CODES } = require('../../utils/errors');
+const { createErrorResponse, createSuccessResponse, createRateLimitResponse } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
 const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
 

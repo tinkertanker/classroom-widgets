@@ -61,7 +61,7 @@ struct ShortcutBindingState {
         return recorderCount == 0
     }
 
-    mutating func replaceWidgets(with bindings: [Int: WidgetShortcutBinding], discardPending: Bool = false) {
+    mutating func replaceWidgets(with bindings: [Int: WidgetShortcutBinding]) {
         accepted = accepted.filter {
             switch $0.key {
             case .settings, .moveWidgetPrevious, .moveWidgetNext, .display, .displayDismiss: true
@@ -75,7 +75,7 @@ struct ShortcutBindingState {
         pending = pending.filter { owner, _ in
             switch owner {
             case let .widget(widgetType), let .widgetDismiss(widgetType):
-                return !discardPending && bindings[widgetType] != nil
+                return bindings[widgetType] != nil
             case .settings, .moveWidgetPrevious, .moveWidgetNext, .display, .displayDismiss:
                 return true
             }
@@ -89,10 +89,9 @@ struct ShortcutBindingState {
     }
 
     func displayBinding(includingPending: Bool = false) -> WidgetShortcutBinding {
-        let none = DashboardShortcut(keyCode: -1, modifiers: 0)
         return WidgetShortcutBinding(
-            show: (includingPending ? pending[.display] : nil) ?? accepted[.display] ?? none,
-            dismiss: (includingPending ? pending[.displayDismiss] : nil) ?? accepted[.displayDismiss] ?? none
+            show: (includingPending ? pending[.display] : nil) ?? accepted[.display] ?? DashboardShortcut.unassigned,
+            dismiss: (includingPending ? pending[.displayDismiss] : nil) ?? accepted[.displayDismiss] ?? DashboardShortcut.unassigned
         )
     }
 

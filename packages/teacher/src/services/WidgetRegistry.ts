@@ -14,7 +14,6 @@ import {
   FaHeart,
   FaChartColumn,
   FaQrcode,
-  FaArrowUpRightFromSquare,
   FaVideo,
   FaSliders,
   FaGamepad,
@@ -27,7 +26,7 @@ import {
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
-import { WidgetType, WidgetConfig, WidgetCategory, WidgetFeatures, Size, ColumnSizing } from '@shared/types';
+import { WidgetType, WidgetConfig, WidgetCategory, Size } from '@shared/types';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { isNativeDesktop } from '@shared/utils/nativeBridge';
 
@@ -623,58 +622,6 @@ export class WidgetRegistry {
 
   getAll(): WidgetConfig[] {
     return Array.from(this.widgets.values());
-  }
-
-  getByCategory(category: WidgetCategory): WidgetConfig[] {
-    return this.getAll().filter(widget => widget.category === category);
-  }
-
-  getIcon(type: WidgetType): React.ComponentType<any> | undefined {
-    return this.get(type)?.icon;
-  }
-
-  getName(type: WidgetType): string {
-    return this.get(type)?.name || 'Unknown Widget';
-  }
-
-  getComponent(type: WidgetType): React.ComponentType<any> | undefined {
-    return this.get(type)?.component;
-  }
-
-  getDefaultSize(type: WidgetType): Size {
-    return this.get(type)?.defaultSize || DEFAULT_SIZE;
-  }
-
-  getMinSize(type: WidgetType): Size | undefined {
-    return this.get(type)?.minSize;
-  }
-
-  getMaxSize(type: WidgetType): Size | undefined {
-    return this.get(type)?.maxSize;
-  }
-
-  isNetworked(type: WidgetType): boolean {
-    return this.get(type)?.category === WidgetCategory.NETWORKED;
-  }
-
-  getNetworkedConfig(type: WidgetType) {
-    return this.get(type)?.networked;
-  }
-
-  getRoomType(type: WidgetType): string | undefined {
-    return this.get(type)?.networked?.roomType;
-  }
-
-  hasFeature(type: WidgetType, feature: keyof WidgetFeatures): boolean {
-    return this.get(type)?.features?.[feature] || false;
-  }
-
-  getNetworkedWidgets(): WidgetConfig[] {
-    return this.getByCategory(WidgetCategory.NETWORKED);
-  }
-
-  getWidgetsByFeature(feature: keyof WidgetFeatures): WidgetConfig[] {
-    return this.getAll().filter(widget => widget.features?.[feature]);
   }
 }
 

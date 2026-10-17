@@ -74,7 +74,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
   });
 
   // Active state management
-  const { isActive: isWidgetActive, toggleActive, setIsActive: setIsWidgetActive } = useNetworkedWidgetState({
+  const { isActive: isWidgetActive, toggleActive } = useNetworkedWidgetState({
     widgetId,
     roomType: 'poll',
     hasRoom,

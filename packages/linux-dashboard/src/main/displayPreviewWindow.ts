@@ -1,15 +1,14 @@
-import { BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions, app } from 'electron';
+import { BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions } from 'electron';
 import { EventEmitter } from 'node:events';
-import { join } from 'node:path';
 import { Rect, Size } from './displayGeometry';
 import { log } from './log';
+import { preloadPath, rendererPath } from './paths';
 import { allowMediaCapture } from './webContentsSetup';
 
 export interface DisplayPreviewState {
   statusMessage: string;
   powerState: 'on' | 'off';
   powerEnabled: boolean;
-  idleStartEnabled: boolean;
   sourceId: number | null;
 }
 
@@ -58,7 +57,7 @@ export class DisplayPreviewWindow extends EventEmitter {
       minWidth: 320,
       minHeight: 240 + CHROME_HEIGHT,
       webPreferences: {
-        preload: join(app.getAppPath(), 'out', 'preload', 'displayPreview.js'),
+        preload: preloadPath('displayPreview'),
         contextIsolation: true,
         sandbox: false,
         nodeIntegration: false,
@@ -83,7 +82,7 @@ export class DisplayPreviewWindow extends EventEmitter {
       this.pendingStart = null;
       this.pendingStop = false;
     });
-    void this.win.loadFile(join(app.getAppPath(), 'src', 'renderer', 'display-preview.html'));
+    void this.win.loadFile(rendererPath('display-preview.html'));
   }
 
   handleAction(message: unknown): void {

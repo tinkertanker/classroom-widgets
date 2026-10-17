@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import io, { Socket } from 'socket.io-client';
-import { useWorkspaceStore } from '../store/workspaceStore.simple';
 import { useServerConnection } from '@shared/hooks/useWorkspace';
 import { debug } from '@shared/utils/debug';
 import { attachUsageSocket } from '../services/usageTracking';
@@ -29,9 +28,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
     setSocket(newSocket);
     const detachUsage = attachUsageSocket(newSocket);
-    
-    // Store socket in window for backwards compatibility
-    (window as any).socket = newSocket;
 
     newSocket.on('connect', () => {
       setServerStatus({ connected: true });
@@ -53,7 +49,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => {
       detachUsage();
       newSocket.disconnect();
-      delete (window as any).socket;
     };
   }, [url, setServerStatus]);
 

@@ -7,7 +7,6 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
-const path = require('path');
 
 // Import configurations
 const serverConfig = require('./config/server.config');

@@ -137,10 +137,6 @@ export class WidgetShortcutController extends EventEmitter {
       const assigned = normalizeAccelerator(this.settings[key] ?? '');
       if (assigned) reserved.add(assigned);
     }
-    for (const shortcut of [this.settings.moveWidgetPreviousShortcut, this.settings.moveWidgetNextShortcut]) {
-      const normalized = normalizeAccelerator(shortcut ?? '');
-      if (normalized) reserved.add(normalized);
-    }
     options.slice(0, WIDGET_DEFAULTS.length).forEach((option) => {
       const type = String(option.widgetType);
       if (!Object.hasOwn(this.settings.widgetShortcuts, type)) {

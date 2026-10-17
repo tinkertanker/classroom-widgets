@@ -150,6 +150,7 @@ function previewWindow() {
       if (name === 'electron') return { BrowserWindow, ipcMain: new EventEmitter(), app: { getAppPath: () => '.' } };
       if (name === './webContentsSetup') return { allowMediaCapture() {} };
       if (name === './log') return { log: { warn() {} } };
+      if (name === './paths') return { preloadPath: () => '.', rendererPath: () => '.' };
       return require(name);
     },
   });

@@ -1,6 +1,6 @@
 // TrashZone - Drop zone for deleting widgets
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { clsx } from 'clsx';
 import { FaTrash } from 'react-icons/fa6';
 import { useDragAndDrop } from '@shared/hooks/useWorkspace';

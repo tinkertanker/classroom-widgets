@@ -351,8 +351,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         launchItem.isEnabled = launchAtLoginManager.canConfigure
         menu.addItem(launchItem)
 
-        let updateTitle = availableUpdateVersion.map { "Update to v\($0)…" } ?? "Check for Updates…"
-        let updateItem = NSMenuItem(title: updateTitle, action: #selector(checkForUpdates), keyEquivalent: "")
+        let updateItem = NSMenuItem(title: Self.updateMenuTitle(availableUpdateVersion), action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.target = self
         menu.addItem(updateItem)
 
@@ -367,9 +366,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    private static func updateMenuTitle(_ version: String?) -> String {
+        version.map { "Update to v\($0)…" } ?? "Check for Updates…"
+    }
+
     private func showUpdateAvailability(_ version: String?) {
         availableUpdateVersion = version
-        mainUpdateMenuItem?.title = version.map { "Update to v\($0)…" } ?? "Check for Updates…"
+        mainUpdateMenuItem?.title = Self.updateMenuTitle(version)
         statusItem?.button?.image = DashboardMenuBarIcon.make(size: 16, updateAvailable: version != nil)
         statusItem?.button?.toolTip = version.map { "Classroom Widgets — update v\($0) available" } ?? "Classroom Widgets"
     }
@@ -489,9 +492,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch state.stage(candidate, for: spec.owner) {
         case .duplicate:
             singleActionStatus(Self.settingsDuplicateStatus, for: spec)
-        case .unchanged:
-            singleActionStatus(nil, for: spec)
-        case .staged:
+        case .unchanged, .staged:
             singleActionStatus(nil, for: spec)
         }
         shortcutState = state
@@ -601,7 +602,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     )
                     state.setInitialDisplay(binding, action: action)
                     if !binding.isAssigned {
-                        displayShortcutStatuses[owner] = "The default shortcut is already assigned. Choose another shortcut."
+                        displayShortcutStatuses[owner] = Self.defaultShortcutTakenStatus
                     }
                 }
             }
@@ -626,9 +627,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .duplicate:
             displayShortcutStatuses[owner] = Self.widgetDuplicateStatus
             preserveUnassignedDisplayChoiceIfNeeded(in: &state, action: action)
-        case .unchanged:
-            displayShortcutStatuses[owner] = nil
-        case .staged:
+        case .unchanged, .staged:
             displayShortcutStatuses[owner] = nil
         }
         shortcutState = state
@@ -667,9 +666,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !customized(spec.keyCodeDefaultsKey), !customized(spec.modifiersDefaultsKey) {
             let fallback = DashboardShortcut(keyCode: spec.defaultKeyCode, modifiers: spec.defaultModifiers).normalized
             if fallback.isAssigned, reserved.contains(fallback) {
-                let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
-                persistSingleActionShortcut(unassigned, spec)
-                return unassigned
+                persistSingleActionShortcut(.unassigned, spec)
+                return .unassigned
             }
         }
         return persistedSingleActionShortcut(spec)
@@ -681,9 +679,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func preserveUnassignedDisplayChoiceIfNeeded(in state: inout ShortcutBindingState, action: WidgetShortcutAction = .show) {
         guard state.shortcut(for: .displayOwner(for: action)) == nil else { return }
-        let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
-        state.setInitialDisplay(unassigned, action: action)
-        widgetShortcutStore.setDisplay(unassigned, action: action)
+        state.setInitialDisplay(.unassigned, action: action)
+        widgetShortcutStore.setDisplay(.unassigned, action: action)
     }
 
     private func setWidgetShortcut(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
@@ -692,9 +689,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         switch state.stage(shortcut, for: owner) {
         case .duplicate:
             widgetShortcutStatuses[owner] = Self.widgetDuplicateStatus
-        case .unchanged:
-            widgetShortcutStatuses[owner] = nil
-        case .staged:
+        case .unchanged, .staged:
             widgetShortcutStatuses[owner] = nil
         }
         shortcutState = state
@@ -755,8 +750,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for owner: ShortcutBindingState.Owner in [.display, .displayDismiss] {
             guard let shortcut = state.shortcut(for: owner), shortcut.isAssigned else { continue }
             if !displayHotKeys.isActive(shortcut) {
-                displayShortcutStatuses[owner] = "Inactive — macOS could not register this shortcut."
-            } else if displayShortcutStatuses[owner] == "Inactive — macOS could not register this shortcut." {
+                displayShortcutStatuses[owner] = Self.shortcutInactiveStatus
+            } else if displayShortcutStatuses[owner] == Self.shortcutInactiveStatus {
                 displayShortcutStatuses[owner] = nil
             }
         }
@@ -785,8 +780,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             } else {
                 let previousIsActive = state.shortcut(for: owner).map { displayHotKeys.isActive($0) } ?? false
                 displayShortcutStatuses[owner] = previousIsActive
-                    ? "Unavailable — the previous shortcut remains active."
-                    : "Inactive — macOS could not register this shortcut."
+                    ? Self.shortcutUnavailableStatus
+                    : Self.shortcutInactiveStatus
             }
         }
         shortcutState = state
@@ -797,8 +792,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func registerAcceptedWidgetShortcuts(for widgetType: Int) {
         let showOwner = ShortcutBindingState.Owner.widget(widgetType)
         let dismissOwner = ShortcutBindingState.Owner.widgetDismiss(widgetType)
-        let show = shortcutState?.shortcut(for: showOwner) ?? DashboardShortcut(keyCode: -1, modifiers: 0)
-        let dismiss = shortcutState?.shortcut(for: dismissOwner) ?? DashboardShortcut(keyCode: -1, modifiers: 0)
+        let show = shortcutState?.shortcut(for: showOwner) ?? DashboardShortcut.unassigned
+        let dismiss = shortcutState?.shortcut(for: dismissOwner) ?? DashboardShortcut.unassigned
         _ = registerWidgetShortcuts(WidgetShortcutBinding(show: show, dismiss: dismiss), for: widgetType)
     }
 
@@ -841,7 +836,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             widgetShortcutStatuses[owner] = nil
             return true
         } catch {
-            widgetShortcutStatuses[owner] = "Inactive — macOS could not register this shortcut."
+            widgetShortcutStatuses[owner] = Self.shortcutInactiveStatus
             return false
         }
     }
@@ -868,12 +863,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             widgetShortcutStore.set(candidate, action: action, for: widgetType)
         } else {
             _ = registerWidgetShortcuts(previous, for: widgetType)
-            widgetShortcutStatuses[owner] = "Unavailable — the previous shortcut remains active."
+            widgetShortcutStatuses[owner] = Self.shortcutUnavailableStatus
         }
         refreshShortcutContext()
     }
 
     private static let settingsDuplicateStatus = "That shortcut is already assigned in Classroom Widgets."
+    private static let shortcutInactiveStatus = "Inactive — macOS could not register this shortcut."
+    private static let shortcutUnavailableStatus = "Unavailable — the previous shortcut remains active."
+    private static let defaultShortcutTakenStatus = "The default shortcut is already assigned. Choose another shortcut."
     private static let widgetDuplicateStatus = "Already assigned in Classroom Widgets."
 
     private func shortcutOwner(widgetType: Int, action: WidgetShortcutAction) -> ShortcutBindingState.Owner {
@@ -911,7 +909,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         var hasConflict = false
         for owner: ShortcutBindingState.Owner in [.display, .displayDismiss] {
             if case .duplicate = proposed.stage(preferred, for: owner) {
-                displayShortcutStatuses[owner] = "The default shortcut is already assigned. Choose another shortcut."
+                displayShortcutStatuses[owner] = Self.defaultShortcutTakenStatus
                 hasConflict = true
             }
         }

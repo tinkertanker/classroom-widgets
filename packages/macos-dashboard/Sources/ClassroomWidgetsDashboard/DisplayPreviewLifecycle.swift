@@ -73,7 +73,6 @@ enum DisplayPreviewTransition: String {
     case start
     case startFailed
     case firstFrame
-    case frameGap
     case hold
     case recovered
     case recoveryExhausted

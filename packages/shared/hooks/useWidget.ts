@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
-import { WidgetInstance, Position, Size, WidgetType } from '../types';
+import { Position, Size, WidgetType } from '../types';
 import { findAvailablePosition } from '../utils/widgetHelpers';
 import { widgetRegistry } from '@/services/WidgetRegistry';
 import { isDesktopDashboardMode } from '../utils/dashboardMode';

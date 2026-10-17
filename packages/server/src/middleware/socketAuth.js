@@ -12,18 +12,7 @@ const {
  */
 const socketAuth = (sessionManager) => {
   return (socket, next) => {
-    // Add session manager reference to socket
-    socket.sessionManager = sessionManager;
-
     socket.clientIP = getClientIp(socket.handshake.headers, socket.handshake.address);
-
-    // Initialize socket metadata
-    socket.metadata = {
-      joinedAt: Date.now(),
-      sessionCode: null,
-      isHost: false,
-      participantInfo: null
-    };
 
     // Validate connection limits
     const currentStats = sessionManager.getStats();

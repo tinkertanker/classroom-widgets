@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { cn, widgetContainer, buttons, text, transitions } from '@shared/utils/styles';
+import { widgetContainer, buttons, text, transitions } from '@shared/utils/styles';
 import { isTypingTarget } from '../shared/utils/keyboard';
 
 interface Position {

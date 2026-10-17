@@ -42,8 +42,6 @@ public sealed class DisplayCaptureSession : IDisposable
         CaptureFrame();
     }
 
-    public void Stop() => _timer.Stop();
-
     private void CaptureFrame()
     {
         if (_failed || (_canCapture is not null && !_canCapture())) return;

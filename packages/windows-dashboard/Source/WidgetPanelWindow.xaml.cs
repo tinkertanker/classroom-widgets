@@ -177,7 +177,7 @@ public partial class WidgetPanelWindow : Window
         foreach (var (option, separatorBefore) in CompactWidgetMenu.Entries(options))
         {
             if (separatorBefore) AddMenu.Items.Add(new Separator());
-            var item = new MenuItem { Header = CompactWidgetMenu.Label(option), Tag = option.WidgetType };
+            var item = new MenuItem { Header = CompactWidgetMenu.Label(option) };
             item.Click += (_, _) => WidgetCreationRequested?.Invoke(option.WidgetType);
             AddMenu.Items.Add(item);
         }
@@ -275,7 +275,7 @@ public partial class WidgetPanelWindow : Window
         {
             await DashboardWebView.InitializeAsync(
                 WebView,
-                "window.__CLASSROOM_WIDGET_PANEL__ = true;" + DashboardAudioSettings.Script(_settings));
+                DashboardAudioSettings.Script(_settings));
         }
         catch (Exception error) when (error is WebView2RuntimeNotFoundException or COMException)
         {

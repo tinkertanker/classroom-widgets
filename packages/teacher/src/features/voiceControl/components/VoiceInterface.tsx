@@ -4,7 +4,7 @@ import { useVoiceRecording } from '../hooks/useVoiceRecording';
 import { useVoiceFeedbackSound } from '../hooks/useVoiceFeedbackSound';
 import { VoiceInterfaceState, VoiceCommandResponse } from '../types/voiceControl';
 import { debug } from '@shared/utils/debug';
-import { cn, buttons, text, borders, borderRadius } from '@shared/utils/styles';
+import { cn, buttons, text, borders } from '@shared/utils/styles';
 import { getMasterVolume } from '../../../store/audioVolumeStore';
 import '../styles/voiceAnimations.css';
 

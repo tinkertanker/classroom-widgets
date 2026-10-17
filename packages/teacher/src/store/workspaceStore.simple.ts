@@ -3,7 +3,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { BackgroundType, WidgetType } from '@shared/types';
 import { LayoutFormat } from '@shared/types/storage';
-import { createDefaultShortenerSettings, type ShortenerSettings } from '@shared/utils/urlShortener';
+import { createDefaultShortenerSettings } from '@shared/utils/urlShortener';
 import { WorkspaceStore } from './workspaceStore';
 import { useWorkspaceUiStore } from './workspaceUiStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
@@ -13,7 +13,6 @@ import {
   StorageFormatV2,
   STORAGE_KEY,
   LEGACY_STORAGE_KEY,
-  CURRENT_STORAGE_VERSION,
   isStorageV2,
   createDefaultStorageV2,
   createDefaultWorkspace,
@@ -31,8 +30,7 @@ import {
   addWorkspace as addWorkspaceToStorage,
   deleteWorkspace as deleteWorkspaceFromStorage,
   renameWorkspace as renameWorkspaceInStorage,
-  switchWorkspace as switchWorkspaceInStorage,
-  generateWorkspaceId
+  switchWorkspace as switchWorkspaceInStorage
 } from '@shared/utils/storageMigration';
 import { WorkspaceMetadata } from './workspaceStore';
 

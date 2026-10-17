@@ -116,7 +116,6 @@ export function perfProbe(config) {
   if (config.native) {
     window.__CLASSROOM_WIDGETS_LINUX__ = true;
     window.__CLASSROOM_WIDGETS_LINUX_VERSION__ = 'perf';
-    if (config.panel) window.__CLASSROOM_WIDGET_PANEL__ = true;
     window.classroomNativeBridge = {
       postMessage(message) {
         const type = message && message.type;

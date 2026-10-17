@@ -120,7 +120,6 @@ class PollRoom extends Room {
    * Reset poll votes
    */
   reset() {
-    console.log('[PollRoom] Resetting votes');
     this.clearVotes();
   }
   

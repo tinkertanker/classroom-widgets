@@ -6,13 +6,11 @@ import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 interface RTFeedbackActivityProps {
   socket: Socket;
   roomCode: string;
-  studentName: string;
   initialIsActive?: boolean;
-  isSession?: boolean;
   widgetId?: string;
 }
 
-const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCode, studentName, initialIsActive, isSession = false, widgetId }) => {
+const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCode, initialIsActive, widgetId }) => {
   const [currentValue, setCurrentValue] = useState(3); // Default to middle (Just Right)
   const [lastSentValue, setLastSentValue] = useState(3);
   const [isSending, setIsSending] = useState(false);

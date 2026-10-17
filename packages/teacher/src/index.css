@@ -17,22 +17,6 @@ code {
     monospace;
 }
 
-/* Wordle animations */
-@keyframes scale-in {
-  0% {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.animate-scale-in {
-  animation: scale-in 0.1s ease-out;
-}
-
 /* Toolbar clock colon blink — pure CSS so the Clock component doesn't
    need a 500ms re-render interval */
 @keyframes clock-colon-blink {

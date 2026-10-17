@@ -6,7 +6,6 @@ interface LinkShareActivityProps {
   socket: Socket;
   roomCode: string;
   studentName: string;
-  isSession?: boolean;
   widgetId?: string;
   initialIsActive?: boolean;
   initialAcceptMode?: 'links' | 'all';
@@ -18,7 +17,6 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   socket,
   roomCode,
   studentName,
-  isSession = false,
   widgetId,
   initialIsActive = false,
   initialAcceptMode = 'all'
@@ -65,23 +63,14 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
     setIsSubmitting(true);
     setError('');
 
-    if (isSession) {
-      socket.emit('session:linkShare:submit', {
-        sessionCode: roomCode,
-        studentName: studentName || 'Anonymous',
-        content: trimmedContent,
-        widgetId
-      });
-    } else {
-      socket.emit('linkShare:submit', {
-        code: roomCode,
-        studentName: studentName || 'Anonymous',
-        content: trimmedContent
-      });
-    }
+    socket.emit('session:linkShare:submit', {
+      sessionCode: roomCode,
+      studentName: studentName || 'Anonymous',
+      content: trimmedContent,
+      widgetId
+    });
 
-    // Listen for response
-    const responseEvent = isSession ? 'session:linkShare:submitted' : 'linkShare:submitted';
+    const responseEvent = 'session:linkShare:submitted';
 
     // Set up timeout
     const timeoutId = setTimeout(() => {
@@ -118,8 +107,6 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   // Check if content exceeds limit
   const isOverLimit = acceptMode === 'all' && content.length > MAX_TEXT_LENGTH;
   const charsRemaining = MAX_TEXT_LENGTH - content.length;
-
-  // Remove the isSuccess early return - always show the form
 
   return (
     <div className="relative">

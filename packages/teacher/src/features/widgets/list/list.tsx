@@ -19,7 +19,7 @@ import {
   useResponsiveSize,
   useListKeyboardHandlers
 } from './hooks';
-import { cn, getStatusColor, transitions, widgetWrapper, buttons, text, widgetContainer } from '@shared/utils/styles';
+import { cn, getStatusColor, transitions, widgetWrapper, text, widgetContainer } from '@shared/utils/styles';
 import { ListControlBar } from '../shared/components';
 
 interface ListProps {

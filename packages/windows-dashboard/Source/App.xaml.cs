@@ -169,7 +169,7 @@ public partial class App : Application
 
     /// <summary>
     /// Flushes pending widget writes into the host store, then exits. Called
-    /// from the tray menu and from session-end notifications.
+    /// from the tray menu and before an update installs.
     /// </summary>
     public async Task RequestQuitAsync()
     {

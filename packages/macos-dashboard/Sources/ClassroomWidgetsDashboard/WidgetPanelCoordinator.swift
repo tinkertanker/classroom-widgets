@@ -509,7 +509,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
     private let messageHandler: WidgetPanelScriptMessageHandler
     private let chromeBackground = NonInteractiveVisualEffectView()
     private var compactControls: NSView?
-    private var compactAccessoryController: NSTitlebarAccessoryViewController?
     private weak var chromeTrackingView: NSView?
     private var chromeTrackingArea: NSTrackingArea?
     private var chromeHideGeneration = 0
@@ -1006,7 +1005,6 @@ private final class WidgetPanelController: NSWindowController, NSWindowDelegate,
         accessory.layoutAttribute = .right
         panel.addTitlebarAccessoryViewController(accessory)
         compactControls = controls
-        compactAccessoryController = accessory
     }
 
     private func installChromeTracking(on panel: NSPanel) {
@@ -1249,7 +1247,7 @@ private final class WidgetPanelWebViewFactory {
 
         let userContentController = WKUserContentController()
         userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGET_PANEL__ = true; \(DashboardAudioSettings.script())",
+            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; \(DashboardAudioSettings.script())",
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))
