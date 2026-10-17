@@ -455,6 +455,8 @@ export interface ActivityFeedbackData {
 export interface ActivityRevealedData {
   widgetId: string;
   correctAnswers: Record<string, string>;
+  /** Every item, including typed answers withheld from students until the reveal */
+  items?: ActivityItem[];
 }
 
 export interface ActivityResponseReceivedData {

@@ -20,7 +20,7 @@
   "dependencies": {
     "@boundaryml/baml": "^0.212.0",
     "@classroom-widgets/shared": "workspace:*",
-    "compression": "^1.8.1",
+    "compression": "^1.8.2",
     "cors": "^2.8.5",
     "dotenv": "^17.0.1",
     "express": "^4.21.2",

@@ -46,7 +46,7 @@ function observe(page) {
   return events;
 }
 
-async function checkTraffic(page, events, label, requests, changes, active) {
+async function checkTraffic(page, events, label, requests, changes, active, hiddenAnswer) {
   // Allow the old feedback loop to exhaust its five-per-second rate limit.
   await page.waitForTimeout(1200);
   const sent = events.filter(e => e.direction === 'framesent' && e.event === 'activity:requestState');
@@ -59,6 +59,11 @@ async function checkTraffic(page, events, label, requests, changes, active) {
   for (const reply of replies) {
     assert.equal(reply.data.isActive, active, `${label}: state response carries active status`);
     assert.ok(reply.data.activity.targets.length > 0, `${label}: full activity is present`);
+    assert.ok(reply.data.activity.targets.every(t => !('accepts' in t)), `${label}: no answer key reaches the student`);
+    if (hiddenAnswer) {
+      assert.ok(!reply.data.activity.items.some(i => i.content === hiddenAnswer),
+        `${label}: typed answer is withheld before the reveal`);
+    }
     assert.equal(reply.data.actions.find(a => a.type === 'submit')?.enabled, active,
       `${label}: actions reflect the current active status`);
   }
@@ -67,9 +72,10 @@ async function checkTraffic(page, events, label, requests, changes, active) {
 try {
   stack = await startStack();
   browser = await chromium.launch({ executablePath: process.env.CHROME_BIN });
-  for (const [name, template] of [
-    ['Fill in the Blanks', 'The {{moon}} orbits Earth.'],
-    ['Code Fill-in-the-Blanks', 'print({{42}})']
+  for (const [name, template, hiddenAnswer] of [
+    ['Fill in the Blanks', 'The {{moon}} orbits Earth.', null],
+    // Typed answers are not shown as draggables, so students must not get them early
+    ['Code Fill-in-the-Blanks', 'print({{42}})', '42']
   ]) {
     const teacherContext = await newTeacherContext(browser);
     const teacher = await teacherContext.newPage();
@@ -94,14 +100,14 @@ try {
     await student.getByRole('button', { name: 'Check Answers' }).waitFor();
     // startStack uses Vite dev: React StrictMode mounts the request effect twice.
     // Each mount gets one reply, never another activation notification.
-    await checkTraffic(student, events, `${name}: join`, 2, 0, true);
+    await checkTraffic(student, events, `${name}: join`, 2, 0, true, hiddenAnswer);
 
     events.length = 0;
     await student.reload();
     await student.locator('#code').fill(code);
     await student.getByRole('button', { name: 'Join Session' }).click();
     await student.getByRole('button', { name: 'Check Answers' }).waitFor();
-    await checkTraffic(student, events, `${name}: reload`, 2, 0, true);
+    await checkTraffic(student, events, `${name}: reload`, 2, 0, true, hiddenAnswer);
 
     events.length = 0;
     await teacher.getByText(`${name} ·`, { exact: true }).hover();
@@ -116,19 +122,32 @@ try {
     await student.getByRole('button', { name: 'Join Session' }).click();
     await student.getByText(pausedText, { exact: true }).waitFor();
     assert.equal(await student.getByRole('button', { name: 'Check Answers' }).count(), 0);
-    await checkTraffic(student, events, `${name}: paused reload`, 2, 0, false);
+    await checkTraffic(student, events, `${name}: paused reload`, 2, 0, false, hiddenAnswer);
 
     events.length = 0;
     await teacher.getByText(`${name} ·`, { exact: true }).hover();
     await teacher.getByTitle('Start activity').click();
     await student.getByRole('button', { name: 'Check Answers' }).waitFor();
     await student.getByText(pausedText, { exact: true }).waitFor({ state: 'hidden' });
-    await checkTraffic(student, events, `${name}: resume`, 1, 1, true);
+    await checkTraffic(student, events, `${name}: resume`, 1, 1, true, hiddenAnswer);
+
+    if (hiddenAnswer) {
+      // A wrong typed answer, then the teacher's reveal shows the real one
+      await student.getByPlaceholder('___').fill('7');
+      await student.getByRole('button', { name: 'Check Answers' }).click();
+      await teacher.getByText(`${name} ·`, { exact: true }).hover();
+      await teacher.getByTitle('Show answers').click();
+      // Before this fix the student saw the item ID here, because items arrived empty
+      const shown = (await student.getByText(/^Correct answer:/).textContent()).trim();
+      assert.equal(shown, `Correct answer: ${hiddenAnswer}`, `${name}: reveal shows the typed answer`);
+      await student.screenshot({ path: join(evidence, 'code-reveal.png') });
+      step(`${name}: answer withheld until reveal, then shown as "${shown}" (code-reveal.png)`);
+    }
     await studentContext.close();
     await teacherContext.close();
   }
   assert.deepEqual(violations, [], 'state replies do not trigger fresh requests');
-  step('PASS: both activity types join/reload without a feedback loop; host pause/resume updates state and actions');
+  step('PASS: both activity types join/reload without a feedback loop; host pause/resume updates state and actions; no answer key reaches students and typed answers arrive only with the reveal');
 } catch (error) {
   step(`FAIL: ${error.stack || error}`);
   process.exitCode = 1;

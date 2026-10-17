@@ -60,7 +60,6 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     }
 
     // Validate student name if provided
-    const studentName = data.studentName || participant.name;
     if (data.studentName) {
       const nameValidation = validators.studentName(data.studentName);
       if (!nameValidation.valid) {
@@ -68,11 +67,14 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
         return;
       }
     }
+    // Store the trimmed text the validators measured, so padding with
+    // whitespace cannot smuggle an oversized question or name past them.
+    const studentName = data.studentName ? data.studentName.trim() : participant.name;
 
     // Add the question
     const question = room.addQuestion(
       socket.id,
-      data.question,
+      data.question.trim(),
       studentName
     );
 
