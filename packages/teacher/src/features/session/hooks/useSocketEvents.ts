@@ -75,11 +75,11 @@ export function useSocketEvents({
     // Register a stable wrapper per event that reads the latest handler at
     // call time; cleanup removes only OUR wrappers, not all listeners for
     // the event, so multiple widgets of the same type can coexist
-    const wrappers = new Map<ServerEventName, (data: never) => void>();
+    const wrappers = new Map<ServerEventName, (data: unknown) => void>();
     // The latest events object holds exactly the names in eventNamesKey.
     handledEventNames(eventsRef.current).forEach((eventName) => {
-      const wrapper = (data: ServerEventData<typeof eventName>) => {
-        dispatch(eventsRef.current, eventName, data);
+      const wrapper = (data: unknown) => {
+        dispatch(eventsRef.current, eventName, data as ServerEventData<typeof eventName>);
       };
       wrappers.set(eventName, wrapper);
       socket.on(eventName, wrapper);

@@ -106,7 +106,7 @@ export interface SessionCreateRoomResponse {
 export interface SessionRoomCreatedData {
   roomType: RoomType;
   widgetId: string;
-  roomData: unknown; // Widget-specific initial data
+  roomData: RoomSnapshot; // The new room as room.toJSON() returns it
 }
 
 export interface SessionCloseRoomData {
