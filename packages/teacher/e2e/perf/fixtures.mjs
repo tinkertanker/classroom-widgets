@@ -121,7 +121,7 @@ export const randomiserBoard = (count) => workspaceStorage([
 
 const PANEL_DEFAULTS = {
   [WidgetType.TIMER]: { title: 'Timer', preferredSize: { width: 350, height: 415 }, minimumSize: { width: 250, height: 306 }, maintainsAspectRatio: true },
-  [WidgetType.RANDOMISER]: { title: 'Randomiser', preferredSize: { width: 350, height: 250 }, minimumSize: { width: 250, height: 180 }, maintainsAspectRatio: false },
+  [WidgetType.RANDOMISER]: { title: 'Randomiser', preferredSize: { width: 350, height: 300 }, minimumSize: { width: 250, height: 260 }, maintainsAspectRatio: false },
 };
 
 export function panelSnapshot(type, state, widgetId = `${T0}-panel`) {

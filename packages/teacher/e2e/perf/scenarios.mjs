@@ -304,7 +304,7 @@ const panelTimer = (env) => panel(env, WidgetType.TIMER, timerState({ seconds: 3
   `() => document.querySelector('[data-testid="timer-face"]')`, { width: 350, height: 415 });
 const panelRandomiser = (env) => panel(env, WidgetType.RANDOMISER, randomiserState(30),
   `() => document.querySelector('.backdrop-blur-sm') && [...document.querySelectorAll('button')].some((b) => /Randomise!!/.test(b.textContent))`,
-  { width: 350, height: 250 });
+  { width: 350, height: 300 });
 
 // ---------------------------------------------------------------- opening widgets on the board
 
@@ -416,7 +416,7 @@ async function randomiserSpin(env, count, surface = 'board') {
   const isPanel = surface === 'panel';
   const snapshot = isPanel ? panelSnapshot(WidgetType.RANDOMISER, randomiserState(count)) : null;
   const session = await openPage(env, {
-    viewport: isPanel ? { width: 350, height: 250 } : BOARD_VIEWPORT,
+    viewport: isPanel ? { width: 350, height: 300 } : BOARD_VIEWPORT,
     probe: { native: isPanel, snapshot, watch: [{ name: 'ready', test: `() => document.querySelector('.backdrop-blur-sm')` }] },
     localStorage: isPanel ? {} : { [STORAGE_KEY]: JSON.stringify(randomiserBoard(count)) },
   });
