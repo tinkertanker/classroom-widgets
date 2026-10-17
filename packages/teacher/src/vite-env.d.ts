@@ -12,4 +12,11 @@ interface ImportMeta {
 
 interface Window {
   umami?: { track: (event: string) => void }
+  // Hooks App registers so the toolbar and widgets can reach board state.
+  playTrashSound?: () => void
+  setStickerMode?: (mode: boolean, type?: string | null) => void
+  getStickerState?: () => { mode: boolean; type: string | null }
+  getStickerMode?: () => boolean
+  activateVoiceControl?: () => void
+  getVoiceControlActive?: () => boolean
 }

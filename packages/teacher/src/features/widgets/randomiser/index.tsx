@@ -1,1 +1,1 @@
-export { default } from './randomiser';
+export { default } from './Randomiser';

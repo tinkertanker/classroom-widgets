@@ -31,7 +31,7 @@ const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, chi
   const handleDeleteClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     // Play trash sound
-    (window as any).playTrashSound?.();
+    window.playTrashSound?.();
     // Clear focus if this widget is currently focused
     if (isFocused) {
       setFocusedWidget(null);

@@ -1,1 +1,1 @@
-export { default } from './rtFeedback';
+export { default } from './RTFeedback';

@@ -151,7 +151,7 @@ classroom-widgets/
 │   │   │   └── widget.types.ts
 │   │
 │   ├── store/                        # Global state (Zustand)
-│   │   ├── workspaceStore.simple.ts  # Main store
+│   │   ├── workspaceStore.ts  # Main store
 │   │   └── types.ts                  # Store types
 │   │
 │   ├── contexts/                     # React contexts
@@ -202,7 +202,7 @@ classroom-widgets/
 
 ### Zustand Store
 
-Global state managed with Zustand in `src/store/workspaceStore.simple.ts`:
+Global state managed with Zustand in `src/store/workspaceStore.ts`:
 
 ```typescript
 interface WorkspaceState {

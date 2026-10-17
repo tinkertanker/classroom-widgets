@@ -1,10 +1,17 @@
 // Simple sound effects using Web Audio API
 
+declare global {
+  interface Window {
+    // Older Safari only ships the prefixed constructor
+    webkitAudioContext?: typeof AudioContext;
+  }
+}
+
 let audioContext: AudioContext | null = null;
 
 function getAudioContext(): AudioContext {
   if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
   }
   return audioContext;
 }

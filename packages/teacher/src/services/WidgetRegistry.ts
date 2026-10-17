@@ -54,7 +54,7 @@ const widgetImports = {
   Snake: () => import('../features/widgets/snake'),
   Handout: () => import('../features/widgets/handout'),
   FillBlank: () => import('../features/widgets/activity/fillBlank'),
-  CodeFillBlank: () => import('../features/widgets/activity/codeFillBlank'),
+  CodeFillBlank: () => import('../features/widgets/activity/fillBlank/CodeFillBlank'),
 };
 
 const LazyWidgets = {

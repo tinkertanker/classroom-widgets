@@ -28,6 +28,13 @@
   `packages/server/src/shared/constants/`. Edit the JSON, then run
   `pnpm generate:voice-types` (also runs on `prebuild`). Never edit the
   generated files.
+- `packages/shared/desktopHostScripts.json` is the source of truth for the
+  scripts the macOS, Windows and Linux apps inject into their widget web views
+  and the window globals they set. `scripts/generateDesktopHostScripts.cjs`
+  (`pnpm generate:desktop-scripts`, also on `prebuild`) writes the checked-in
+  `Generated/DesktopHostScripts.swift`, `Source/Generated/DesktopHostScripts.cs`
+  and `desktopHostScripts.ts` files; the Linux `npm test` fails when they are
+  stale. Edit the JSON and regenerate; never edit the generated files.
 
 ## Testing
 

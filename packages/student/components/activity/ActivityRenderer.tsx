@@ -8,6 +8,15 @@ import type {
   ActivityResults,
   StudentAnswers
 } from '@shared/types/activity.types';
+import type {
+  ActivityFeedbackData,
+  ActivityRetryReadyData,
+  ActivityRevealedData,
+  ActivityStateUpdateData,
+  SessionActivityRetryResponse,
+  SessionActivitySubmittedResponse,
+  SessionWidgetStateChangedData
+} from '@shared/types/socket.types';
 import { ActivityProvider, useActivity } from './context/ActivityContext';
 import { BlockRenderer } from './BlockRenderer';
 import { playDropSound } from '../../utils/sounds';
@@ -41,7 +50,7 @@ function ActivityActions({
       sessionCode,
       widgetId,
       answers
-    }, (response: any) => {
+    }, (response: SessionActivitySubmittedResponse) => {
       if (!response.success) {
         console.error('Failed to submit activity:', response.error);
       }
@@ -53,7 +62,7 @@ function ActivityActions({
     socket.emit('session:activity:retry', {
       sessionCode,
       widgetId
-    }, (response: any) => {
+    }, (response: SessionActivityRetryResponse) => {
       if (response.success) {
         // Clear local answers after server confirms
         clearAnswers();
@@ -119,7 +128,7 @@ export function ActivityRenderer({
 
   // Socket event handlers
   useEffect(() => {
-    const handleStateUpdate = (data: any) => {
+    const handleStateUpdate = (data: ActivityStateUpdateData) => {
       if (data.widgetId !== widgetId) return;
       setActivity(data.activity);
       setIsActive(data.isActive);
@@ -136,18 +145,18 @@ export function ActivityRenderer({
       }
     };
 
-    const handleFeedback = (data: any) => {
+    const handleFeedback = (data: ActivityFeedbackData) => {
       if (data.widgetId !== widgetId) return;
       setResults(data.results);
       setActions(data.actions);
     };
 
-    const handleRevealed = (data: any) => {
+    const handleRevealed = (data: ActivityRevealedData) => {
       if (data.widgetId !== widgetId) return;
       setCorrectAnswers(data.correctAnswers);
     };
 
-    const handleWidgetStateChanged = (data: any) => {
+    const handleWidgetStateChanged = (data: SessionWidgetStateChangedData) => {
       if (data.widgetId !== widgetId || data.roomType !== 'activity') return;
       setIsActive(data.isActive);
 
@@ -157,7 +166,7 @@ export function ActivityRenderer({
       }
     };
 
-    const handleRetryReady = (data: any) => {
+    const handleRetryReady = (data: ActivityRetryReadyData) => {
       if (data.widgetId !== widgetId) return;
       // Clear results and update actions to allow re-submission
       setResults(null);

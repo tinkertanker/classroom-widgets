@@ -58,8 +58,7 @@ public static class DashboardWebView
         var version = App.AppVersion;
         var versionJson = JsonSerializer.Serialize(version);
         await core.AddScriptToExecuteOnDocumentCreatedAsync(
-            "window.__CLASSROOM_WIDGETS_WINDOWS__ = true; "
-            + $"window.__CLASSROOM_WIDGETS_WINDOWS_VERSION__ = {versionJson}; "
+            DesktopHostScripts.WindowsFlags(versionJson)
             + RouteRewriteScript
             + startupScript
             + (PerfLog.Enabled ? PerfLog.WebScript : string.Empty));

@@ -11,7 +11,7 @@ import type {
 } from '@shared/types/compactPanel';
 import { WidgetType } from '@shared/types';
 import { postNativeMessage } from '@shared/utils/nativeBridge';
-import { useWorkspaceStore, widgetStateEqual } from '../../store/workspaceStore.simple';
+import { useWorkspaceStore, widgetStateEqual } from '../../store/workspaceStore';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { compactWidgetMenuOptions } from './compactWidgetMenu';
 

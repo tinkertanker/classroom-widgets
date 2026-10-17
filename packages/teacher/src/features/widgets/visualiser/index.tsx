@@ -1,1 +1,1 @@
-export { default } from './visualiser';
+export { default } from './Visualiser';

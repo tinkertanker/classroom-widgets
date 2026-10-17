@@ -1,1 +1,1 @@
-export { default } from './taskCue';
+export { default } from './TaskCue';

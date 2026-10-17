@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, cleanup } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WidgetType } from '@shared/types';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import { CanvasWidgetList, ColumnWidgetList } from './WidgetList';
 
 vi.mock('../../widgets/shared/WidgetWrapper', () => ({

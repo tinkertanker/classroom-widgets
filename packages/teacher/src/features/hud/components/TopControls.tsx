@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { FaWifi, FaExpand, FaCompress, FaPlus, FaMinus } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useServerConnection, useBottomBar } from '@shared/hooks/useWorkspace';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import { useSession } from '../../../contexts/SessionContext';
 import SessionBanner from '../../session/components/SessionBanner';
 import { WorkspaceSwitcher } from '../../workspace';

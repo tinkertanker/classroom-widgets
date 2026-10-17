@@ -1,1 +1,1 @@
-export { default } from './soundEffects';
+export { default } from './SoundEffects';

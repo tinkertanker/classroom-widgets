@@ -34,6 +34,8 @@ export const ROOM_TYPES = ['poll', 'linkShare', 'rtfeedback', 'questions', 'hand
 
 export type RoomType = (typeof ROOM_TYPES)[number];
 
+const isRoomType = (type: string): type is RoomType => (ROOM_TYPES as readonly string[]).includes(type);
+
 /** Tailwind classes for the three tinted surfaces of a room card's header. */
 export interface RoomPalette {
   /** Bottom border, background and hover background of the clickable header strip. */
@@ -192,7 +194,7 @@ export interface ResolvedRoomMeta {
  * substring of the accessible name, as WCAG 2.5.3 Label in Name requires.
  */
 export const resolveRoomMeta = (room: RoomMetaInput): ResolvedRoomMeta => {
-  const meta = ROOM_TYPE_META[room.type as RoomType] ?? UNKNOWN_ROOM_TYPE_META;
+  const meta = isRoomType(room.type) ? ROOM_TYPE_META[room.type] : UNKNOWN_ROOM_TYPE_META;
   const details = meta.showsPerInstanceTitle ? room.initialData?.activity : undefined;
   const instructions = details?.instructions || meta.description;
 

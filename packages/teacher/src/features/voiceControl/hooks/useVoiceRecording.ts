@@ -3,6 +3,40 @@ import { UseVoiceRecordingReturn, VoiceRecordingState } from '../types/voiceCont
 import { getBrowserInfo } from '../utils/browserCompatibility';
 import { debug } from '@shared/utils/debug';
 
+// The DOM lib types the result lists but not the recogniser itself, which
+// browsers still ship under a vendor prefix.
+interface SpeechRecognitionResultEvent extends Event {
+  readonly results: SpeechRecognitionResultList;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+}
+
+interface SpeechRecognitionInstance {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  maxAlternatives: number;
+  onstart: (() => void) | null;
+  onsoundstart: (() => void) | null;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+  abort(): void;
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
+
 export const useVoiceRecording = (): UseVoiceRecordingReturn => {
   const [state, setState] = useState<VoiceRecordingState>({
     isListening: false,
@@ -13,7 +47,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
     error: null
   });
 
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const currentTranscriptRef = useRef<string>('');
   const currentConfidenceRef = useRef<number>(0);
   const isGatheringInputRef = useRef<boolean>(false);
@@ -40,7 +74,10 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       throw new Error('Speech recognition not supported in this browser');
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      throw new Error('Speech recognition not supported in this browser');
+    }
     const recognition = new SpeechRecognition();
 
     recognition.continuous = true; // Keep listening until user stops it
@@ -74,12 +111,12 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       // We're already in gathering state, so no change needed
     };
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       if (!isActive()) return;
       debug('🎯 RESULT: Speech identified');
       // Continuous recognition splits speech at pauses into separate results;
       // the command is all of them, not just the latest phrase
-      const results = Array.from(event.results as ArrayLike<any>);
+      const results = Array.from(event.results);
       const transcript = results.map((phrase) => phrase[0].transcript).join(' ').replace(/\s+/g, ' ').trim();
       const confidence = event.results[event.results.length - 1][0].confidence;
       const isFinal = event.results[event.results.length - 1].isFinal;
@@ -99,7 +136,7 @@ export const useVoiceRecording = (): UseVoiceRecordingReturn => {
       }
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event) => {
       if (!isActive()) return;
       debug.error('❌ ERROR: Speech recognition failed');
       let errorMessage = 'Voice recognition failed';

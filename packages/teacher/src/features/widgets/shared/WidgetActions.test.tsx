@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WidgetType } from '@shared/types';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import WidgetWrapper from './WidgetWrapper';
 import ColumnWidgetWrapper from './ColumnWidgetWrapper';
 

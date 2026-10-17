@@ -113,8 +113,8 @@ public sealed class WidgetHostController
         _coordinator.ApplyPresentationSettings(_settings.BackgroundOpacity, _settings.AlwaysOnTop);
         if (_initialized)
         {
-            _ = _webView.CoreWebView2.ExecuteScriptAsync(
-                $"window.classroomDashboard?.setBackgroundOpacity?.({_settings.BackgroundOpacity.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
+            _ = _webView.CoreWebView2.ExecuteScriptAsync(DesktopHostScripts.DashboardBackgroundOpacity(
+                _settings.BackgroundOpacity.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             _ = _webView.CoreWebView2.ExecuteScriptAsync(DashboardShortenerSettings.Script(_settings));
             _ = _webView.CoreWebView2.ExecuteScriptAsync(DashboardAudioSettings.Script(_settings));
         }
@@ -124,26 +124,26 @@ public sealed class WidgetHostController
     {
         PerfLog.Mark("host.add-widget", widgetType: widgetType, detail: IsAvailable ? null : "unavailable");
         if (!_initialized || !IsAvailable) return;
-        var applied = await CallHostAsync("addWidget", widgetType.ToString());
+        var applied = await CallHostAsync(PanelHostMethod.AddWidget, widgetType.ToString());
         if (!applied) DashboardLog.Warn($"Host refused to add widget type {widgetType}");
     }
 
     public async Task ShowWidgetAsync(int widgetType)
     {
         if (!_initialized || !IsAvailable) return;
-        await CallHostAsync("showWidget", widgetType.ToString());
+        await CallHostAsync(PanelHostMethod.ShowWidget, widgetType.ToString());
     }
 
     public async Task DismissWidgetAsync(int widgetType)
     {
         if (!_initialized || !IsAvailable) return;
-        await CallHostAsync("dismissWidget", widgetType.ToString());
+        await CallHostAsync(PanelHostMethod.DismissWidget, widgetType.ToString());
     }
 
     public async Task ToggleWidgetAsync(int widgetType)
     {
         if (!_initialized || !IsAvailable) return;
-        await CallHostAsync("toggleWidget", widgetType.ToString());
+        await CallHostAsync(PanelHostMethod.ToggleWidget, widgetType.ToString());
     }
 
     public void MoveSelectedWidget(MoveDirection direction) => _coordinator.MoveSelectedPanel(direction);
@@ -406,7 +406,7 @@ public sealed class WidgetHostController
     private async Task<bool> ApplyPanelStateChangeAsync(WidgetPanelStateChange change)
     {
         if (!_initialized) return false;
-        return await CallHostAsync("applyStateChange", change.Payload.GetRawText());
+        return await CallHostAsync(PanelHostMethod.ApplyStateChange, change.Payload.GetRawText());
     }
 
     private async Task ApplyRandomiserListChangeAsync(JsonElement change)
@@ -416,7 +416,7 @@ public sealed class WidgetHostController
         var applied = false;
         try
         {
-            applied = await CallHostAsync("applyRandomiserListChange", change.GetRawText());
+            applied = await CallHostAsync(PanelHostMethod.ApplyRandomiserListChange, change.GetRawText());
         }
         finally
         {
@@ -428,12 +428,11 @@ public sealed class WidgetHostController
     private async Task RemoveWidgetAsync(string widgetId)
     {
         if (!_initialized) return;
-        await CallHostAsync("removeWidget", JsonSerializer.Serialize(widgetId));
+        await CallHostAsync(PanelHostMethod.RemoveWidget, JsonSerializer.Serialize(widgetId));
     }
 
-    private Task<bool> CallHostAsync(string method, string argumentJson) =>
-        DashboardWebView.EvaluateBoolAsync(_webView,
-            $"(() => {{ const host = window.classroomPanelHost; return host?.{method} ? host.{method}({argumentJson}) : false; }})()");
+    private Task<bool> CallHostAsync(PanelHostMethod method, string argumentJson) =>
+        DashboardWebView.EvaluateBoolAsync(_webView, DesktopHostScripts.PanelHostCall(method, argumentJson));
 
     private async Task<bool> ApplyFinalPanelStateChangesAsync(IReadOnlyList<WidgetPanelStateChange> changes)
     {

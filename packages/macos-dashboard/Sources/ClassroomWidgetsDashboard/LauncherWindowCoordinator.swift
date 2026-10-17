@@ -47,7 +47,7 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
         let configuration = WKWebViewConfiguration()
         configuration.setURLSchemeHandler(DashboardWebKitShared.schemeHandler, forURLScheme: dashboardURLScheme)
         configuration.userContentController.addUserScript(WKUserScript(
-            source: "window.__CLASSROOM_WIDGETS_MACOS__ = true; window.__CLASSROOM_WIDGETS_MACOS_VERSION__ = \(appVersionJSON);",
+            source: DesktopHostScripts.macosFlag + DesktopHostScripts.macosVersion(version: appVersionJSON),
             injectionTime: .atDocumentStart,
             forMainFrameOnly: false
         ))

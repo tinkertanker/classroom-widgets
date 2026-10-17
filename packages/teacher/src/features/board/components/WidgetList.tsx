@@ -5,7 +5,7 @@
 
 import React, { memo } from 'react';
 import { useShallow } from 'zustand/shallow';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import { WidgetType } from '@shared/types';
 import {
   BoundWidgetRenderer,

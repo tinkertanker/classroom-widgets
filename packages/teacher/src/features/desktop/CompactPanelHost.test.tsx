@@ -2,7 +2,7 @@ import React from 'react';
 import { act, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WidgetType } from '@shared/types';
-import { useWorkspaceStore } from '../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import CompactPanelHost from './CompactPanelHost';
 
 describe('CompactPanelHost', () => {

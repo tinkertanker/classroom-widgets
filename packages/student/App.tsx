@@ -1,70 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
-import { FaMinus, FaPlus } from 'react-icons/fa6';
 import { getSocket } from './services/socket';
 import { useRoomAnimations } from './hooks/useRoomAnimations';
 import { useSessionRecovery } from './hooks/useSessionRecovery';
+import { useCompactHeader } from './hooks/useCompactHeader';
 import JoinForm from './components/JoinForm';
-import PollActivity from './components/PollActivity';
-import LinkShareActivity from './components/LinkShareActivity';
-import RTFeedbackActivity from './components/RTFeedbackActivity';
-import QuestionsActivity from './components/QuestionsActivity';
-import HandoutActivity from './components/HandoutActivity';
-import { ActivityRenderer } from './components/activity';
 import AdminPanel from './components/AdminPanel';
-import { isKnownRoomType, resolveRoomMeta, type RoomType } from './utils/roomTypeMeta';
+import RoomCard from './components/RoomCard';
+import type { RoomType } from './utils/roomTypeMeta';
+import {
+  createJoinedRoom,
+  roomIdentity,
+  upsertJoinedRoom,
+  type JoinedRoom,
+  type SessionJoinedEvent,
+  type SessionRoomCreatedEvent,
+  type SessionRoomEvent,
+  type SessionRoomSnapshot,
+  type SessionWidgetStateChangedEvent
+} from './utils/joinedRooms';
 
 // The room-type union lives with the presentation table it keys, so that adding a type forces
 // a table entry. Re-exported here because this module is where consumers have always found it.
 export type { RoomType };
-
-interface JoinedRoom {
-  id: string;
-  code: string;
-  type: RoomType;
-  studentName: string;
-  studentId: string;
-  socket: Socket;
-  joinedAt: number;
-  initialData?: any; // Store initial poll/activity data
-  widgetId?: string; // Widget instance ID for multiple instances
-  isActive: boolean; // Track active state for header styling
-}
-
-/**
- * Real identity of a joined activity: one card per widget instance within a session.
- * Deliberately excludes `id`, which carries a Date.now() suffix and so never matches
- * across two events for the same room.
- */
-const roomIdentity = (room: { code: string; type: RoomType; widgetId?: string }): string =>
-  `${room.code}:${room.type}:${room.widgetId ?? ''}`;
-
-/**
- * Idempotent insert-or-update for the joined room list, keyed by roomIdentity.
- * A room we have not seen goes to the front (newest first); a room we already have keeps
- * its card id, position and joinedAt while taking the server's latest data. Every write
- * path goes through here, so the repeat session:joined / session:roomCreated events that
- * arrive on each reconnect refresh the existing cards instead of duplicating them.
- */
-const upsertJoinedRoom = (rooms: JoinedRoom[], incoming: JoinedRoom): JoinedRoom[] => {
-  const key = roomIdentity(incoming);
-  const existingIndex = rooms.findIndex(room => roomIdentity(room) === key);
-
-  if (existingIndex === -1) {
-    return [incoming, ...rooms];
-  }
-
-  const updated = [...rooms];
-  updated[existingIndex] = {
-    ...rooms[existingIndex],
-    studentName: incoming.studentName,
-    studentId: incoming.studentId,
-    socket: incoming.socket,
-    initialData: incoming.initialData,
-    isActive: incoming.isActive
-  };
-  return updated;
-};
 
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
@@ -88,17 +46,11 @@ const App: React.FC = () => {
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
-  const [isScrolled, setIsScrolled] = useState(false);
+  const { headerRef, isScrolled } = useCompactHeader();
   const [isConnected, setIsConnected] = useState(false);
   const [hostConnected, setHostConnected] = useState(true);
   const [primarySocket, setPrimarySocket] = useState<Socket | null>(null);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
-  const headerRef = useRef<HTMLDivElement>(null);
-  
-  // Constants for header behavior
-  const SCROLL_THRESHOLD_ENTER = 100; // pixels before header becomes compact
-  const SCROLL_THRESHOLD_EXIT = 50; // pixels before header exits compact mode (hysteresis)
-  const COMPACT_HEADER_HEIGHT_MOBILE = 56; // height in pixels for mobile compact mode
 
   // Save student name to localStorage when it changes
   useEffect(() => {
@@ -120,7 +72,7 @@ const App: React.FC = () => {
   const toggleDarkMode = () => {
     setIsDarkMode((prev: boolean) => !prev);
   };
-  
+
   // Session recovery after hot reload
   const { isRecovering } = useSessionRecovery({
     socket: primarySocket,
@@ -130,21 +82,15 @@ const App: React.FC = () => {
       // Rebuild the list from the server's view of the session. Rooms we already show are
       // updated in place (same identity -> same card id and position, so no duplicate and
       // no remount) and rooms the server no longer reports are dropped.
-      const restoredRooms: JoinedRoom[] = activeRooms.map((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
-        const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
-        return {
-          id: `${currentSessionCode}-${computedRoomId}-${Date.now()}`,
-          code: currentSessionCode,
-          type: roomData.roomType,
-          studentName: studentName,
-          studentId: primarySocket?.id || '',
-          socket: primarySocket!,
-          joinedAt: Date.now(),
-          initialData: roomData.room || {},
-          widgetId: roomData.widgetId,
-          isActive: roomData.room?.isActive || false
-        };
-      });
+      const restoredRooms: JoinedRoom[] = (activeRooms as SessionRoomSnapshot[]).map((roomData) => createJoinedRoom({
+        code: currentSessionCode,
+        roomType: roomData.roomType,
+        widgetId: roomData.widgetId,
+        data: roomData.room,
+        studentName: studentName,
+        studentId: primarySocket?.id || '',
+        socket: primarySocket!
+      }));
 
       setJoinedRooms(prev => {
         const restoredKeys = new Set(restoredRooms.map(roomIdentity));
@@ -160,75 +106,6 @@ const App: React.FC = () => {
     }
   });
 
-
-  // Handle scroll state updates with throttling and hysteresis
-  useEffect(() => {
-    let rafId: number | null = null;
-    
-    const handleScroll = () => {
-      if (rafId) return; // Throttle updates
-      
-      rafId = requestAnimationFrame(() => {
-        const scrollPosition = window.scrollY;
-        
-        setIsScrolled(prevIsScrolled => {
-          // Hysteresis: different thresholds for entering and exiting compact mode
-          if (!prevIsScrolled && scrollPosition > SCROLL_THRESHOLD_ENTER) {
-            return true; // Enter compact mode
-          } else if (prevIsScrolled && scrollPosition < SCROLL_THRESHOLD_EXIT) {
-            return false; // Exit compact mode
-          }
-          return prevIsScrolled; // No change
-        });
-        
-        rafId = null;
-      });
-    };
-    
-    // Initial check
-    handleScroll();
-    
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    
-    return () => {
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-  
-  // Handle header height measurements with ResizeObserver
-  useEffect(() => {
-    if (!headerRef.current) return;
-    
-    const updateHeaderHeight = () => {
-      if (!headerRef.current) return;
-      
-      const height = headerRef.current.offsetHeight;
-      const isMobile = window.innerWidth <= 640;
-      
-      // Apply different heights based on state and device
-      const finalHeight = (isMobile && isScrolled) 
-        ? COMPACT_HEADER_HEIGHT_MOBILE 
-        : height;
-        
-      document.documentElement.style.setProperty('--header-height', `${finalHeight}px`);
-    };
-    
-    // Use ResizeObserver for accurate measurements
-    const resizeObserver = new ResizeObserver(updateHeaderHeight);
-    resizeObserver.observe(headerRef.current);
-    
-    // Also update on window resize for responsive changes
-    window.addEventListener('resize', updateHeaderHeight);
-    updateHeaderHeight(); // Initial measurement
-    
-    return () => {
-      resizeObserver.disconnect();
-      window.removeEventListener('resize', updateHeaderHeight);
-    };
-  }, [isScrolled]); // Re-measure when scroll state changes
 
   // Cleanup sockets on unmount
   useEffect(() => {
@@ -275,7 +152,7 @@ const App: React.FC = () => {
     // Create new socket connection for this session
     const newSocket = getSocket();
     const sessionId = `${code}-${Date.now()}`;
-    
+
     // Store socket reference
     socketRefs.current.set(sessionId, newSocket);
     setPrimarySocket(newSocket);
@@ -286,33 +163,28 @@ const App: React.FC = () => {
       newSocket.emit('session:join', { code, name: name || studentName, studentId: newSocket.id });
     });
 
-    newSocket.on('session:joined', (joinData) => {
+    newSocket.on('session:joined', (joinData: SessionJoinedEvent) => {
       if (joinData.success && joinData.activeRooms) {
         // Set current session code
         setCurrentSessionCode(code);
-        
+
         // Join all active rooms in the session
-        joinData.activeRooms.forEach((roomData: { roomType: RoomType, widgetId?: string, room?: any }) => {
-          const computedRoomId = roomData.widgetId ? `${roomData.roomType}:${roomData.widgetId}` : roomData.roomType;
-          const roomId = `${code}-${computedRoomId}-${Date.now()}`;
-          
-          const newRoom: JoinedRoom = {
-            id: roomId,
+        joinData.activeRooms.forEach((roomData) => {
+          const newRoom = createJoinedRoom({
             code,
-            type: roomData.roomType,
+            roomType: roomData.roomType,
+            widgetId: roomData.widgetId,
+            data: roomData.room,
             studentName: name || studentName,
             studentId: newSocket.id || '', // Populate studentId
-            socket: newSocket,
-            joinedAt: Date.now(),
-            initialData: roomData.room || {},
-            widgetId: roomData.widgetId,
-            isActive: roomData.room?.isActive || false
-          };
-          
+            socket: newSocket
+          });
+          const roomId = newRoom.id;
+
           // Insert (newest first) or refresh - a reconnect replays this event for every
           // room we already joined, so this must never append blindly
           setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
-          
+
           // Animate room entry. If the room was already in the list it kept its old id,
           // so this freshly-generated roomId matches nothing and no card re-animates.
           animateRoomEnter(roomId);
@@ -349,36 +221,31 @@ const App: React.FC = () => {
     });
 
     // Handle new rooms being created in the session
-    newSocket.on('session:roomCreated', (data) => {
-      const computedRoomId = data.widgetId ? `${data.roomType}:${data.widgetId}` : data.roomType;
-      const roomId = `${code}-${computedRoomId}-${Date.now()}`;
-      
-      const newRoom: JoinedRoom = {
-        id: roomId,
+    newSocket.on('session:roomCreated', (data: SessionRoomCreatedEvent) => {
+      const newRoom = createJoinedRoom({
         code,
-        type: data.roomType,
+        roomType: data.roomType,
+        widgetId: data.widgetId,
+        data: data.roomData,
         studentName: name || studentName,
         studentId: newSocket.id || '',
-        socket: newSocket,
-        joinedAt: Date.now(),
-        initialData: data.roomData || {},
-        widgetId: data.widgetId,
-        isActive: data.roomData?.isActive || false
-      };
-      
+        socket: newSocket
+      });
+      const roomId = newRoom.id;
+
       // Add room if not already exists
       setJoinedRooms(prev => upsertJoinedRoom(prev, newRoom));
-      
+
       animateRoomEnter(roomId);
     });
 
     // Handle rooms being closed in the session
-    newSocket.on('session:roomClosed', (data) => {
+    newSocket.on('session:roomClosed', (data: SessionRoomEvent) => {
       // Find and remove the room of this type for this session
       setJoinedRooms(prev => {
-        const roomToRemove = prev.find(r => 
-          r.code === code && 
-          r.type === data.roomType && 
+        const roomToRemove = prev.find(r =>
+          r.code === code &&
+          r.type === data.roomType &&
           r.widgetId === data.widgetId
         );
         if (roomToRemove) {
@@ -391,14 +258,14 @@ const App: React.FC = () => {
     });
 
     // Handle unified widget state changes
-    newSocket.on('session:widgetStateChanged', (data) => {
+    newSocket.on('session:widgetStateChanged', (data: SessionWidgetStateChangedEvent) => {
       // Update the isActive state for the specific widget
       setJoinedRooms(prev => prev.map(room => {
         if (room.code === code && room.type === data.roomType && room.widgetId === data.widgetId) {
-          return { 
-            ...room, 
+          return {
+            ...room,
             isActive: data.isActive,
-            initialData: { ...room.initialData, isActive: data.isActive } 
+            initialData: { ...room.initialData, isActive: data.isActive }
           };
         }
         return room;
@@ -424,7 +291,7 @@ const App: React.FC = () => {
       socketRefs.current.forEach((socket) => socket.close());
       socketRefs.current.clear();
     });
-    
+
     newSocket.on('disconnect', () => {
       setIsConnected(false);
     });
@@ -443,13 +310,13 @@ const App: React.FC = () => {
     animateAllRoomsLeave(roomIds, () => {
       setJoinedRooms([]);
     });
-    
+
     // Close all socket connections for this session
     socketRefs.current.forEach((socket) => {
       socket.close();
     });
     socketRefs.current.clear();
-    
+
     // Clear current session and connection state
     setCurrentSessionCode('');
     setIsConnected(false);
@@ -485,19 +352,19 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#f7f5f2] dark:bg-warm-gray-900 font-sans flex flex-col">
       {/* Sticky header with join form */}
-      <div 
-        ref={headerRef} 
+      <div
+        ref={headerRef}
         className={`
-          fixed top-0 left-0 right-0 z-[100] 
+          fixed top-0 left-0 right-0 z-[100]
           bg-soft-white dark:bg-warm-gray-800 rounded-b-lg border border-warm-gray-200 dark:border-warm-gray-700 border-t-0
           transition-all duration-300 ease-in-out
-          ${isScrolled 
-            ? 'p-2 md:px-4 shadow-md' 
+          ${isScrolled
+            ? 'p-2 md:px-4 shadow-md'
             : 'p-4 shadow-sm'
           }
         `}
       >
-        <JoinForm 
+        <JoinForm
           onJoin={handleJoin}
           onLeaveSession={handleLeaveSession}
           currentSessionCode={currentSessionCode}
@@ -510,13 +377,13 @@ const App: React.FC = () => {
           isRecovering={isRecovering}
         />
       </div>
-      
+
       {/* Main content wrapper */}
       <div className="flex-1 flex flex-col">
         {/* Spacer to prevent content from going under fixed header */}
-        <div 
-          style={{ height: 'var(--header-height, 180px)' }} 
-          className="transition-[height] duration-300 ease-in-out flex-shrink-0" 
+        <div
+          style={{ height: 'var(--header-height, 180px)' }}
+          className="transition-[height] duration-300 ease-in-out flex-shrink-0"
         />
 
         {/* Content area - flexbox container */}
@@ -524,131 +391,18 @@ const App: React.FC = () => {
           {/* Joined rooms list - centered container with flex items */}
           {joinedRooms.length > 0 && (
             <div className="w-full max-w-[800px] mx-auto flex flex-col gap-6 items-stretch">
-            {joinedRooms.map((room) => {
-              const meta = resolveRoomMeta(room);
-              return (
-              <div
+            {joinedRooms.map((room) => (
+              <RoomCard
                 key={room.id}
-                className={`bg-soft-white dark:bg-warm-gray-800 rounded-lg overflow-hidden shadow-sm border border-warm-gray-200 dark:border-warm-gray-700 transition-all duration-300 transform-gpu flex-shrink-0 ${
-                  leavingRooms.has(room.id) 
-                    ? 'opacity-0 scale-95 -translate-x-full' 
-                    : enteringRooms.has(room.id)
-                    ? 'opacity-0 scale-95'
-                    : 'opacity-100 scale-100 translate-x-0'
-                }`} 
-                data-room-type={room.type}
-              >
-                <div
-                  className={`flex justify-between items-center px-4 py-2.5 transition-all duration-300 cursor-pointer select-none border-b-2 ${meta.palette.header}`}
-                  onClick={() => toggleMinimizeRoom(room.id)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggleMinimizeRoom(room.id);
-                    }
-                  }}
-                  aria-expanded={!minimizedRooms.has(room.id)}
-                  aria-label={`${meta.ariaLabel} - Click to ${minimizedRooms.has(room.id) ? 'expand' : 'collapse'}`}
-                >
-                  <div className="flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                    <span className={`text-base md:text-lg font-semibold ${meta.palette.title}`}>
-                      {meta.label}
-                    </span>
-                    <span className="text-warm-gray-600 dark:text-warm-gray-400 text-xs sm:text-sm">
-                      {meta.description}
-                    </span>
-                  </div>
-                  <div
-                    className={`${meta.palette.badge} w-6 h-6 rounded-full text-xs transition-all duration-200 flex items-center justify-center pointer-events-none shadow-sm`}
-                  >
-                    {minimizedRooms.has(room.id) ? <FaPlus className="w-3 h-3" /> : <FaMinus className="w-3 h-3" />}
-                  </div>
-                </div>
-                
-                <div className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                  minimizedRooms.has(room.id) ? 'max-h-0' : 'max-h-[500px]'
-                }`}>
-                  <div className="p-3 relative min-h-0">
-                    {/* Overlay when teacher is disconnected */}
-                    {!hostConnected && (
-                      <div className="absolute inset-0 bg-warm-gray-900/80 dark:bg-warm-gray-950/80 rounded-md flex items-center justify-center z-10">
-                        <div className="text-center text-white p-4">
-                          <div className="text-lg font-semibold mb-2">Activity Paused</div>
-                          <div className="text-sm opacity-80">Waiting for teacher to reconnect...</div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {room.type === 'poll' && (
-                      <PollActivity 
-                        socket={room.socket} 
-                        roomCode={room.code}
-                        initialPollData={room.initialData?.pollData}
-                        initialIsActive={room.isActive}
-                        widgetId={room.widgetId}
-                      />
-                    )}
-                    {room.type === 'linkShare' && (
-                      <LinkShareActivity
-                        socket={room.socket}
-                        roomCode={room.code}
-                        studentName={studentName}
-                        widgetId={room.widgetId}
-                        initialIsActive={room.initialData?.isActive}
-                        initialAcceptMode={room.initialData?.acceptMode || 'all'}
-                      />
-                    )}
-                    {room.type === 'rtfeedback' && (
-                      <RTFeedbackActivity 
-                        socket={room.socket} 
-                        roomCode={room.code}
-                        initialIsActive={room.initialData?.isActive}
-                        widgetId={room.widgetId}
-                      />
-                    )}
-                    {room.type === 'questions' && (
-                      <QuestionsActivity
-                        socket={room.socket}
-                        sessionCode={room.code}
-                        studentId={room.studentId || ''}
-                        studentName={room.studentName}
-                        widgetId={room.widgetId}
-                        initialIsActive={room.initialData?.isActive}
-                      />
-                    )}
-                    {room.type === 'handout' && (
-                      <HandoutActivity
-                        socket={room.socket}
-                        roomCode={room.code}
-                        widgetId={room.widgetId}
-                        initialIsActive={room.initialData?.isActive}
-                        initialItems={room.initialData?.items || []}
-                      />
-                    )}
-                    {room.type === 'activity' && (
-                      <ActivityRenderer
-                        socket={room.socket}
-                        sessionCode={room.code}
-                        widgetId={room.widgetId}
-                        initialActivity={room.initialData?.activity}
-                        initialIsActive={room.initialData?.isActive}
-                        initialActions={room.initialData?.actions || []}
-                      />
-                    )}
-                    {/* A room type this build has no renderer for - see UNKNOWN_ROOM_TYPE_META.
-                        Say so instead of leaving the card body empty. */}
-                    {!isKnownRoomType(room.type) && (
-                      <div className="text-sm text-warm-gray-600 dark:text-warm-gray-400 text-center py-4">
-                        This activity isn't supported by this version of the app. Try refreshing the page.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              );
-            })}
+                room={room}
+                studentName={studentName}
+                hostConnected={hostConnected}
+                isMinimized={minimizedRooms.has(room.id)}
+                isEntering={enteringRooms.has(room.id)}
+                isLeaving={leavingRooms.has(room.id)}
+                onToggleMinimize={() => toggleMinimizeRoom(room.id)}
+              />
+            ))}
             </div>
           )}
 

@@ -22,7 +22,7 @@ import {
 } from 'react-icons/fa6';
 import { clsx } from 'clsx';
 import { useWorkspace, useTheme } from '@shared/hooks/useWorkspace';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import { useWidgets } from '@shared/hooks/useWidget';
 import { isDesktopDashboardMode } from '@shared/utils/dashboardMode';
 import { isNativeDesktop } from '@shared/utils/nativeBridge';

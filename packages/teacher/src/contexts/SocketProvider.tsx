@@ -37,7 +37,7 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setServerStatus({ connected: false });
     });
     
-    newSocket.on('connect_error', (error: any) => {
+    newSocket.on('connect_error', (error) => {
       debug.error('Connection error:', error);
       setServerStatus({ connected: false, error: error.message });
     });

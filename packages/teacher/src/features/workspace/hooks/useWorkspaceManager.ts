@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
-import { WorkspaceMetadata } from '../../../store/workspaceStore';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
+import { WorkspaceMetadata } from '../../../store/workspaceTypes';
 
 export function useWorkspaceManager() {
   // Selectors

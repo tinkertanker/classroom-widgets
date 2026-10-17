@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { generateRandomFood, isSnakeSelfCollision } from './snake';
+import { generateRandomFood, isSnakeSelfCollision } from './Snake';
 
 afterEach(() => {
   vi.restoreAllMocks();

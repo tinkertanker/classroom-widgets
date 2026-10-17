@@ -1,14 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from '../../../contexts/SessionContext';
+import type { Socket } from 'socket.io-client';
+import type { RoomType } from '@shared/types/socket.types';
 import type { SessionEditorScope } from './useSessionEditor';
 
-export type RoomType = 'poll' | 'linkShare' | 'rtfeedback' | 'questions' | 'handout' | 'activity';
+export type { RoomType };
+
+/** The room snapshot a widget restores from after a session recovery. */
+export type WidgetRecoveryData = ReturnType<ReturnType<typeof useSession>['getWidgetRecoveryData']>;
 
 interface UseNetworkedWidgetProps {
   widgetId?: string;
   roomType: RoomType;
-  savedState?: any;
-  onStateChange?: (state: any) => void;
+  // Widgets pass their props straight through; the hook does not read these.
+  savedState?: unknown;
+  onStateChange?: (state: unknown) => void;
 }
 
 interface UseNetworkedWidgetResult {
@@ -25,7 +31,7 @@ interface UseNetworkedWidgetResult {
   
   // Session info
   session: {
-    socket: any;
+    socket: Socket | null;
     sessionCode: string | null;
     participantCount: number;
     isConnected: boolean;
@@ -35,7 +41,7 @@ interface UseNetworkedWidgetResult {
   };
   
   // Recovery data
-  recoveryData: any | null;
+  recoveryData: WidgetRecoveryData;
 }
 
 export function useNetworkedWidget({

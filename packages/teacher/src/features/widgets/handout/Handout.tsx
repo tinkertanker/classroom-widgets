@@ -9,13 +9,7 @@ import { NetworkedWidgetOverlays, NetworkedWidgetStats, WidgetControlBar, PlayPa
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
-
-interface HandoutItem {
-  id: string;
-  content: string;
-  isLink: boolean;
-  timestamp: number;
-}
+import type { HandoutItem, HandoutItemAddedData } from '@shared/types/socket.types';
 
 function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
   // State
@@ -48,7 +42,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers
   const socketEvents = useMemo(() => ({
-    'handout:itemAdded': (data: any) => {
+    'handout:itemAdded': (data: HandoutItemAddedData) => {
       if (data.widgetId === widgetId) {
         const { widgetId: _, ...item } = data;
         setItems(prev => [...prev, item]);

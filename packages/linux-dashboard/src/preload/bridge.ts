@@ -11,5 +11,7 @@ const appVersion = versionArg ? versionArg.slice('--classroom-app-version='.leng
 contextBridge.exposeInMainWorld('classroomNativeBridge', {
   postMessage: (message: unknown) => ipcRenderer.send('native-message', message),
 });
+// These names match DESKTOP_GLOBALS in src/main/generated/desktopHostScripts.ts;
+// a sandboxed preload cannot require that module.
 contextBridge.exposeInMainWorld('__CLASSROOM_WIDGETS_LINUX__', true);
 contextBridge.exposeInMainWorld('__CLASSROOM_WIDGETS_LINUX_VERSION__', appVersion);

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaCheck, FaPencil, FaTrash } from 'react-icons/fa6';
 import { clsx } from 'clsx';
-import { WorkspaceMetadata } from '../../../../store/workspaceStore';
+import { WorkspaceMetadata } from '../../../../store/workspaceTypes';
 
 interface WorkspaceItemProps {
   workspace: WorkspaceMetadata;

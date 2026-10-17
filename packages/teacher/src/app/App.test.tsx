@@ -3,7 +3,7 @@ import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import App from './App';
-import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { WidgetType } from '@shared/types';
 import { registerWidgetLauncherOpener, resetWidgetLauncherForTests } from '../features/desktop/widgetLauncher';
@@ -299,20 +299,20 @@ describe('App double-Cmd-press voice activation', () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+      expect(typeof window.getVoiceControlActive).toBe('function');
     });
 
     pressCmd();
     pressCmd();
 
-    expect((window as any).getVoiceControlActive()).toBe(true);
+    expect(window.getVoiceControlActive?.()).toBe(true);
   });
 
   it('does not activate voice control when the second Cmd press is outside the 500ms window', async () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+      expect(typeof window.getVoiceControlActive).toBe('function');
     });
 
     vi.useFakeTimers();
@@ -320,20 +320,20 @@ describe('App double-Cmd-press voice activation', () => {
     vi.advanceTimersByTime(600);
     pressCmd();
 
-    expect((window as any).getVoiceControlActive()).toBe(false);
+    expect(window.getVoiceControlActive?.()).toBe(false);
   });
 
   it('does not treat a held Cmd key-repeat as a double press', async () => {
     render(<App />);
 
     await waitFor(() => {
-      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+      expect(typeof window.getVoiceControlActive).toBe('function');
     });
 
     pressCmd();
     fireEvent.keyDown(document, { key: 'Meta', metaKey: true, repeat: true });
 
-    expect((window as any).getVoiceControlActive()).toBe(false);
+    expect(window.getVoiceControlActive?.()).toBe(false);
   });
 
   it('does not treat Cmd after Cmd+K as a double press', async () => {
@@ -341,7 +341,7 @@ describe('App double-Cmd-press voice activation', () => {
 
     await waitFor(() => {
       expect(typeof window.openClassroomWidgetLauncher).toBe('function');
-      expect(typeof (window as any).getVoiceControlActive).toBe('function');
+      expect(typeof window.getVoiceControlActive).toBe('function');
     });
 
     const openLauncher = vi.fn();
@@ -352,6 +352,6 @@ describe('App double-Cmd-press voice activation', () => {
     pressCmd();
 
     expect(openLauncher).toHaveBeenCalled();
-    expect((window as any).getVoiceControlActive()).toBe(false);
+    expect(window.getVoiceControlActive?.()).toBe(false);
   });
 });

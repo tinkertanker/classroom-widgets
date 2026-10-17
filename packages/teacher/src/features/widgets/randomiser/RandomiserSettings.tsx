@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { WidgetTextarea } from '@shared/components/WidgetInput';
 import { normaliseChoiceList, stringifyChoiceList } from './utils/choiceList';
 import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import { SavedRandomiserList } from '@shared/types/storage';
 
 interface RandomiserSettingsProps {

@@ -112,7 +112,7 @@ const Board = forwardRef<BoardRef, BoardProps>(({ children, onBoardClick, sticke
           }}
         >
           {/* Background Pattern */}
-          <Background type={background as any} />
+          <Background type={background} />
 
           {children}
           

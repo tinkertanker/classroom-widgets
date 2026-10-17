@@ -39,7 +39,7 @@ export class ErrorService {
   }
   
   // Create a structured error
-  createError(code: ErrorCode, message: string, details?: any): AppError {
+  createError(code: ErrorCode, message: string, details?: unknown): AppError {
     return {
       code,
       message,
@@ -75,7 +75,7 @@ export class ErrorService {
     let appError: AppError;
     
     if ('code' in error && 'timestamp' in error) {
-      appError = error as AppError;
+      appError = error;
     } else {
       appError = this.createError(
         ErrorCode.UNKNOWN_ERROR,

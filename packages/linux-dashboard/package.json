@@ -8,7 +8,7 @@
   "main": "out/main/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "npm run build && node --test test/*.test.js",
+    "test": "node ../../scripts/generateDesktopHostScripts.cjs --check && npm run build && node --test test/*.test.js",
     "start": "electron .",
     "dist": "XZ_DEFAULTS=-T0 electron-builder --linux"
   },

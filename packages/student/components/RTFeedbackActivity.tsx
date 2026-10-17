@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
-import type { SessionRTFeedbackSubmittedResponse } from '@shared/types/socket.types';
+import type { RTFeedbackStateUpdateData, SessionRTFeedbackSubmittedResponse } from '@shared/types/socket.types';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 
 interface RTFeedbackActivityProps {
@@ -39,7 +39,7 @@ const RTFeedbackActivity: React.FC<RTFeedbackActivityProps> = ({ socket, roomCod
   };
 
   // Listen for room state changes using shared hook
-  useWidgetStateChange({
+  useWidgetStateChange<RTFeedbackStateUpdateData>({
     socket,
     roomCode,
     roomType: 'rtfeedback',

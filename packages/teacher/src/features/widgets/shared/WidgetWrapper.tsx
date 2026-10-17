@@ -1,7 +1,7 @@
 // New Widget Wrapper component using the centralized store
 
 import React, { useCallback, useRef, useEffect, memo } from 'react';
-import { Rnd } from 'react-rnd';
+import { Rnd, type RndDragCallback, type RndResizeCallback } from 'react-rnd';
 import { clsx } from 'clsx';
 import { FaXmark } from 'react-icons/fa6';
 import { useWidget, useWidgetDrag } from '@shared/hooks/useWidget';
@@ -26,7 +26,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
   const { isBeingDragged, startDrag, stopDrag } = useWidgetDrag(widgetId);
   const { scale } = useWorkspace();
   const isDashboardMode = isDesktopDashboardMode();
-  const rndRef = useRef<any>(null);
+  const rndRef = useRef<Rnd>(null);
   // Give the pointer a generous 2s to reach the trash button, which sits outside
   // the widget's own bounds on the canvas
   const { visible: showTrash, onMouseEnter, onMouseLeave } = useHoverDelay(2000);
@@ -53,14 +53,14 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
     dispatchInteraction({ type: 'dragMove' });
   }, [dispatchInteraction]);
 
-  const handleDragStop = useCallback((e: any, d: any) => {
+  const handleDragStop = useCallback<RndDragCallback>((_e, d) => {
     // Read dropTarget directly from store to avoid subscribing to it
     // This prevents re-renders when dropTarget changes during drag
     const currentDropTarget = useWorkspaceUiStore.getState().dragState.dropTarget;
     if (classifyDrop(currentDropTarget) === 'trash') {
       debug('[WidgetWrapper] Widget dropped on trash, removing widget:', widgetId);
       // Play trash sound
-      (window as any).playTrashSound?.();
+      window.playTrashSound?.();
       // Remove the widget
       remove();
     } else {
@@ -79,7 +79,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
     focus();
   }, [dispatchInteraction, focus]);
 
-  const handleResizeStop = useCallback((e: any, direction: any, ref: any, delta: any, position: Position) => {
+  const handleResizeStop = useCallback<RndResizeCallback>((_e, _direction, ref, _delta, position) => {
     dispatchInteraction({ type: 'resizeStop' });
     const newSize: Size = {
       width: ref.offsetWidth,
@@ -131,7 +131,7 @@ const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashb
     e.preventDefault();
     debug('[WidgetWrapper] Delete button clicked, removing widget:', widgetId);
     // Play trash sound
-    (window as any).playTrashSound?.();
+    window.playTrashSound?.();
     // Remove the widget
     remove();
   }, [remove, widgetId]);

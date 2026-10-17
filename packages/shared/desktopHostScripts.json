@@ -1,0 +1,100 @@
+{
+  "$comment": "Source of truth for the JavaScript the macOS, Windows and Linux desktop apps inject into their widget web views, and the window globals the teacher app reads them from. Edit this file, then run `pnpm generate:desktop-scripts`. {{name}} is a script parameter; {{globals.x}} and {{events.x}} are replaced at generation time. A json parameter must be a JSON-encoded value (or, in a macOS callAsyncJavaScript body, the name of a bound argument); a method parameter is one of panelHostMethods.",
+  "globals": {
+    "macosFlag": "__CLASSROOM_WIDGETS_MACOS__",
+    "macosVersion": "__CLASSROOM_WIDGETS_MACOS_VERSION__",
+    "windowsFlag": "__CLASSROOM_WIDGETS_WINDOWS__",
+    "windowsVersion": "__CLASSROOM_WIDGETS_WINDOWS_VERSION__",
+    "linuxFlag": "__CLASSROOM_WIDGETS_LINUX__",
+    "linuxVersion": "__CLASSROOM_WIDGETS_LINUX_VERSION__",
+    "audioVolume": "__CLASSROOM_WIDGETS_AUDIO_VOLUME__",
+    "audio": "classroomAudio",
+    "shortenerSettings": "classroomShortenerSettings",
+    "dashboard": "classroomDashboard",
+    "panelHost": "classroomPanelHost",
+    "widgetPanel": "classroomWidgetPanel"
+  },
+  "events": {
+    "shortenerSettingsChanged": "classroom-shortener-settings-changed"
+  },
+  "shortenerProviders": ["tinyurl", "spoo", "shortio"],
+  "defaultShortenerProvider": "tinyurl",
+  "outputVolumePresets": [
+    { "label": "Mute", "volume": 0 },
+    { "label": "1 ■□□□", "volume": 0.1 },
+    { "label": "2 ■■□□", "volume": 0.25 },
+    { "label": "3 ■■■□", "volume": 0.5 },
+    { "label": "4 ■■■■", "volume": 1 }
+  ],
+  "panelHostMethods": [
+    "addWidget",
+    "showWidget",
+    "dismissWidget",
+    "toggleWidget",
+    "removeWidget",
+    "applyStateChange",
+    "applyRandomiserListChange"
+  ],
+  "scripts": {
+    "macosFlag": {
+      "description": "Marks the page as running inside the macOS app.",
+      "params": {},
+      "template": "window.{{globals.macosFlag}} = true; "
+    },
+    "macosVersion": {
+      "description": "Publishes the macOS app version.",
+      "params": { "version": "json" },
+      "template": "window.{{globals.macosVersion}} = {{version}}; "
+    },
+    "windowsFlags": {
+      "description": "Marks the page as running inside the Windows app and publishes its version.",
+      "params": { "version": "json" },
+      "template": "window.{{globals.windowsFlag}} = true; window.{{globals.windowsVersion}} = {{version}}; "
+    },
+    "shortenerSettings": {
+      "description": "Publishes the native link-shortener settings and tells the web app they changed.",
+      "params": { "settings": "json" },
+      "template": "window.{{globals.shortenerSettings}} = {{settings}}; window.dispatchEvent(new Event('{{events.shortenerSettingsChanged}}'));"
+    },
+    "audioVolume": {
+      "description": "Publishes the native output volume for start-up and applies it to a running page.",
+      "params": { "volume": "json" },
+      "template": "window.{{globals.audioVolume}} = {{volume}}; window.{{globals.audio}}?.setVolume({{volume}});"
+    },
+    "dashboardBackgroundOpacity": {
+      "description": "Sets the hidden widget host's background opacity.",
+      "params": { "opacity": "json" },
+      "template": "window.{{globals.dashboard}}?.setBackgroundOpacity?.({{opacity}})"
+    },
+    "panelHostCall": {
+      "description": "Calls a widget host method; evaluates to its result, or false when the host is not ready.",
+      "params": { "method": "method", "argument": "json" },
+      "template": "(() => { const host = window.{{globals.panelHost}}; return host?.{{method}} ? host.{{method}}({{argument}}) : false; })()"
+    },
+    "widgetPanelReceiveSnapshot": {
+      "description": "Hands a widget panel its snapshot; evaluates to false when the panel is not ready.",
+      "params": { "snapshot": "json" },
+      "template": "(() => { const panel = window.{{globals.widgetPanel}}; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot({{snapshot}}); return true; })()"
+    },
+    "widgetPanelTakePendingState": {
+      "description": "Takes a widget panel's unsent state, or null.",
+      "params": {},
+      "template": "window.{{globals.widgetPanel}}?.takePendingState?.() ?? null"
+    },
+    "widgetPanelTakePendingStateResult": {
+      "description": "Takes a widget panel's unsent state as { ok, value }, telling a missing panel apart from no pending state.",
+      "params": {},
+      "template": "(() => { const p = window.{{globals.widgetPanel}}; if (!p?.takePendingState) return { ok: false }; return { ok: true, value: p.takePendingState() ?? null }; })()"
+    },
+    "widgetPanelChromeVisible": {
+      "description": "Tells a widget panel page whether the native chrome strip is showing.",
+      "params": { "visible": "json" },
+      "template": "document.documentElement.dataset.widgetChromeVisible = {{visible}};"
+    },
+    "widgetPanelBackgroundOpacity": {
+      "description": "Sets a widget panel page's background opacity CSS variable.",
+      "params": { "opacity": "json" },
+      "template": "document.documentElement.style.setProperty('--compact-widget-background-opacity', {{opacity}});"
+    }
+  }
+}

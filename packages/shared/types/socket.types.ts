@@ -21,6 +21,28 @@ export interface SessionCreateData {
   reclaimOnly?: boolean;
 }
 
+/**
+ * A room as the server serialises it (Room#toJSON): the fields every room
+ * carries, plus widget-specific data that each widget reads for itself.
+ */
+export interface RoomSnapshot {
+  code?: string;
+  widgetId?: string;
+  type?: string;
+  isActive?: boolean;
+  participantCount?: number;
+  createdAt?: number;
+  lastActivity?: number;
+  [key: string]: unknown;
+}
+
+/** A live room as Session.getActiveRooms() lists it */
+export interface ActiveRoomInfo {
+  roomType: RoomType;
+  widgetId?: string;
+  room: RoomSnapshot;
+}
+
 export type SessionCreatedResponse = {
   success: true;
   code: string;
@@ -28,11 +50,7 @@ export type SessionCreatedResponse = {
   // Secret token the host must present to reclaim this session
   hostToken?: string;
   studentAppUrl?: string;
-  activeRooms?: Array<{
-    roomType: RoomType;
-    widgetId?: string;
-    room: any; // Widget-specific room snapshot from Session.getActiveRooms()
-  }>;
+  activeRooms?: ActiveRoomInfo[];
 } | {
   success: false;
   error: string;
@@ -48,13 +66,13 @@ export interface SessionJoinData {
 
 export interface SessionJoinedResponse {
   success: boolean;
-  activeRooms: Array<{
-    type: RoomType;
-    widgetId: string;
-    roomData: any; // Widget-specific room data
-  }>;
-  participantId: string;
+  // Present on success; each room is in its student-facing form (Room#toStudentJSON)
+  activeRooms?: ActiveRoomInfo[];
+  participantId?: string;
   error?: string;
+  message?: string;
+  // Rate-limited: milliseconds until another join attempt is allowed
+  retryAfter?: number;
 }
 
 export interface SessionParticipantUpdateData {
@@ -88,7 +106,7 @@ export interface SessionCreateRoomResponse {
 export interface SessionRoomCreatedData {
   roomType: RoomType;
   widgetId: string;
-  roomData: any; // Widget-specific initial data
+  roomData: RoomSnapshot; // The new room as room.toJSON() returns it
 }
 
 export interface SessionCloseRoomData {
@@ -119,15 +137,10 @@ export interface SessionWidgetStateChangedData {
 // Poll Widget Events
 // ============================================================================
 
-export interface PollOption {
-  text: string;
-  votes: number;
-}
-
 export interface PollData {
   question: string;
-  options: PollOption[];
-  isActive: boolean;
+  options: string[];
+  isActive?: boolean;
 }
 
 export interface PollResults {
@@ -143,7 +156,7 @@ export interface SessionPollUpdateData {
 }
 
 export interface PollDataUpdateData {
-  pollData: Omit<PollData, 'votes'>; // Votes excluded from pollData
+  pollData: PollData; // Vote counts travel in results, not pollData
   results: PollResults;
   widgetId: string;
 }
@@ -180,7 +193,10 @@ export interface PollRequestStateData {
 export interface LinkSubmission {
   id: string;
   studentName: string;
-  link: string;
+  content: string;
+  isLink: boolean;
+  // Older servers sent only this; it mirrors content for links, else null
+  link: string | null;
   timestamp: number;
 }
 
@@ -227,6 +243,8 @@ export interface LinkShareRequestStateData {
 export interface LinkShareStateChangedData {
   isActive: boolean;
   widgetId: string;
+  // Present in the reply to a state request
+  acceptMode?: 'links' | 'all';
 }
 
 // ============================================================================
@@ -253,8 +271,15 @@ export interface SessionRTFeedbackSubmittedResponse {
   stale?: boolean;
 }
 
+export interface RTFeedbackStateUpdateData {
+  isActive: boolean;
+  widgetId: string;
+  // How many times responses were cleared; present in the reply to a state request
+  resetEpoch?: number;
+}
+
 export interface RTFeedbackUpdateData {
-  understanding: number; // Average feedback value
+  understanding: number[]; // Response count for each step of the scale
   totalResponses: number;
   widgetId: string;
 }
@@ -270,6 +295,7 @@ export interface SessionRTFeedbackResetData {
 
 export interface Question {
   id: string;
+  studentId: string;
   studentName: string;
   text: string;
   timestamp: number;
@@ -415,6 +441,9 @@ export interface ActivityStateUpdateData {
   responseCount: number;
   /** Set when the teacher reset the activity: every response and the reveal were cleared */
   reset?: boolean;
+  /** Only in the reply to one student's state request: their results and the reveal */
+  results?: ActivityResults | null;
+  correctAnswers?: Record<string, string> | null;
 }
 
 export interface ActivityFeedbackData {
@@ -441,6 +470,24 @@ export interface SessionActivitySubmittedResponse {
   widgetId: string;
   results?: ActivityResults;
   error?: string;
+}
+
+export interface SessionActivityRetryData {
+  sessionCode: string;
+  widgetId: string;
+}
+
+export interface SessionActivityRetryResponse {
+  success: boolean;
+  widgetId?: string;
+  error?: string;
+}
+
+/** Sent to a student once their response is cleared and they may submit again */
+export interface ActivityRetryReadyData {
+  widgetId: string;
+  actions: ActivityAction[];
+  results: null;
 }
 
 export interface ActivityRequestStateData {
@@ -485,7 +532,7 @@ export interface ServerToClientEvents {
   'session:linkShare:submitted': (data: SessionLinkShareSubmittedResponse) => void;
 
   // RT Feedback events
-  'rtfeedback:stateUpdate': (data: LinkShareStateChangedData) => void;
+  'rtfeedback:stateUpdate': (data: RTFeedbackStateUpdateData) => void;
   'rtfeedback:dataUpdate': (data: RTFeedbackUpdateData) => void;
   'session:rtfeedback:submitted': (data: SessionRTFeedbackSubmittedResponse) => void;
 
@@ -507,6 +554,7 @@ export interface ServerToClientEvents {
   'activity:feedback': (data: ActivityFeedbackData) => void;
   'activity:revealed': (data: ActivityRevealedData) => void;
   'activity:responseReceived': (data: ActivityResponseReceivedData) => void;
+  'activity:retryReady': (data: ActivityRetryReadyData) => void;
 }
 
 /** Request state data for RT Feedback */
@@ -571,6 +619,7 @@ export interface ClientToServerEvents {
   'session:activity:reveal': (data: SessionActivityRevealData) => void;
   'session:activity:reset': (data: SessionActivityResetData) => void;
   'session:activity:submit': (data: SessionActivitySubmitData, callback: (response: SessionActivitySubmittedResponse) => void) => void;
+  'session:activity:retry': (data: SessionActivityRetryData, callback: (response: SessionActivityRetryResponse) => void) => void;
   'activity:requestState': (data: ActivityRequestStateData) => void;
 }
 

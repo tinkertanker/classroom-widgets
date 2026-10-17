@@ -1,14 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSession } from '../../../contexts/SessionContext';
 import { useSocketEvents } from './useSocketEvents';
-import { RoomType } from './useNetworkedWidget';
+import type { RoomType, WidgetRecoveryData } from './useNetworkedWidget';
 import { debug } from '@shared/utils/debug';
 
 interface UseNetworkedWidgetStateOptions {
   widgetId?: string;
   roomType: RoomType;
   hasRoom: boolean;
-  recoveryData: any;
+  recoveryData: WidgetRecoveryData;
 }
 
 interface UseNetworkedWidgetStateResult {

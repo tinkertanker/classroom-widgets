@@ -15,6 +15,7 @@ import { registerNativeMessages, unregisterNativeMessages } from './nativeMessag
 import { configureWebContents, evaluate, evaluateBool } from './webContentsSetup';
 import { audioSettingsScript, outputVolumeLabel, outputVolumePresets, type DashboardSettings } from './settings';
 import { shortenerSettingsScript } from './shortenerSettings';
+import { desktopHostScripts } from './generated/desktopHostScripts';
 import { widgetMenuItems } from './widgetMenu';
 import { preloadPath, rendererPath } from './paths';
 
@@ -279,7 +280,7 @@ export class WidgetPanelWindow extends EventEmitter {
     });
     const scriptPromise = evaluate(
       this.view.webContents,
-      '(() => { const p = window.classroomWidgetPanel; if (!p?.takePendingState) return { ok: false }; return { ok: true, value: p.takePendingState() ?? null }; })()',
+      desktopHostScripts.widgetPanelTakePendingStateResult,
     );
     const delay = new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), 900));
     const completed = await Promise.race([Promise.all([scriptPromise, checkpoint]).then(() => 'done' as const), delay]);
@@ -369,7 +370,7 @@ export class WidgetPanelWindow extends EventEmitter {
       this.view.webContents,
       shortenerSettingsScript(this.settings.linkShortener)
         + audioSettingsScript(this.settings.outputVolume)
-        + `(() => { const panel = window.classroomWidgetPanel; if (!panel?.receiveSnapshot) return false; panel.receiveSnapshot(${snapshot}); return true; })()`,
+        + desktopHostScripts.widgetPanelReceiveSnapshot(snapshot),
     );
   }
 
@@ -410,8 +411,8 @@ export class WidgetPanelWindow extends EventEmitter {
       this.view.webContents,
       shortenerSettingsScript(this.settings.linkShortener)
         + audioSettingsScript(this.settings.outputVolume)
-        + `document.documentElement.dataset.widgetChromeVisible = '${this.chromeVisible ? 'true' : 'false'}';`
-        + `document.documentElement.style.setProperty('--compact-widget-background-opacity', '${this.opacityText()}');`,
+        + desktopHostScripts.widgetPanelChromeVisible(JSON.stringify(this.chromeVisible ? 'true' : 'false'))
+        + desktopHostScripts.widgetPanelBackgroundOpacity(JSON.stringify(this.opacityText())),
     );
   }
 

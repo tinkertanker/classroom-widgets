@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { WidgetInput } from '@shared/components/WidgetInput';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import SavedCollectionsDialog from '@shared/components/SavedCollectionsDialog';
 import { SavedPollQuestion } from '@shared/types/storage';
 import { useSessionEditor, type SessionEditorScope } from '../../session/hooks/useSessionEditor';

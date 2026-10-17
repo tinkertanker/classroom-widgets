@@ -15,6 +15,7 @@ import { WidgetPanelCoordinator } from './panelCoordinator';
 import { audioSettingsScript, DashboardSettings } from './settings';
 import { configureWebContents, evaluateBool } from './webContentsSetup';
 import { shortenerSettingsScript } from './shortenerSettings';
+import { desktopHostScripts, PanelHostMethod } from './generated/desktopHostScripts';
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -81,11 +82,8 @@ export class WidgetHostController extends EventEmitter {
     });
   }
 
-  private callHost(method: string, argument: unknown): Promise<boolean> {
-    return evaluateBool(
-      this.window.webContents,
-      `(() => { const host = window.classroomPanelHost; return host?.${method} ? host.${method}(${JSON.stringify(argument)}) : false; })()`,
-    );
+  private callHost(method: PanelHostMethod, argument: unknown): Promise<boolean> {
+    return evaluateBool(this.window.webContents, desktopHostScripts.panelHostCall(method, JSON.stringify(argument)));
   }
 
   markShuttingDown(): void {
@@ -108,7 +106,7 @@ export class WidgetHostController extends EventEmitter {
         this.window.webContents,
         shortenerSettingsScript(this.settings.linkShortener)
           + audioSettingsScript(this.settings.outputVolume)
-          + `window.classroomDashboard?.setBackgroundOpacity?.(${JSON.stringify(this.settings.backgroundOpacity)})`,
+          + desktopHostScripts.dashboardBackgroundOpacity(JSON.stringify(this.settings.backgroundOpacity)),
       );
     }
   }

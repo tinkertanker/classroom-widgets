@@ -76,10 +76,10 @@ export default MyNewWidget;
 
 ### 4. Add Widget to Toolbar (Optional)
 
-To make your widget appear in the default toolbar, add it to the `defaultToolbar.visibleWidgets` array in `/src/store/workspaceStore.simple.ts`:
+To make your widget appear in the default toolbar, add it to the `visibleWidgets` array in `src/store/workspace/workspaceDefaults.ts`:
 
 ```typescript
-const defaultToolbar = {
+export const defaultBottomBar = {
   visibleWidgets: [
     // ... existing widgets ...
     WidgetType.MY_NEW_WIDGET

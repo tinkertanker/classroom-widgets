@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
-import { useWorkspaceStore } from '@/store/workspaceStore.simple';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
 import { Position, Size, WidgetType } from '../types';
 import { findAvailablePosition } from '../utils/widgetHelpers';
@@ -28,7 +28,7 @@ export function useWidget(widgetId: string) {
   const resize = useCallback((size: Size) => updateSize(widgetId, size), [widgetId, updateSize]);
   const removeWidget = useCallback(() => remove(widgetId), [widgetId, remove]);
   const focus = useCallback(() => bringToFront(widgetId), [widgetId, bringToFront]);
-  const setState = useCallback((state: any) => updateState(widgetId, state), [widgetId, updateState]);
+  const setState = useCallback((state: unknown) => updateState(widgetId, state), [widgetId, updateState]);
 
   return {
     widget,

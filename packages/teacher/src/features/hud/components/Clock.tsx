@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { clsx } from 'clsx';
 import { FaClock, FaXmark } from 'react-icons/fa6';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 
 // Color thresholds (in minutes)
 const WARNING_THRESHOLD = 15;

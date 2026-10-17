@@ -7,15 +7,15 @@ import { createDefaultStorageV2 } from '@shared/types/storage';
 import { loadStorage, saveStorage } from '@shared/utils/storageMigration';
 import { SessionProvider, useSession } from './SessionContext';
 import { ModalProvider } from './ModalContext';
-import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import { useSocketEvents } from '../features/session/hooks/useSocketEvents';
 import SessionBanner from '../features/session/components/SessionBanner';
-import Poll from '../features/widgets/poll/poll';
+import Poll from '../features/widgets/poll/Poll';
 import LinkShare from '../features/widgets/linkShare/LinkShare';
 import FillBlank from '../features/widgets/activity/fillBlank/FillBlank';
-import CodeFillBlank from '../features/widgets/activity/codeFillBlank/CodeFillBlank';
+import CodeFillBlank from '../features/widgets/activity/fillBlank/CodeFillBlank';
 import Questions from '../features/widgets/questions/Questions';
-import RTFeedback from '../features/widgets/rtFeedback/rtFeedback';
+import RTFeedback from '../features/widgets/rtFeedback/RTFeedback';
 import Handout from '../features/widgets/handout/Handout';
 import PollSettings from '../features/widgets/poll/PollSettings';
 
@@ -264,7 +264,7 @@ describe('session recovery consumer invariants (#157)', () => {
     expect(session.connectionPhase).toBe('recovered');
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeEnabled();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save Changes' })); });
-    expect(pollState().pollData.question).toBe('Unsaved draft');
+    expect(pollState()).toMatchObject({ pollData: { question: 'Unsaved draft' } });
     expect(server.poll.pollData.question).toBe('Unsaved draft');
     expect(server.manager.getSession(CODE)).toBe(server.session);
     expect(server.session.getRoom('poll', 'poll-1')).toBe(server.poll);

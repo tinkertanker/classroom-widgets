@@ -1,0 +1,157 @@
+import React, { useState } from 'react';
+import { useWidgetState } from '@shared/hooks/useWidgetState';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
+import {
+  CustomThumbsUp,
+  CustomHeart,
+  CustomStar,
+  CustomSmile,
+  CustomArrowUp,
+  CustomLocationDot,
+  CustomRainbow,
+  CustomCheck
+} from './CustomStickerIcons';
+
+interface StickerState {
+  colorIndex: number;
+  stickerType: string;
+  rotation: number;
+}
+
+interface StickerProps {
+  // A sticker is created with only its type recorded, so every field is optional.
+  savedState?: Partial<StickerState>;
+  onStateChange?: (state: StickerState) => void;
+}
+
+const getRandomColorIndex = () => Math.floor(Math.random() * 6);
+
+const Sticker: React.FC<StickerProps> = ({ savedState, onStateChange }) => {
+  // Pick the fallback colour once, so a sticker with no saved colour keeps the
+  // same one across re-renders until a click persists it.
+  const [fallbackColorIndex] = useState(getRandomColorIndex);
+
+  const normalisedSavedState: StickerState | undefined = savedState
+    ? {
+        colorIndex: savedState.colorIndex ?? fallbackColorIndex,
+        stickerType: savedState.stickerType ?? 'star',
+        rotation: savedState.rotation ?? 0
+      }
+    : undefined;
+
+  const { state, setState } = useWidgetState<StickerState>({
+    initialState: { colorIndex: fallbackColorIndex, stickerType: 'star', rotation: 0 },
+    savedState: normalisedSavedState,
+    onStateChange
+  });
+
+  const { colorIndex, stickerType, rotation } = state;
+
+  // Subscribe to theme changes
+  const theme = useWorkspaceStore((store) => store.theme);
+
+  // Generate random rotation between -40 and 40 in steps of 5
+  const getRandomRotation = () => {
+    const steps = [];
+    for (let i = -40; i <= 40; i += 5) {
+      steps.push(i);
+    }
+    return steps[Math.floor(Math.random() * steps.length)];
+  };
+
+  // Define more vibrant color schemes for cycling
+  const colorSchemes = [
+    'text-pink-500',      // Bright pink
+    'text-orange-500',    // Vibrant orange
+    'text-emerald-500',   // Bright green
+    'text-blue-500',      // Bright blue
+    'text-purple-500',    // Vibrant purple
+    'text-yellow-500'     // Bright yellow
+  ];
+
+  // Handle click to cycle colors and rotation
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent widget selection
+    setState({
+      colorIndex: (colorIndex + 1) % colorSchemes.length,
+      stickerType,  // Preserve the sticker type
+      rotation: getRandomRotation()
+    });
+  };
+
+  // Get the appropriate icon based on sticker type
+  const getStickerIcon = () => {
+    const iconClass = `w-full h-full ${colorSchemes[colorIndex]} transition-colors duration-200`;
+    
+    // Use theme from store instead of checking DOM
+    const borderColor = theme === 'dark' ? '#3d3835' : 'white';
+    
+    
+    // Standardized drop-shadow approach for all icon stamps
+    const dropShadowStyle = {
+      filter: `
+        drop-shadow(2px 0 0 ${borderColor})
+        drop-shadow(-2px 0 0 ${borderColor})
+        drop-shadow(0 2px 0 ${borderColor})
+        drop-shadow(0 -2px 0 ${borderColor})
+        drop-shadow(1.5px 1.5px 0 ${borderColor})
+        drop-shadow(-1.5px -1.5px 0 ${borderColor})
+        drop-shadow(1.5px -1.5px 0 ${borderColor})
+        drop-shadow(-1.5px 1.5px 0 ${borderColor})
+        drop-shadow(6px 6px 8px rgba(0, 0, 0, 0.3))
+      `
+    };
+    
+    const renderIconWithBorder = () => {
+      switch (stickerType) {
+        case 'thumbsup':
+          return React.createElement(CustomThumbsUp, { className: iconClass, style: dropShadowStyle });
+        case 'heart':
+          return React.createElement(CustomHeart, { className: iconClass, style: dropShadowStyle });
+        case 'star':
+          return React.createElement(CustomStar, { className: iconClass, style: dropShadowStyle });
+        case 'smile':
+          return React.createElement(CustomSmile, { className: iconClass, style: dropShadowStyle });
+        case 'arrow':
+          return React.createElement(CustomArrowUp, { className: iconClass, style: dropShadowStyle });
+        case 'marker':
+          return React.createElement(CustomLocationDot, { className: iconClass, style: dropShadowStyle });
+        case 'fire':
+          return React.createElement(CustomRainbow, { className: iconClass, style: dropShadowStyle });
+        case 'check':
+          return React.createElement(CustomCheck, { className: iconClass, style: dropShadowStyle });
+        default:
+          return React.createElement(CustomStar, { className: iconClass, style: dropShadowStyle });
+      }
+    };
+
+    return (
+      <div className="relative w-full h-full">
+        {/* Special scaling for rainbow icon */}
+        {stickerType === 'fire' ? (
+          <div className="scale-150">
+            {renderIconWithBorder()}
+          </div>
+        ) : (
+          renderIconWithBorder()
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div
+      className="cursor-pointer p-4 w-full h-full overflow-hidden flex flex-col"
+      onClick={handleClick}
+      title="Click to change color and rotation"
+      style={{
+        transform: `rotate(${rotation}deg)`,
+        transition: 'transform 0.3s ease'
+      }}
+    >
+      {getStickerIcon()}
+    </div>
+  );
+};
+
+export default Sticker;

@@ -1,8 +1,8 @@
 // Base types for all widgets
 
 export interface BaseWidgetProps {
-  savedState?: any;
-  onStateChange?: (state: any) => void;
+  savedState?: unknown;
+  onStateChange?: (state: unknown) => void;
   toggleConfetti?: (value: boolean) => void;
   isActive?: boolean;
 }

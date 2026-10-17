@@ -1,1 +1,1 @@
-export { default } from './sticker';
+export { default } from './Sticker';
