@@ -101,10 +101,12 @@ const Visualiser: React.FC<VisualiserProps> = ({ savedState, onStateChange }) =>
 
       // Get devices after permission is granted
       await getVideoDevices();
-    } catch (err: any) {
+    } catch (caught) {
       if (isStale()) return;
+      // getUserMedia rejects with a DOMException; our own checks throw an Error
+      const err = caught instanceof Error ? caught : new Error();
 
-      console.error('❌ [Visualiser] Error accessing webcam:', err);
+      console.error('❌ [Visualiser] Error accessing webcam:', caught);
 
       // Provide more specific error messages
       let errorMessage = 'Unable to access camera. ';

@@ -15,15 +15,17 @@ import type { VoiceCommandResponse } from '../types/voiceControl';
 
 class FakeRecognition {
   static instances: FakeRecognition[] = [];
-  onstart: any; onresult: any; onerror: any; onend: any;
+  onstart: (() => void) | null = null;
+  onresult: ((event: { results: unknown[] }) => void) | null = null;
+  onerror: ((event: { error: string }) => void) | null = null;
+  onend: (() => void) | null = null;
   continuous = false; interimResults = false; lang = ''; maxAlternatives = 1;
   constructor() { FakeRecognition.instances.push(this); }
   start() { this.onstart?.(); }
   stop() {}
   abort() {}
   emitResult(transcript: string, isFinal: boolean) {
-    const phrase: any = [{ transcript, confidence: 0.9 }];
-    phrase.isFinal = isFinal;
+    const phrase = Object.assign([{ transcript, confidence: 0.9 }], { isFinal });
     this.onresult?.({ results: [phrase] });
   }
 }

@@ -49,11 +49,15 @@ vi.mock('../../session/hooks/useSocketEvents', () => ({
 }));
 
 vi.mock('../shared/components', () => ({
-  NetworkedWidgetControlBar: ({ onToggleActive, disabled, inactiveLabel }: any) => (
+  NetworkedWidgetControlBar: ({ onToggleActive, disabled, inactiveLabel }: {
+    onToggleActive: () => void;
+    disabled?: boolean;
+    inactiveLabel?: string;
+  }) => (
     <button onClick={onToggleActive} disabled={disabled}>{inactiveLabel}</button>
   ),
   NetworkedWidgetOverlays: () => null,
-  NetworkedWidgetStats: ({ children }: any) => <div>{children}</div>
+  NetworkedWidgetStats: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>
 }));
 
 function renderPoll(options: string[]) {

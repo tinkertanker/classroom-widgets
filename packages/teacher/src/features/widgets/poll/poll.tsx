@@ -14,18 +14,7 @@ import { useWidget } from '@shared/hooks/useWidget';
 import { debug } from '@shared/utils/debug';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
-
-interface PollData {
-  question: string;
-  options: string[];
-  isActive?: boolean;
-}
-
-interface PollResults {
-  votes: { [key: number]: number };
-  totalVotes: number;
-  participantCount: number;
-}
+import type { PollData, PollDataUpdateData, PollResults, PollVoteUpdateData } from '@shared/types/socket.types';
 
 function isPollStartable(pollData: PollData): boolean {
   return !!pollData.question.trim() && pollData.options.filter(o => o.trim()).length >= 2;
@@ -83,7 +72,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only, state change handled by useNetworkedWidgetState)
   const socketEvents = useMemo(() => ({
-    'poll:stateUpdate': (data: any) => {
+    'poll:stateUpdate': (data: PollDataUpdateData) => {
       debug('[Poll] Received poll:stateUpdate:', data, 'for widget:', widgetId);
       if (data.widgetId === widgetId) {
         debug('[Poll] Processing stateUpdate for our widget');
@@ -99,7 +88,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
         }
       }
     },
-    'poll:voteUpdate': (data: any) => {
+    'poll:voteUpdate': (data: PollVoteUpdateData) => {
       debug('[Poll] Received poll:voteUpdate:', data, 'for widget:', widgetId);
       if (data.widgetId === widgetId) {
         debug('[Poll] Updating vote results');
@@ -137,7 +126,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
       emit('session:poll:update', {
         sessionCode: session.sessionCode!,
         widgetId: widgetId!,
-        pollData: newPollData as any
+        pollData: newPollData
       });
     }
   }, [pollData, hasRoom, emit, session.sessionCode, widgetId, canEdit]);
@@ -163,7 +152,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     emit('session:poll:update', {
       sessionCode: session.sessionCode!,
       widgetId: widgetId!,
-      pollData: pollData as any
+      pollData
     });
   }, [pollData, isWidgetActive, hasRoom, toggleActive, emit, session.sessionCode, widgetId]);
 
@@ -273,7 +262,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
           emit('session:poll:update', {
             sessionCode: session.sessionCode!,
             widgetId: widgetId!,
-            pollData: pollData as any
+            pollData
           });
         }
       }, 100);

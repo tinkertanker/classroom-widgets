@@ -93,7 +93,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
     };
 
     // Handle submission response
-    const handleSubmitted = (data: { success: boolean; error?: string }) => {
+    const handleSubmitted = (data: { success: boolean; error?: string | { message?: string } }) => {
       setIsSubmitting(false);
       if (data.success) {
         setQuestionText('');
@@ -102,7 +102,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
         setTimeout(() => setShowSuccess(false), 3000);
       } else if (data.error) {
         // Handle both old and new error formats
-        const errorMessage = typeof data.error === 'object' ? (data.error as any).message : data.error;
+        const errorMessage = typeof data.error === 'object' ? data.error.message : data.error;
         setError(errorMessage);
       }
     };

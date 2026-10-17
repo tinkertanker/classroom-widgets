@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Socket } from 'socket.io-client';
+import type { ActiveRoomInfo, SessionJoinedResponse } from '@shared/types/socket.types';
 
 interface UseSessionRecoveryProps {
   socket: Socket | null;
   sessionCode: string | null;
   isConnected: boolean;
-  onSessionRestored?: (rooms: any[]) => void;
+  onSessionRestored?: (rooms: ActiveRoomInfo[]) => void;
   onSessionLost?: () => void;
 }
 
@@ -92,7 +93,7 @@ export function useSessionRecovery({
               setIsRecovering(false);
             }, 5000);
             
-            socket.once('session:joined', (joinData) => {
+            socket.once('session:joined', (joinData: SessionJoinedResponse) => {
               clearTimeout(joinTimeout);
               if (joinData.success && joinData.activeRooms) {
                 onSessionRestored?.(joinData.activeRooms);

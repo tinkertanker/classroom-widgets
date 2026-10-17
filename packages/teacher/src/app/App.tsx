@@ -156,7 +156,7 @@ function App() {
   // Trash sound effect
   useEffect(() => {
     let trashAudioPromise: Promise<HTMLAudioElement> | null = null;
-    (window as any).playTrashSound = () => {
+    window.playTrashSound = () => {
       if (!trashAudioPromise) {
         trashAudioPromise = import('../sounds/trash-crumple.mp3').then((module) => new Audio(module.default));
       }
@@ -167,7 +167,7 @@ function App() {
     };
     
     return () => {
-      delete (window as any).playTrashSound;
+      delete window.playTrashSound;
     };
   }, []);
   
@@ -564,31 +564,31 @@ function App() {
 
   // Make sticker mode functions available globally for toolbar
   useEffect(() => {
-    (window as any).setStickerMode = (mode: boolean, type?: string) => {
+    window.setStickerMode = (mode: boolean, type?: string | null) => {
       updateStickerMode(mode, type);
     };
 
-    (window as any).getStickerState = () => stickerStateRef.current;
-    (window as any).getStickerMode = () => stickerStateRef.current.mode;
+    window.getStickerState = () => stickerStateRef.current;
+    window.getStickerMode = () => stickerStateRef.current.mode;
 
     return () => {
-      delete (window as any).setStickerMode;
-      delete (window as any).getStickerState;
-      delete (window as any).getStickerMode;
+      delete window.setStickerMode;
+      delete window.getStickerState;
+      delete window.getStickerMode;
     };
   }, [updateStickerMode]);
 
   // Make voice control functions available globally for toolbar
   useEffect(() => {
-    (window as any).activateVoiceControl = () => {
+    window.activateVoiceControl = () => {
       setIsVoiceControlActive(true);
     };
 
-    (window as any).getVoiceControlActive = () => isVoiceControlActive;
+    window.getVoiceControlActive = () => isVoiceControlActive;
 
     return () => {
-      delete (window as any).activateVoiceControl;
-      delete (window as any).getVoiceControlActive;
+      delete window.activateVoiceControl;
+      delete window.getVoiceControlActive;
     };
   }, [isVoiceControlActive]);
   

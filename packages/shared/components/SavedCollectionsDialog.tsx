@@ -6,7 +6,10 @@ import ModalDialog from './ModalDialog';
 
 type SavedItem = SavedRandomiserList | SavedQuestionBank | SavedPollQuestion;
 
-interface SavedCollectionsDialogPropsBase {
+interface SavedCollectionsDialogProps<T extends SavedItem> {
+  type: T['type'];
+  items: T[];
+  onLoad: (item: T) => void;
   currentItemCount: number;
   defaultSaveName?: string;
   onSave: (name: string) => void;
@@ -14,30 +17,7 @@ interface SavedCollectionsDialogPropsBase {
   onClose: () => void;
 }
 
-interface SavedCollectionsDialogPropsRandomiser extends SavedCollectionsDialogPropsBase {
-  type: 'randomiser';
-  items: SavedRandomiserList[];
-  onLoad: (item: SavedRandomiserList) => void;
-}
-
-interface SavedCollectionsDialogPropsQuestions extends SavedCollectionsDialogPropsBase {
-  type: 'questions';
-  items: SavedQuestionBank[];
-  onLoad: (item: SavedQuestionBank) => void;
-}
-
-interface SavedCollectionsDialogPropsPoll extends SavedCollectionsDialogPropsBase {
-  type: 'poll';
-  items: SavedPollQuestion[];
-  onLoad: (item: SavedPollQuestion) => void;
-}
-
-type SavedCollectionsDialogProps =
-  | SavedCollectionsDialogPropsRandomiser
-  | SavedCollectionsDialogPropsQuestions
-  | SavedCollectionsDialogPropsPoll;
-
-const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
+function SavedCollectionsDialog<T extends SavedItem>({
   type,
   items,
   currentItemCount,
@@ -46,7 +26,7 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
   onLoad,
   onDelete,
   onClose,
-}) => {
+}: SavedCollectionsDialogProps<T>) {
   const [mode, setMode] = useState<'list' | 'save'>('list');
   const [saveName, setSaveName] = useState(defaultSaveName || '');
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -86,13 +66,13 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
 
   const getItemCount = (item: SavedItem) => {
     if (item.type === 'randomiser') {
-      return (item as SavedRandomiserList).choices.length;
+      return item.choices.length;
     }
     if (item.type === 'questions') {
-      return (item as SavedQuestionBank).questions.length;
+      return item.questions.length;
     }
     // Poll: show number of options
-    return (item as SavedPollQuestion).options.length;
+    return item.options.length;
   };
 
   const getItemDescription = (item: SavedItem) => {
@@ -212,7 +192,7 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
                     </div>
                     <div className="flex gap-2">
                       <button
-                        onClick={() => onLoad(item as any)}
+                        onClick={() => onLoad(item)}
                         className="px-3 py-1.5 text-sm bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
                       >
                         Load
@@ -236,6 +216,6 @@ const SavedCollectionsDialog: React.FC<SavedCollectionsDialogProps> = ({
       )}
     </ModalDialog>
   );
-};
+}
 
 export default SavedCollectionsDialog;

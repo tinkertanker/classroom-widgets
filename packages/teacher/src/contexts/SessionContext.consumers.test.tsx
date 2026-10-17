@@ -264,7 +264,7 @@ describe('session recovery consumer invariants (#157)', () => {
     expect(session.connectionPhase).toBe('recovered');
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeEnabled();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save Changes' })); });
-    expect(pollState().pollData.question).toBe('Unsaved draft');
+    expect(pollState()).toMatchObject({ pollData: { question: 'Unsaved draft' } });
     expect(server.poll.pollData.question).toBe('Unsaved draft');
     expect(server.manager.getSession(CODE)).toBe(server.session);
     expect(server.session.getRoom('poll', 'poll-1')).toBe(server.poll);

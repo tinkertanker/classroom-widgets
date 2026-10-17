@@ -83,7 +83,7 @@ export interface WorkspaceData {
   background: BackgroundType;
   scale: number;
   scrollPosition: { x: number; y: number };
-  widgetStates: Array<[string, any]>;  // Serialized Map entries
+  widgetStates: Array<[string, unknown]>;  // Serialized Map entries
   layoutFormat?: LayoutFormat;
 }
 
@@ -163,7 +163,7 @@ export function isStorageV2(data: unknown): data is StorageFormatV2 {
     typeof data === 'object' &&
     data !== null &&
     'version' in data &&
-    (data as any).version === 2 &&
+    data.version === 2 &&
     'workspaces' in data &&
     'currentWorkspaceId' in data
   );

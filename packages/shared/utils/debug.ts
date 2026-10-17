@@ -15,47 +15,33 @@
 // Check if debug mode is enabled
 const isDebugEnabled = import.meta.env.DEV && import.meta.env.VITE_DEBUG === 'true';
 
+type LogFn = (...args: unknown[]) => void;
+
 // Create a no-op function for production
-const noop = (..._args: any[]) => {};
+const noop: LogFn = () => {};
 
 // Debug logger interface
-interface DebugLogger {
-  (...args: any[]): void;
-  error: (...args: any[]) => void;
-  warn: (...args: any[]) => void;
-  info: (...args: any[]) => void;
-  group: (...args: any[]) => void;
+interface DebugLogger extends LogFn {
+  error: LogFn;
+  warn: LogFn;
+  info: LogFn;
+  group: LogFn;
   groupEnd: () => void;
 }
 
+const whenEnabled = (fn: LogFn): LogFn => (isDebugEnabled ? fn : noop);
+
 // Create debug logger with methods
-const createDebugLogger = (): DebugLogger => {
-  const logger = (isDebugEnabled
-    ? (...args: any[]) => console.log(...args)
-    : noop) as DebugLogger;
-
-  logger.error = isDebugEnabled
-    ? (...args: any[]) => console.error(...args)
-    : noop;
-
-  logger.warn = isDebugEnabled
-    ? (...args: any[]) => console.warn(...args)
-    : noop;
-
-  logger.info = isDebugEnabled
-    ? (...args: any[]) => console.info(...args)
-    : noop;
-
-  logger.group = isDebugEnabled
-    ? (...args: any[]) => console.group(...args)
-    : noop;
-
-  logger.groupEnd = isDebugEnabled
-    ? () => console.groupEnd()
-    : noop;
-
-  return logger;
-};
+const createDebugLogger = (): DebugLogger => Object.assign(
+  whenEnabled((...args) => console.log(...args)),
+  {
+    error: whenEnabled((...args) => console.error(...args)),
+    warn: whenEnabled((...args) => console.warn(...args)),
+    info: whenEnabled((...args) => console.info(...args)),
+    group: whenEnabled((...args) => console.group(...args)),
+    groupEnd: whenEnabled(() => console.groupEnd()),
+  },
+);
 
 // Debug logger function
 export const debug = createDebugLogger();

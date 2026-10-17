@@ -9,6 +9,7 @@ import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { getQuestionColor, questionColors } from '@shared/constants/questionColors';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
+import type { QuestionsNewQuestionData } from '@shared/types/socket.types';
 
 interface Question {
   id: string;
@@ -30,7 +31,16 @@ const getStableColourIndex = (id: string) => {
 
 // Socket payloads, recovery snapshots and persisted saved state all carry the
 // timestamp as a string or number; it must be a Date before the list is sorted.
-const toQuestion = (q: any): Question => ({
+interface IncomingQuestion {
+  id: string;
+  text: string;
+  timestamp: string | number | Date;
+  studentId?: string;
+  studentName?: string;
+  answered?: boolean;
+}
+
+const toQuestion = (q: IncomingQuestion): Question => ({
   id: q.id,
   text: q.text,
   timestamp: new Date(q.timestamp),
@@ -129,7 +139,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
-    'questions:questionAdded': (data: any) => {
+    'questions:questionAdded': (data: QuestionsNewQuestionData) => {
       if (data.widgetId === widgetId) {
         setQuestions(prev => [...prev, toQuestion(data)]);
       }

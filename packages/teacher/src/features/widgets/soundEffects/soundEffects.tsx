@@ -174,7 +174,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ isActive = false }) => {
       <div className="flex-1 p-2 overflow-y-auto min-h-0 @container">
         <div className="grid grid-cols-1 @[140px]:grid-cols-2 gap-1">
           {soundButtons.map((sound, index) => {
-          const Icon = sound.icon as React.ComponentType<{ className?: string }>;
+          const Icon = sound.icon;
           const keyNumber = index < 9 ? (index + 1).toString() : '0';
           return (
             <button

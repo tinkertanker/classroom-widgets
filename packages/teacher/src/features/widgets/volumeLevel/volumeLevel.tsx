@@ -147,7 +147,7 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
                     <div className={`flex items-center space-x-2 ${
                         isInCooldown ? 'opacity-40' : 'opacity-100'
                     } transition-opacity duration-300`}>
-                        {React.createElement(FaBell as any, { className: "w-5 h-5 text-warm-gray-600 dark:text-warm-gray-400" })}
+                        <FaBell className="w-5 h-5 text-warm-gray-600 dark:text-warm-gray-400" />
                         {isInCooldown && (
                             <span className="text-sm text-warm-gray-600 dark:text-warm-gray-400">
                                 {cooldownTime}s
@@ -157,9 +157,9 @@ const AudioVolumeMonitor: React.FC<AudioVolumeMonitorProps> = ({ savedState, onS
                     
                     {/* Microphone and toggle - right aligned */}
                     <div className="flex items-center space-x-3">
-                        {React.createElement(FaMicrophone as any, { className: `w-5 h-5 ${
+                        <FaMicrophone className={`w-5 h-5 ${
                             isEnabled ? 'text-warm-gray-600 dark:text-warm-gray-400' : 'text-warm-gray-400 dark:text-warm-gray-600'
-                        } transition-colors duration-300`})}
+                        } transition-colors duration-300`} />
                         
                         <button
                             onClick={(_e) => {

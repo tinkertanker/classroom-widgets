@@ -3,7 +3,7 @@ export interface ExportableSubmission {
   content?: string;
   isLink: boolean;
   /** Legacy field: older submissions stored the URL here instead of `content`. */
-  link?: string;
+  link?: string | null;
   timestamp?: number;
 }
 

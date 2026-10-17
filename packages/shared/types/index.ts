@@ -7,7 +7,7 @@ export interface WidgetInstance {
   position: Position;
   size: Size;
   zIndex: number;
-  state?: any; // Will be replaced with generic type
+  state?: unknown;
   hidden?: boolean; // Compact dashboard panels hide instead of unloading
 }
 
@@ -125,7 +125,7 @@ export enum BackgroundType {
 export interface AppError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
   timestamp: number;
 }
 

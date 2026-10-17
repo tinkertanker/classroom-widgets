@@ -63,10 +63,10 @@ const StickerPalette: React.FC<StickerPaletteProps> = ({
             title={label}
           >
             <div className="transition-transform duration-200 group-hover:rotate-12">
-              {React.createElement(Icon as any, {
-                className: `w-12 h-12 ${iconColor} transition-all duration-200 group-hover:drop-shadow-lg`,
-                style: (type === 'fire' || type === 'smile') ? { filter: 'grayscale(100%)' } : undefined
-              })}
+              <Icon
+                className={`w-12 h-12 ${iconColor} transition-all duration-200 group-hover:drop-shadow-lg`}
+                style={(type === 'fire' || type === 'smile') ? { filter: 'grayscale(100%)' } : undefined}
+              />
             </div>
             {selectedStickerType === type && stickerMode && (
               <div className="absolute -top-2 -right-2 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold animate-bounce">

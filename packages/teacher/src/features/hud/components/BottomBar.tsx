@@ -41,7 +41,7 @@ const getVisibleWidgetConfigs = (types: WidgetType[]) => types.flatMap((type) =>
 });
 
 const getStickerState = () => {
-  const state = (window as any).getStickerState?.();
+  const state = window.getStickerState?.();
 
   return {
     mode: state?.mode ?? false,
@@ -141,7 +141,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
           selectedStickerType={selectedStickerType}
           setSelectedStickerType={setSelectedStickerType}
           setStickerMode={(mode, type) => {
-            (window as any).setStickerMode?.(mode, type ?? selectedStickerType);
+            window.setStickerMode?.(mode, type ?? selectedStickerType);
           }}
           stickerMode={stickerMode}
           onClose={hideModal}
@@ -152,7 +152,7 @@ const BottomBar: React.FC<BottomBarProps> = ({ onToggleLayout }) => {
   };
 
   const handleActivateVoiceControl = () => {
-    (window as any).activateVoiceControl?.();
+    window.activateVoiceControl?.();
   };
 
   // Debug function to launch all widgets

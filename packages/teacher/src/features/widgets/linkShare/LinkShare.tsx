@@ -11,15 +11,29 @@ import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 import { formatSubmissionsAsCsv, formatSubmissionsAsText, getSubmissionsCsvFilename } from './submissionExport';
+import type { LinkShareNewSubmissionData, LinkSubmission } from '@shared/types/socket.types';
 
 interface Submission {
   id: string;
   studentName: string;
   content: string;
   isLink: boolean;
-  link?: string; // Legacy field for backward compatibility
+  link?: string | null; // Legacy field for backward compatibility
   timestamp: number;
 }
+
+// Older servers sent only `link`, with no content or isLink.
+type IncomingSubmission = Omit<LinkSubmission, 'content' | 'isLink'> & Partial<Pick<LinkSubmission, 'content' | 'isLink'>>;
+
+// Handle both new format (content/isLink) and legacy format (link only)
+const normalizeSubmission = (submission: IncomingSubmission): Submission => ({
+  id: submission.id,
+  studentName: submission.studentName,
+  content: submission.content || submission.link || '',
+  isLink: submission.isLink !== undefined ? submission.isLink : true,
+  link: submission.link,
+  timestamp: submission.timestamp
+});
 
 type AcceptMode = 'links' | 'all';
 type CopyStatus = 'idle' | 'copied' | 'failed';
@@ -109,19 +123,10 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
-    'linkShare:submissionAdded': (data: any) => {
+    'linkShare:submissionAdded': (data: LinkShareNewSubmissionData) => {
       if (data.widgetId === widgetId) {
         const { widgetId: _, ...submission } = data;
-        // Handle both new format (content/isLink) and legacy format (link only)
-        const normalizedSubmission: Submission = {
-          id: submission.id,
-          studentName: submission.studentName,
-          content: submission.content || submission.link,
-          isLink: submission.isLink !== undefined ? submission.isLink : true,
-          link: submission.link,
-          timestamp: submission.timestamp
-        };
-        setSubmissions(prev => [...prev, normalizedSubmission]);
+        setSubmissions(prev => [...prev, normalizeSubmission(submission)]);
       }
     },
     'linkShare:submissionDeleted': (data: { submissionId: string; widgetId?: string }) => {
@@ -216,16 +221,8 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
   useEffect(() => {
     if (recoveryData && recoveryData.roomData) {
       if (recoveryData.roomData.submissions && Array.isArray(recoveryData.roomData.submissions)) {
-        // Normalize submissions to handle both old and new formats
-        const normalizedSubmissions = recoveryData.roomData.submissions.map((s: any) => ({
-          id: s.id,
-          studentName: s.studentName,
-          content: s.content || s.link,
-          isLink: s.isLink !== undefined ? s.isLink : true,
-          link: s.link,
-          timestamp: s.timestamp
-        }));
-        setSubmissions(normalizedSubmissions);
+        const submissions: IncomingSubmission[] = recoveryData.roomData.submissions;
+        setSubmissions(submissions.map(normalizeSubmission));
       }
       if (recoveryData.roomData.acceptMode) {
         setAcceptMode(recoveryData.roomData.acceptMode);

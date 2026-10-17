@@ -7,6 +7,7 @@ import {
   useTimerCountdown, 
   useTimerAudio 
 } from "./hooks";
+import type { TimerPersistedState } from './hooks/useTimerCountdown';
 import { cn, widgetWrapper, text, transitions, backgrounds, buttons } from '@shared/utils/styles';
 import { TimerControlBar } from '../shared/components';
 import { CreatureAnimation } from './components/CreatureAnimation';
@@ -22,6 +23,16 @@ import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
 type SoundMode = 'short' | 'long';
+
+// Persisted with the workspace. Older saves may lack any of these, and used
+// soundMode 'quiet' before muting was a separate setting.
+interface TimerSavedState {
+  timer?: TimerPersistedState;
+  soundMode?: SoundMode | 'quiet';
+  muted?: boolean;
+  creature?: unknown;
+  segmentValues?: string[];
+}
 type TargetTimeField = 'hour' | 'minute';
 
 interface TargetTimeDropdownProps {
@@ -188,8 +199,8 @@ const TargetTimeDropdown: React.FC<TargetTimeDropdownProps> = ({
 };
 
 interface TimerProps {
-  savedState?: any;
-  onStateChange?: (state: any) => void;
+  savedState?: TimerSavedState;
+  onStateChange?: (state: TimerSavedState) => void;
   renderTheme?: 'light' | 'dark';
   isCompactPanel?: boolean;
 }

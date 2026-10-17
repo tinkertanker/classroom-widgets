@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Socket } from 'socket.io-client';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
+import type { LinkShareStateChangedData } from '@shared/types/socket.types';
 
 interface LinkShareActivityProps {
   socket: Socket;
@@ -30,7 +31,7 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   const [acceptMode, setAcceptMode] = useState<'links' | 'all'>(initialAcceptMode);
 
   // Listen for room state changes using shared hook
-  useWidgetStateChange({
+  useWidgetStateChange<LinkShareStateChangedData>({
     socket,
     roomCode,
     roomType: 'linkShare',

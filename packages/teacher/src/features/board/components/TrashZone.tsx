@@ -28,7 +28,7 @@ const TrashZone: React.FC = () => {
   useEffect(() => {
     if (isOverTrash && !isDragging) {
       // Widget was just dropped on trash
-      (window as any).playTrashSound?.();
+      window.playTrashSound?.();
     }
   }, [isOverTrash, isDragging]);
 

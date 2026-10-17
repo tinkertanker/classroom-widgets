@@ -41,7 +41,7 @@ export interface WorkspaceStore {
   sessionCode: string | null;
   sessionCreatedAt: number | null;
   bottomBar: BottomBarConfig;
-  widgetStates: Map<string, any>;
+  widgetStates: Map<string, unknown>;
   classEndTime: number | null;  // Timestamp for class end time
   layoutFormat: LayoutFormat;
   linkShortener: ShortenerSettings;  // Shared by the QR Code and Link Shortener widgets
@@ -82,7 +82,7 @@ export interface WorkspaceStore {
   unpinWidget: (widgetType: WidgetType) => void;
   
   // Widget state management
-  updateWidgetState: (widgetId: string, state: any) => void;
+  updateWidgetState: (widgetId: string, state: unknown) => void;
 
   // Workspace management
   switchWorkspace: (workspaceId: string) => void;

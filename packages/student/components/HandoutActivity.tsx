@@ -3,7 +3,7 @@ import { Socket } from 'socket.io-client';
 import { FaFileLines, FaCopy, FaArrowUpRightFromSquare, FaCheck } from 'react-icons/fa6';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
 import { isSafeHttpUrl } from '@shared/utils/validation';
-import type { HandoutItem } from '@shared/types/socket.types';
+import type { HandoutItem, HandoutStateUpdateData } from '@shared/types/socket.types';
 
 interface HandoutActivityProps {
   socket: Socket;
@@ -25,7 +25,7 @@ const HandoutActivity: React.FC<HandoutActivityProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Listen for room state changes using shared hook
-  useWidgetStateChange({
+  useWidgetStateChange<HandoutStateUpdateData>({
     socket,
     roomCode,
     roomType: 'handout',

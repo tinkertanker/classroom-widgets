@@ -8,11 +8,13 @@ import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStat
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
+import type { RTFeedbackUpdateData } from '@shared/types/socket.types';
 
 interface FeedbackData {
   understanding: number[];
   totalResponses: number;
-  average: number;
+  // Only in the initial state; server updates do not carry it
+  average?: number;
 }
 
 const barColors = [
@@ -62,10 +64,10 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
 
   // Socket event handlers (widget-specific only)
   const socketEvents = useMemo(() => ({
-    'rtfeedback:dataUpdate': (data: any) => {
+    'rtfeedback:dataUpdate': (data: RTFeedbackUpdateData) => {
       if (data.widgetId === widgetId) {
         const { widgetId: _, ...feedback } = data;
-        setFeedbackData(feedback as FeedbackData);
+        setFeedbackData(feedback);
       }
     }
   }), [widgetId]);
