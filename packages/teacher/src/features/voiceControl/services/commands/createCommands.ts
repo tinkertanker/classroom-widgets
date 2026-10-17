@@ -69,6 +69,15 @@ const createWidgetWithState = async (
   return widgetResult;
 };
 
+const MAX_TIMER_SECONDS = 99 * 3600 + 59 * 60 + 59;
+
+/** Split seconds into the Timer's zero-padded hours, minutes and seconds */
+const durationToSegments = (totalSeconds: number): string[] => {
+  const clamped = Math.min(Math.max(Math.round(totalSeconds), 1), MAX_TIMER_SECONDS);
+  return [Math.floor(clamped / 3600), Math.floor((clamped % 3600) / 60), clamped % 60]
+    .map(value => String(value).padStart(2, '0'));
+};
+
 /**
  * Create a new timer widget
  */
@@ -83,11 +92,8 @@ export const createTimer = async (command: VoiceCommand): Promise<ExecutionResul
     // Create timer widget
     const widgetId = store.addWidget(WidgetType.TIMER, { x, y });
 
-    // Set initial state with duration
-    store.updateWidgetState(widgetId, {
-      initialDuration: duration,
-      duration: duration
-    });
+    // The Timer reads its starting time from the hours/minutes/seconds segments
+    store.updateWidgetState(widgetId, { segmentValues: durationToSegments(duration) });
 
     debug('✅ Created timer widget:', widgetId);
 
