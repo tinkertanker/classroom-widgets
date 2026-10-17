@@ -118,8 +118,9 @@ export class WidgetRegistry {
       compactPanel: {
         supported: true,
         menuEmoji: '🎲',
-        preferredSize: { width: 350, height: 250 },
-        minimumSize: { width: 250, height: 180 }
+        // Tall enough to show the slot machine's three rows above the control bar.
+        preferredSize: { width: 350, height: 300 },
+        minimumSize: { width: 250, height: 260 }
       },
       columnSizing: 'aspect-ratio',
       features: {
