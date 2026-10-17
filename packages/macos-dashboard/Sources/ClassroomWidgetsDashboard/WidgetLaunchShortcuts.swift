@@ -6,6 +6,8 @@ struct DashboardShortcut: Codable, Equatable, Hashable {
     let keyCode: Int
     let modifiers: Int
 
+    static let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
+
     var isAssigned: Bool { keyCode >= 0 }
 
     var normalized: DashboardShortcut {
@@ -86,9 +88,8 @@ struct WidgetLaunchShortcutStore {
             defaults.set(true, forKey: Self.initializedKey)
             save(bindings)
         }
-        let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
         for option in options where bindings[option.widgetType] == nil {
-            bindings[option.widgetType] = WidgetShortcutBinding(show: unassigned, dismiss: unassigned)
+            bindings[option.widgetType] = WidgetShortcutBinding(show: .unassigned, dismiss: .unassigned)
         }
         return bindings
     }
@@ -97,8 +98,7 @@ struct WidgetLaunchShortcutStore {
 
     func set(_ shortcut: DashboardShortcut, action: WidgetShortcutAction, for widgetType: Int) {
         var bindings = load()
-        let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
-        var binding = bindings[widgetType] ?? WidgetShortcutBinding(show: unassigned, dismiss: unassigned)
+        var binding = bindings[widgetType] ?? WidgetShortcutBinding(show: .unassigned, dismiss: .unassigned)
         switch action {
         case .show: binding.show = shortcut.normalized
         case .dismiss: binding.dismiss = shortcut.normalized
@@ -124,7 +124,7 @@ struct WidgetLaunchShortcutStore {
     func proposedDisplayBinding(reserving reserved: Set<DashboardShortcut>, action: WidgetShortcutAction = .show) -> DashboardShortcut {
         if let stored = storedDisplayBinding(action: action) { return stored }
         let preferred = Self.defaultDisplayShortcut
-        return reserved.contains(preferred) ? DashboardShortcut(keyCode: -1, modifiers: 0) : preferred
+        return reserved.contains(preferred) ? DashboardShortcut.unassigned : preferred
     }
 
     func initializeDisplayBinding(reserving reserved: Set<DashboardShortcut>, action: WidgetShortcutAction = .show) -> DashboardShortcut {
@@ -154,8 +154,7 @@ struct WidgetLaunchShortcutStore {
     func reset(options: [CompactWidgetOption], reserving additionalShortcuts: [DashboardShortcut] = []) {
         let widgetTypes = options.map(\.widgetType)
         var bindings = load()
-        let unassigned = DashboardShortcut(keyCode: -1, modifiers: 0)
-        for widgetType in widgetTypes { bindings[widgetType] = WidgetShortcutBinding(show: unassigned, dismiss: unassigned) }
+        for widgetType in widgetTypes { bindings[widgetType] = WidgetShortcutBinding(show: .unassigned, dismiss: .unassigned) }
         var reserved = Set(additionalShortcuts.map(\.normalized).filter(\.isAssigned))
         for binding in bindings.values {
             if binding.show.isAssigned { reserved.insert(binding.show.normalized) }
