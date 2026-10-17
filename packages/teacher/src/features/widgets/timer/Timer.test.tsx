@@ -1,9 +1,9 @@
 import React, { act } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi } from 'vitest';
-import Timer from './timer';
+import Timer from './Timer';
 import { ModalProvider } from '../../../contexts/ModalContext';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 
 const localStorageMock = {
   getItem: vi.fn(() => null),

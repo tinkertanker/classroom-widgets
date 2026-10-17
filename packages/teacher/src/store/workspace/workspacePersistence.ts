@@ -11,12 +11,12 @@ import {
   createDefaultWorkspace
 } from '@shared/types/storage';
 import { loadStorage } from '@shared/utils/storageMigration';
-import type { WorkspaceStore } from '../workspaceStore';
+import type { WorkspaceStore } from '../workspaceTypes';
 import { defaultBottomBar } from './workspaceDefaults';
 
 /**
  * The slice of store state Zustand persists (see `partialize` in
- * workspaceStore.simple.ts). `widgetStates` is serialised as Map entries.
+ * workspaceStore.ts). `widgetStates` is serialised as Map entries.
  */
 export type PersistedWorkspaceState = Pick<
   WorkspaceStore,

@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import Poll from './poll';
+import Poll from './Poll';
 
 // Regression coverage for T6-B: the "start poll" gate and the button's
 // disabled state used two different predicates (>=2 filled options vs.

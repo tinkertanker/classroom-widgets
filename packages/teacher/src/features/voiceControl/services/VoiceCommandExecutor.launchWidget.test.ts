@@ -7,7 +7,7 @@ import {
 
 const addWidget = vi.fn((_type: WidgetType, _pos: { x: number; y: number }) => 'widget-id');
 
-vi.mock('../../../store/workspaceStore.simple', () => ({
+vi.mock('../../../store/workspaceStore', () => ({
   useWorkspaceStore: {
     getState: () => ({
       scale: 1,

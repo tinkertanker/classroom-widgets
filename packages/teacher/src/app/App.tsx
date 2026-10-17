@@ -8,7 +8,7 @@ import { SessionProvider } from '../contexts/SessionContext';
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { MIN_SCREEN_WIDTH, NARROW_SCREEN_WIDTH } from '@shared/constants/screenConstants';
 import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';
-import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import { useWorkspaceUiStore } from '../store/workspaceUiStore';
 import Board from '../features/board/components';
 import ColumnBoard from '../features/board/components/ColumnBoard';

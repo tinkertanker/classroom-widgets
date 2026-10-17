@@ -1,9 +1,9 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import Sticker from './sticker';
+import Sticker from './Sticker';
 
-vi.mock('../../../store/workspaceStore.simple', () => ({
+vi.mock('../../../store/workspaceStore', () => ({
   useWorkspaceStore: (selector: (state: { theme: string }) => unknown) => selector({ theme: 'light' })
 }));
 

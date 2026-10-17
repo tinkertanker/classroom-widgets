@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-import ImageDisplay from './imageDisplay';
+import ImageDisplay from './ImageDisplay';
 import { loadImage, storeImage, deleteImage } from '../../../services/imageStorage';
 
 vi.mock('../../../services/imageStorage', () => ({

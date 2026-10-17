@@ -408,31 +408,31 @@ This section provides a comprehensive list of all widgets in the Classroom Widge
 All widgets listed below use the standard border pattern: `bg-soft-white/90 dark:bg-warm-gray-800/90 rounded-t-lg border border-warm-gray-200 dark:border-warm-gray-700 w-full h-full flex flex-col`
 
 #### Interactive Widgets
-- **List** (`src/features/widgets/list/list.tsx`) - Task list with drag-and-drop reordering and status tracking
-- **Randomiser** (`src/features/widgets/randomiser/randomiser.tsx`) - Random selection tool with confetti effects and slot machine animation
-- **Timer** (`src/features/widgets/timer/timer.tsx`) - Countdown/timer functionality with customizable durations
+- **List** (`src/features/widgets/list/List.tsx`) - Task list with drag-and-drop reordering and status tracking
+- **Randomiser** (`src/features/widgets/randomiser/Randomiser.tsx`) - Random selection tool with confetti effects and slot machine animation
+- **Timer** (`src/features/widgets/timer/Timer.tsx`) - Countdown/timer functionality with customizable durations
 - **Tic Tac Toe** (`src/features/widgets/ticTacToe/TicTacToe.tsx`) - Classic two-player game with win detection
-- **Snake** (`src/features/widgets/snake/snake.tsx`) - Classic snake game with keyboard controls and score tracking
+- **Snake** (`src/features/widgets/snake/Snake.tsx`) - Classic snake game with keyboard controls and score tracking
 - **Wordle** (`src/features/widgets/wordle/wordle.tsx`) - Word guessing game with keyboard input and visual feedback
 
 #### Visual & Display Widgets
-- **Image Display** (`src/features/widgets/imageDisplay/imageDisplay.tsx`) - Image viewer with drag-and-drop, paste support, and double-click to change
-- **Text Banner** (`src/features/widgets/textBanner/textBanner.tsx`) - Customizable text display with color themes and auto-sizing
-- **Sticker** (`src/features/widgets/sticker/sticker.tsx`) - Decorative stickers with rotation and color customization
-- **Traffic Light** (`src/features/widgets/trafficLight/trafficLight.tsx`) - Visual status indicators with descriptive text for classroom management
-- **Volume Level** (`src/features/widgets/volumeLevel/volumeLevel.tsx`) - Audio level visualization with waveform display
+- **Image Display** (`src/features/widgets/imageDisplay/ImageDisplay.tsx`) - Image viewer with drag-and-drop, paste support, and double-click to change
+- **Text Banner** (`src/features/widgets/textBanner/TextBanner.tsx`) - Customizable text display with color themes and auto-sizing
+- **Sticker** (`src/features/widgets/sticker/Sticker.tsx`) - Decorative stickers with rotation and color customization
+- **Traffic Light** (`src/features/widgets/trafficLight/TrafficLight.tsx`) - Visual status indicators with descriptive text for classroom management
+- **Volume Level** (`src/features/widgets/volumeLevel/VolumeLevel.tsx`) - Audio level visualization with waveform display
 
 #### Networked Widgets (Real-time)
-- **Poll** (`src/features/widgets/poll/poll.tsx`) - Real-time polling with student participation via activity codes
+- **Poll** (`src/features/widgets/poll/Poll.tsx`) - Real-time polling with student participation via activity codes
 - **Questions** (`src/features/widgets/questions/Questions.tsx`) - Q&A session management with student submissions
-- **RT Feedback** (`src/features/widgets/rtFeedback/rtFeedback.tsx`) - Real-time feedback slider (1-5 scale) for gauging student understanding
+- **RT Feedback** (`src/features/widgets/rtFeedback/RTFeedback.tsx`) - Real-time feedback slider (1-5 scale) for gauging student understanding
 - **Link Share** (`src/features/widgets/linkShare/LinkShare.tsx`) - Collect link submissions from students via activity codes
 
 #### Utility Widgets
-- **QR Code** (`src/features/widgets/qrcode/qrcode.tsx`) - QR code generator for sharing links with students
-- **Shorten Link** (`src/features/widgets/shortenLink/shortenLink.tsx`) - URL shortening with QR code generation (requires API key)
-- **Sound Effects** (`src/features/widgets/soundEffects/soundEffects.tsx`) - Sound effect player with keyboard shortcuts
-- **Task Cue** (`src/features/widgets/taskCue/taskCue.tsx`) - Visual work mode indicators for classroom transitions
+- **QR Code** (`src/features/widgets/qrcode/QRCode.tsx`) - QR code generator for sharing links with students
+- **Shorten Link** (`src/features/widgets/shortenLink/ShortenLink.tsx`) - URL shortening with QR code generation (requires API key)
+- **Sound Effects** (`src/features/widgets/soundEffects/SoundEffects.tsx`) - Sound effect player with keyboard shortcuts
+- **Task Cue** (`src/features/widgets/taskCue/TaskCue.tsx`) - Visual work mode indicators for classroom transitions
 
 ### Special Cases
 

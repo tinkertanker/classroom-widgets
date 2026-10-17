@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { Socket } from 'socket.io-client';
 import { debug } from '@shared/utils/debug';
-import { useWorkspaceStore } from '../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import { networkedWidgetIds } from './networkedWidgets';
 import type { ActiveRoom, ConnectionPhase } from './sessionTypes';
 

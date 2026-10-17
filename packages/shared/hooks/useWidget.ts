@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { useShallow } from 'zustand/shallow';
-import { useWorkspaceStore } from '@/store/workspaceStore.simple';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
 import { Position, Size, WidgetType } from '../types';
 import { findAvailablePosition } from '../utils/widgetHelpers';

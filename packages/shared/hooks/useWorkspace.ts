@@ -2,7 +2,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/shallow';
-import { useWorkspaceStore } from '@/store/workspaceStore.simple';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
 import { WidgetType } from '../types';
 import { isNativeDesktop } from '../utils/nativeBridge';

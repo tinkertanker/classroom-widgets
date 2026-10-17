@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { useLinkShortener } from './useWorkspace';
-import { useWorkspaceStore } from '@/store/workspaceStore.simple';
+import { useWorkspaceStore } from '@/store/workspaceStore';
 
 afterEach(() => {
   delete window.__CLASSROOM_WIDGETS_MACOS__;

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useSocket } from '../hooks/useSocket';
-import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import { useWorkspaceUiStore } from '../store/workspaceUiStore';
 import { debug } from '@shared/utils/debug';
 import type { SessionCreatedResponse } from '@shared/types/socket.types';

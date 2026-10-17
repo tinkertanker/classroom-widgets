@@ -1,7 +1,7 @@
 import React, { act } from 'react';
 import { render, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach, afterAll } from 'vitest';
-import Visualiser from './visualiser';
+import Visualiser from './Visualiser';
 
 describe('Visualiser', () => {
   const originalMediaDevices = navigator.mediaDevices;

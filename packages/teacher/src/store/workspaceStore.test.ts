@@ -11,7 +11,7 @@ import {
   createDefaultSavedCollections
 } from '@shared/types/storage';
 import { loadStorage, saveStorage } from '@shared/utils/storageMigration';
-import { useWorkspaceStore } from './workspaceStore.simple';
+import { useWorkspaceStore } from './workspaceStore';
 import { useWorkspaceUiStore } from './workspaceUiStore';
 
 // -----------------------------------------------------------------------------

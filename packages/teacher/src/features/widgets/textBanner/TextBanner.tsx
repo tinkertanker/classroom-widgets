@@ -7,7 +7,7 @@ import { findCodeBlock, normaliseCode } from './highlight';
 import { cn, widgetContainer, widgetWrapper } from '@shared/utils/styles';
 import { WidgetControlBar } from '../shared/components/WidgetControlBar';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import {
   DEFAULT_COLUMN_HEIGHT,
   DEFAULT_CUSTOM_COLOR,

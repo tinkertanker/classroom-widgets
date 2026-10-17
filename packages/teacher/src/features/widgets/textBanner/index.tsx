@@ -1,1 +1,1 @@
-export { default } from './textBanner';
+export { default } from './TextBanner';

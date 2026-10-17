@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
-import ShortenLink from './shortenLink';
+import ShortenLink from './ShortenLink';
 
 vi.mock('../../../store/workspaceUiStore', () => ({
   useWorkspaceUiStore: (selector: (state: { serverStatus: { url: string } }) => unknown) =>

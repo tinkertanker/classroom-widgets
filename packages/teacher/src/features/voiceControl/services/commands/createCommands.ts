@@ -1,7 +1,7 @@
 import { WidgetType } from '@shared/types';
 import { debug } from '@shared/utils/debug';
 import { VOICE_WIDGET_TARGET_MAP } from '@shared/constants/voiceCommandDefinitions';
-import { useWorkspaceStore } from '../../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../../store/workspaceStore';
 import { getDefaultPollQuestion } from '../../../widgets/poll/pollQuestions';
 import type { ExecutionResult, VoiceCommand } from '../../types/voiceControl';
 import { getViewportCenterPosition } from './widgetLookup';

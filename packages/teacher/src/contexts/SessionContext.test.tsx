@@ -22,7 +22,7 @@ const storeState = vi.hoisted(() => ({
 
 const socketState = vi.hoisted(() => ({ current: null as any }));
 
-vi.mock('../store/workspaceStore.simple', () => {
+vi.mock('../store/workspaceStore', () => {
   const useWorkspaceStore = (selector: (state: any) => any) => selector(storeState.current);
   useWorkspaceStore.getState = () => storeState.current;
   return { useWorkspaceStore };

@@ -7,7 +7,7 @@ import {
   renameWorkspace as renameWorkspaceInStorage,
   switchWorkspace as switchWorkspaceInStorage
 } from '@shared/utils/storageMigration';
-import type { WorkspaceMetadata, WorkspaceStore } from '../workspaceStore';
+import type { WorkspaceMetadata, WorkspaceStore } from '../workspaceTypes';
 import { useWorkspaceUiStore } from '../workspaceUiStore';
 import { loadStorageSynced } from './workspacePersistence';
 

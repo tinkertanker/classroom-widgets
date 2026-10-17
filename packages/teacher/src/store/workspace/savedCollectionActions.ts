@@ -9,7 +9,7 @@ import {
   SavedPollQuestion
 } from '@shared/types/storage';
 import { saveStorage } from '@shared/utils/storageMigration';
-import type { WorkspaceStore } from '../workspaceStore';
+import type { WorkspaceStore } from '../workspaceTypes';
 import { loadStorageSynced } from './workspacePersistence';
 
 type StoreSet = StoreApi<WorkspaceStore>['setState'];

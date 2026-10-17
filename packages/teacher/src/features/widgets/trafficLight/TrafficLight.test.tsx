@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import TrafficLight from './trafficLight';
+import TrafficLight from './TrafficLight';
 
 vi.mock('../../../sounds/action_click.mp3', () => ({ default: 'action_click.mp3' }));
 

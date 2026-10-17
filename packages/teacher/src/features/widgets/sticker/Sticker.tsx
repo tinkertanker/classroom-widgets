@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useWidgetState } from '@shared/hooks/useWidgetState';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import {
   CustomThumbsUp,
   CustomHeart,

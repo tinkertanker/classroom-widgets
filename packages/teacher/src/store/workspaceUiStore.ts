@@ -1,7 +1,7 @@
 // Transient UI state kept out of the persisted workspace store so
 // focus/drag/connection changes don't trigger persist serialization.
 import { create } from 'zustand';
-import type { DragState, ServerStatus } from './workspaceStore';
+import type { DragState, ServerStatus } from './workspaceTypes';
 
 export interface WorkspaceUiStore {
   focusedWidgetId: string | null;

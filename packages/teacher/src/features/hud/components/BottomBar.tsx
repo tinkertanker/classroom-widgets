@@ -15,7 +15,7 @@ import { useModal } from '../../../contexts/ModalContext';
 import TrashZone from '../../board/components/TrashZone';
 import StickerPalette from './StickerPalette';
 import LaunchpadIcon from './LaunchpadIcon';
-import { useWorkspaceStore } from '../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../store/workspaceStore';
 import { useHudProximityContext } from '@shared/hooks/useHudProximity';
 import { hudProximity } from '@shared/utils/styles';
 import { STICKER_MODE_CHANGE_EVENT } from '@shared/constants/events';

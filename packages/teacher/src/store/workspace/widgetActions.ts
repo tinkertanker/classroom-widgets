@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand';
 import { debug } from '@shared/utils/debug';
-import type { WorkspaceStore } from '../workspaceStore';
+import type { WorkspaceStore } from '../workspaceTypes';
 import { useWorkspaceUiStore } from '../workspaceUiStore';
 import { widgetRegistry } from '../../services/WidgetRegistry';
 import { trackWidgetAdd } from '../../services/usageTracking';

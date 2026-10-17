@@ -411,9 +411,9 @@ className="text-warm-gray-800 dark:text-warm-gray-100"
 Use Zustand for global state:
 
 ```typescript
-// packages/teacher/src/store/workspaceStore.simple.ts
+// packages/teacher/src/store/workspaceStore.ts
 // In components
-import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../store/workspaceStore';
 
 const widgets = useWorkspaceStore(state => state.widgets);
 const addWidget = useWorkspaceStore(state => state.addWidget);

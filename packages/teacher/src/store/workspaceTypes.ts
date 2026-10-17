@@ -1,0 +1,104 @@
+import { BackgroundType, WidgetType, Widget, Position, Size } from '@shared/types';
+import { SavedCollections, SavedRandomiserList, SavedQuestionBank, SavedPollQuestion, LayoutFormat } from '@shared/types/storage';
+import type { ShortenerSettings } from '@shared/utils/urlShortener';
+
+export interface BottomBarConfig {
+  visibleWidgets: WidgetType[];
+  pinnedWidgets: WidgetType[];
+  showClock: boolean;
+  showConnectionStatus: boolean;
+  voiceControlEnabled?: boolean;  // Alpha feature
+  recentWidgets?: WidgetType[];  // Recently launched widget types (most recent first)
+  recentWidgetsLimit?: number;  // Max number of recent widgets to show (default: 5)
+}
+
+export interface ServerStatus {
+  connected: boolean;
+  url: string;
+  error?: string;
+}
+
+export interface DragState {
+  isDragging: boolean;
+  draggedWidgetId: string | null;
+  dropTarget: string | null;
+}
+
+export interface WorkspaceMetadata {
+  id: string;
+  name: string;
+  widgetCount: number;
+  updatedAt: number;
+}
+
+export interface WorkspaceStore {
+  // State
+  widgets: Widget[];
+  background: BackgroundType;
+  theme: 'light' | 'dark';
+  scale: number;
+  scrollPosition: Position;
+  sessionCode: string | null;
+  sessionCreatedAt: number | null;
+  bottomBar: BottomBarConfig;
+  widgetStates: Map<string, unknown>;
+  classEndTime: number | null;  // Timestamp for class end time
+  layoutFormat: LayoutFormat;
+  linkShortener: ShortenerSettings;  // Shared by the QR Code and Link Shortener widgets
+
+  // Workspace management state
+  currentWorkspaceId: string;
+  workspaceList: WorkspaceMetadata[];
+
+  // Saved collections state
+  savedCollections: SavedCollections;
+  
+  // Actions
+  setSessionCode: (code: string | null) => void;
+  closeSession: () => void;
+  setBackground: (background: BackgroundType) => void;
+  setTheme: (theme: 'light' | 'dark') => void;
+  setScale: (scale: number) => void;
+  setScrollPosition: (position: Position) => void;
+  setLayoutFormat: (format: LayoutFormat) => void;
+  
+  // Widget actions
+  addWidget: (type: WidgetType, position?: Position) => string;
+  removeWidget: (widgetId: string) => void;
+  updateWidget: (widgetId: string, updates: Partial<Widget>) => void;
+  moveWidget: (widgetId: string, position: Position) => void;
+  resizeWidget: (widgetId: string, size: Size) => void;
+  bringToFront: (widgetId: string) => void;
+  setClassEndTime: (time: number | null) => void;
+  resetWorkspace: () => void;
+  
+  // Bottom bar actions
+  updateBottomBar: (updates: Partial<BottomBarConfig>) => void;
+
+  // Link shortener actions
+  updateLinkShortener: (updates: Partial<ShortenerSettings>) => void;
+  toggleWidgetVisibility: (widgetType: WidgetType) => void;
+  pinWidget: (widgetType: WidgetType) => void;
+  unpinWidget: (widgetType: WidgetType) => void;
+  
+  // Widget state management
+  updateWidgetState: (widgetId: string, state: unknown) => void;
+
+  // Workspace management
+  switchWorkspace: (workspaceId: string) => void;
+  createWorkspace: (name?: string) => string;
+  deleteWorkspace: (workspaceId: string) => boolean;
+  renameWorkspace: (workspaceId: string, newName: string) => void;
+  refreshWorkspaceList: () => void;
+
+  // Saved collections management
+  saveRandomiserList: (name: string, choices: string[]) => string;
+  getRandomiserLists: () => SavedRandomiserList[];
+  deleteRandomiserList: (id: string) => void;
+  saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>) => string;
+  getQuestionBanks: () => SavedQuestionBank[];
+  deleteQuestionBank: (id: string) => void;
+  savePollQuestion: (name: string, question: string, options: string[]) => string;
+  getPollQuestions: () => SavedPollQuestion[];
+  deletePollQuestion: (id: string) => void;
+}

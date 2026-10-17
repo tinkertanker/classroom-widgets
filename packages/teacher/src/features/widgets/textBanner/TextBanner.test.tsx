@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import TextBanner from './textBanner';
+import TextBanner from './TextBanner';
 
 const workspaceMock = vi.hoisted(() => ({ layoutFormat: 'canvas' }));
 
@@ -10,7 +10,7 @@ vi.mock('./hooks', () => ({
   useAutoFontSize: () => 48
 }));
 
-vi.mock('../../../store/workspaceStore.simple', () => ({
+vi.mock('../../../store/workspaceStore', () => ({
   useWorkspaceStore: (selector: (state: { layoutFormat: string }) => unknown) =>
     selector(workspaceMock)
 }));

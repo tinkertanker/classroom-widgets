@@ -3,7 +3,7 @@ import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
 import App from './App';
-import { useWorkspaceStore } from '../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import { widgetRegistry } from '../services/WidgetRegistry';
 import { WidgetType } from '@shared/types';
 import { registerWidgetLauncherOpener, resetWidgetLauncherForTests } from '../features/desktop/widgetLauncher';

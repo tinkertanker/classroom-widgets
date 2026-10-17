@@ -1,6 +1,6 @@
 import { WidgetType, type Widget } from '@shared/types';
 import { debug } from '@shared/utils/debug';
-import { useWorkspaceStore } from '../../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../../store/workspaceStore';
 import { useWorkspaceUiStore } from '../../../../store/workspaceUiStore';
 import { widgetRegistry } from '../../../../services/WidgetRegistry';
 

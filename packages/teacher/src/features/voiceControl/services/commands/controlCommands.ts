@@ -1,6 +1,6 @@
 import { WidgetType } from '@shared/types';
 import { debug } from '@shared/utils/debug';
-import { useWorkspaceStore } from '../../../../store/workspaceStore.simple';
+import { useWorkspaceStore } from '../../../../store/workspaceStore';
 import type { ExecutionResult, VoiceCommand } from '../../types/voiceControl';
 import { findTargetWidget } from './widgetLookup';
 import { errorMessage, stringParam } from './commandParameters';

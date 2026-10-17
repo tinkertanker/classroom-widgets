@@ -1,5 +1,5 @@
 import { WidgetType } from '@shared/types';
-import type { BottomBarConfig } from '../workspaceStore';
+import type { BottomBarConfig } from '../workspaceTypes';
 
 // Default recent widgets shown in toolbar (most recent first)
 const defaultRecentWidgets = [

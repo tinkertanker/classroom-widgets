@@ -14,7 +14,7 @@ vi.mock('@shared/hooks/useWorkspace', () => ({
   useBottomBar: () => ({})
 }));
 
-vi.mock('../../../store/workspaceStore.simple', () => ({
+vi.mock('../../../store/workspaceStore', () => ({
   useWorkspaceStore: (selector: (state: {
     bottomBar: { voiceControlEnabled: boolean };
     updateBottomBar: ReturnType<typeof vi.fn>;

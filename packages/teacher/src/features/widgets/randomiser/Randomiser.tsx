@@ -1,6 +1,6 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
-import SlotMachine from "./slotMachine";
+import SlotMachine from "./SlotMachine";
 import RandomiserSettings from "./RandomiserSettings";
 import { useModal } from "../../../contexts/ModalContext";
 import { useConfetti } from "../../../contexts/ConfettiContext";
