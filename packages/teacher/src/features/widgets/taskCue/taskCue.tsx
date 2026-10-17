@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as React from 'react'
 import type { IconType } from 'react-icons';
-// @ts-ignore
 import { 
   FaVolumeXmark,     // Silence
   FaVolumeLow,       // Whisper

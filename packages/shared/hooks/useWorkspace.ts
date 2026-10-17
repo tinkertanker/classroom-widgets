@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { useShallow } from 'zustand/shallow';
 import { useWorkspaceStore } from '@/store/workspaceStore.simple';
 import { useWorkspaceUiStore } from '@/store/workspaceUiStore';
-import { BackgroundType, WidgetType } from '../types';
+import { WidgetType } from '../types';
 import { isNativeDesktop } from '../utils/nativeBridge';
 import { createDefaultShortenerSettings, type ShortenerSettings } from '../utils/urlShortener';
 

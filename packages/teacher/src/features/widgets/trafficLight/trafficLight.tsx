@@ -1,4 +1,3 @@
-// Removed Chakra UI imports
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import actionClickSoundFile from '../../../sounds/action_click.mp3';
 import { getMasterVolume } from '../../../store/audioVolumeStore';

@@ -923,10 +923,6 @@ export const SessionProvider: React.FC<SessionProviderProps> = ({ children }) =>
   // Close room
   const closeRoom = useCallback((roomType: string, widgetId: string) => {
     if (!socket || !sessionCode || !canEditSession()) return;
-
-    // Debug: log call stack to trace where closeRoom is being called from
-    console.log('[UnifiedSession] Closing room:', widgetId, 'roomType:', roomType);
-    console.log('[UnifiedSession] closeRoom call stack:', new Error().stack);
     socket.emit('session:closeRoom', {
       sessionCode,
       roomType,

@@ -11,7 +11,6 @@ import { WidgetType } from '@shared/types';
 import WidgetButton from './WidgetButton';
 import BottomBarMenu from './BottomBarMenu';
 import WidgetLaunchpad from './WidgetLaunchpad';
-import Button from '../../../components/ui/Button';
 import { useModal } from '../../../contexts/ModalContext';
 import TrashZone from '../../board/components/TrashZone';
 import StickerPalette from './StickerPalette';

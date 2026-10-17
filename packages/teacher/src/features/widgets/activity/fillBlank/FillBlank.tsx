@@ -11,7 +11,7 @@ import FillBlankEditor from './FillBlankEditor';
 import { debug } from '@shared/utils/debug';
 import { withWidgetProvider, WidgetProps } from '../../shared/withWidgetProvider';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../../shared/utils/networkedWidgetHelpers';
-import type { ActivityDefinition, ActivityResults } from '@shared/types/activity.types';
+import type { ActivityDefinition } from '@shared/types/activity.types';
 import { buildFillBlankActivity } from '../shared/activityBuilders';
 import type { FillBlankState } from '../shared/activityBuilders';
 import type { ActivityResponseReceivedData } from '@shared/types/socket.types';
@@ -204,9 +204,6 @@ function FillBlank({ widgetId, savedState, onStateChange }: WidgetProps) {
   useEffect(() => {
     if (recoveryData?.roomData) {
       debug('[FillBlank] Recovery data:', recoveryData);
-      if (recoveryData.roomData.activity) {
-        // Could restore activity data from recovery if needed
-      }
       setResponseCount(recoveryData.roomData.responseCount || 0);
       setAnswersRevealed(recoveryData.roomData.answersRevealed || false);
     }

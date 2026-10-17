@@ -13,11 +13,10 @@ import {
   useRandomiserAudio,
   useResponsiveHeight
 } from './hooks';
-import { cn, buttons, widgetWrapper, widgetContainer } from '@shared/utils/styles';
+import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
 import { RandomiserControlBar } from '../shared/components';
 
 function Randomiser({ savedState, onStateChange }: RandomiserProps) {
-  const initialResultFocus = React.useRef(null);
   const widgetRef = React.useRef<HTMLDivElement>(null);
   const [result, setResult] = useState("Enter a list to randomise!");
   const [buttonSettings, setButtonSettings] = useState<"normal" | "result">("normal");
@@ -73,7 +72,7 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
   });
 
   // Responsive height calculations
-  const { textHeight, boxHeight, textRef, boxRef, shouldAlignTop } = useResponsiveHeight();
+  const { textRef, boxRef, shouldAlignTop } = useResponsiveHeight();
 
   const openSettings = () => {
     showModal({

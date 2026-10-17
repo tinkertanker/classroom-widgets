@@ -2,7 +2,6 @@ import React, { useRef, useState, forwardRef, useImperativeHandle, useEffect, me
 import { useWorkspace } from '@shared/hooks/useWorkspace';
 import { useZoomWithScroll } from '../hooks/useZoomWithScroll';
 import Background from './Background';
-import { BackgroundType } from '@shared/types';
 import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
 interface BoardProps {
