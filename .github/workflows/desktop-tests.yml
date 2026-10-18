@@ -6,6 +6,11 @@ on:
       - 'packages/windows-dashboard/**'
       - 'packages/macos-dashboard/**'
       - 'packages/linux-dashboard/**'
+      # The Windows and macOS jobs load the teacher desktop build, so changes to
+      # the web app can break them.
+      - 'packages/teacher/**'
+      - 'packages/shared/**'
+      - 'pnpm-lock.yaml'
       - '.github/actions/install-pnpm/**'
       - '.github/actions/install-linux-dependencies/**'
       - '.github/workflows/desktop-tests.yml'
@@ -49,7 +54,26 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: ./.github/actions/install-pnpm
+        with:
+          cache: store
+      # Without the teacher build the real-WebKit tests (WidgetCheckpointTests and
+      # friends) skip themselves.
+      - run: pnpm --filter @classroom-widgets/teacher build:desktop
+      - run: mkdir -p "${{ runner.temp }}/macos-test-evidence"
       - run: swift test --package-path packages/macos-dashboard
+        env:
+          CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/macos-test-evidence
+          CLASSROOM_WIDGETS_WEB_ROOT: ${{ github.workspace }}/packages/teacher/build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: macos-native-test-evidence
+          path: ${{ runner.temp }}/macos-test-evidence
 
   linux:
     name: Linux unit tests

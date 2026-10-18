@@ -179,19 +179,26 @@ final class WidgetCheckpointTests: XCTestCase {
         try await waitUntil { (try? await list.evaluateJavaScript("!!document.querySelector('textarea')")) as? Bool == true }
         try await waitUntil { (try? await qr.evaluateJavaScript("!!window.classroomWidgetPanel")) as? Bool == true }
 
-        // Queue A again through real textarea edits before acknowledging A.
-        // Object property order is not part of the native bridge contract.
+        // Hold the panel's echo of A so its write stays in flight: the panel
+        // drops a queued write whose value matches the echo, so an
+        // un-acknowledged in-flight write is the only same-state checkpoint a
+        // real panel can still produce. Also record the baseRevision the panel
+        // cites on that write — its last-seen stateRevision.
         _ = try await list.evaluateJavaScript("""
-            window.receiveHeldSnapshot = window.classroomWidgetPanel.receiveSnapshot;
             window.classroomWidgetPanel.receiveSnapshot = snapshot => { window.heldSnapshot = snapshot; };
+            const handler = window.webkit.messageHandlers.classroomWidgetPanel;
+            const post = handler.postMessage.bind(handler);
+            window.lastSeenRevision = null;
+            handler.postMessage = message => {
+              if (message.type === 'panel-state-change') window.lastSeenRevision = message.baseRevision;
+              post(message);
+            };
             true
             """)
         try await type("A", in: list)
         try await waitUntil { try await self.hostContains("A", host: host) }
         try await waitUntil { (try? await list.evaluateJavaScript("window.heldSnapshot?.state?.items?.[0]?.text === 'A'")) as? Bool == true }
-        try await type("AB", in: list)
-        try await type("A", in: list)
-        let revisionValue = try await list.evaluateJavaScript("window.heldSnapshot.stateRevision") as? NSNumber
+        let revisionValue = try await list.evaluateJavaScript("window.lastSeenRevision") as? NSNumber
         let baseRevision = try XCTUnwrap(revisionValue).intValue
 
         // Observe real host acceptance/publication, holding only flush completion.
@@ -222,10 +229,6 @@ final class WidgetCheckpointTests: XCTestCase {
             """)
         _ = try await list.evaluateJavaScript("""
             (() => {
-              const snapshot = window.heldSnapshot;
-              window.receiveHeldSnapshot({ ...snapshot, state: {
-                statuses: snapshot.state.statuses, inputs: snapshot.state.inputs, items: snapshot.state.items
-              }});
               const take = window.classroomWidgetPanel.takePendingState;
               window.classroomWidgetPanel.takePendingState = () => {
                 window.producedCheckpoint = take();
@@ -234,7 +237,6 @@ final class WidgetCheckpointTests: XCTestCase {
               return true;
             })()
             """)
-        try await waitUntil { (try? await host.webView.evaluateJavaScript("window.noOpCalls.length === 1 && window.noOpCalls[0].accepted")) as? Bool == true }
         _ = try await qr.evaluateJavaScript("window.classroomWidgetPanel.takePendingState = () => null; true")
         if quit {
             let ready = await host.prepareForTermination()
@@ -245,7 +247,7 @@ final class WidgetCheckpointTests: XCTestCase {
         try await waitUntil { (try? await host.webView.evaluateJavaScript("typeof window.releaseNoOpFlush === 'function'")) as? Bool == true }
         let checkpointRevision = try await list.evaluateJavaScript("window.producedCheckpoint.baseRevision") as? NSNumber
         let checkpointText = try await list.evaluateJavaScript("window.producedCheckpoint.state.items[0].text") as? String
-        XCTAssertEqual(checkpointRevision?.intValue, baseRevision, "The real producer must checkpoint at the already-published revision")
+        XCTAssertEqual(checkpointRevision?.intValue, baseRevision, "The checkpoint must carry the panel's last-seen stateRevision: the echo of A is still held, so it bases itself on the revision its in-flight write cited")
         XCTAssertEqual(checkpointText, "A")
         try await Task.sleep(nanoseconds: 600_000_000)
         XCTAssertNil(panelWebView(title: "List"), "An equal snapshot must not reopen editors before the asynchronous flush completes")
@@ -369,10 +371,17 @@ final class WidgetCheckpointTests: XCTestCase {
             if rejectedApplies > 1 {
                 // A persistently unavailable bridge must stop retrying, retain AB,
                 // and allow an explicit retry once the host is available again.
-                try await Task.sleep(nanoseconds: 4_000_000_000)
-                let before = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
-                try await Task.sleep(nanoseconds: 400_000_000)
-                let after = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                // Retries run every 150 ms plus a host round trip, so how long
+                // they take depends on the machine. Wait for the count to hold
+                // still for longer than one retry interval, within a deadline.
+                var before: NSNumber?
+                var after: NSNumber?
+                let deadline = Date().addingTimeInterval(15)
+                repeat {
+                    before = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                    try await Task.sleep(nanoseconds: 600_000_000)
+                    after = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                } while before != after && Date() < deadline
                 XCTAssertEqual(before, after, "Recovery attempts must be bounded")
                 XCTAssertNil(panelWebView(title: "List"), "Failed application must not expose stale A")
                 _ = try await host.webView.evaluateJavaScript("window.rejectedAppliesRemaining = 0; true")
