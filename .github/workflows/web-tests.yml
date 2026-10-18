@@ -69,7 +69,7 @@ jobs:
         env:
           CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/server-test-evidence
         run: pnpm --filter @classroom-widgets/server test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
           name: server-test-evidence-node-${{ matrix.node }}
