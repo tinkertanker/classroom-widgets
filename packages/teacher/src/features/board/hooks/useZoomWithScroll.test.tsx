@@ -6,8 +6,6 @@ const workspaceMock = vi.hoisted(() => ({
   setScale: vi.fn(),
   value: 1
 }));
-const setDebugMarker = vi.fn();
-const setViewportRect = vi.fn();
 
 vi.mock('@shared/hooks/useWorkspace', () => ({
   useWorkspace: () => ({
@@ -24,7 +22,7 @@ interface ZoomInstallerProps {
 }
 
 const ZoomInstaller: React.FC<ZoomInstallerProps> = ({ containerRef, scaleRef }) => {
-  useZoomWithScroll(containerRef, scaleRef, setDebugMarker, setViewportRect);
+  useZoomWithScroll(containerRef, scaleRef);
   return null;
 };
 
@@ -44,8 +42,6 @@ describe('useZoomWithScroll', () => {
   beforeEach(() => {
     workspaceMock.value = 1;
     workspaceMock.setScale.mockReset();
-    setDebugMarker.mockReset();
-    setViewportRect.mockReset();
   });
 
   afterEach(() => {
@@ -151,9 +147,6 @@ describe('useZoomWithScroll', () => {
     const gestureEnd = new Event('gestureend', { cancelable: true });
     getGestureHandler('gestureend')(gestureEnd);
     expect(gestureEnd.defaultPrevented).toBe(true);
-    vi.advanceTimersByTime(500);
-    expect(setDebugMarker).toHaveBeenLastCalledWith({ x: 0, y: 0, visible: false });
-    expect(setViewportRect).toHaveBeenLastCalledWith({ x: 0, y: 0, visible: false });
 
     rerender(<ZoomHarness isEnabled={false} />);
     expect(removeEventListener).toHaveBeenCalledWith('gesturestart', expect.anything());
@@ -199,8 +192,6 @@ describe('useZoomWithScroll', () => {
       { clientX: 0, clientY: 0 },
       { clientX: 20, clientY: 0 }
     ]));
-    expect(setDebugMarker).toHaveBeenCalledTimes(1);
-    expect(setDebugMarker.mock.calls[0][0].visible).toBe(true);
 
     // A ctrl+wheel event fired while the touch gesture is still active must
     // not start a second gesture -- both refs must agree one is already open.
@@ -212,8 +203,6 @@ describe('useZoomWithScroll', () => {
       clientY: 200
     });
     board.dispatchEvent(overlapWheel);
-    expect(setDebugMarker).toHaveBeenCalledTimes(1);
-    expect(setViewportRect).toHaveBeenCalledTimes(1);
 
     const wheelAnimationFrame = animationFrames.get(1);
     if (!wheelAnimationFrame) {
@@ -234,8 +223,21 @@ describe('useZoomWithScroll', () => {
       { clientX: 5, clientY: 5 },
       { clientX: 15, clientY: 5 }
     ]));
-    expect(setDebugMarker).toHaveBeenCalledTimes(2);
-    expect(setDebugMarker.mock.calls[1][0].visible).toBe(true);
+    animationFrames.clear();
+    // Spread the fingers from 10px to 20px apart: the new gesture zooms around
+    // its own midpoint (10, 5), so the board point under it stays put.
+    board.dispatchEvent(createTouchEvent('touchmove', [
+      { clientX: 0, clientY: 5 },
+      { clientX: 20, clientY: 5 }
+    ]));
+    const secondTouchFrame = animationFrames.get(1);
+    if (!secondTouchFrame) {
+      throw new Error('Expected the second touch gesture to start and schedule a scroll update');
+    }
+    secondTouchFrame(0);
+    const nextScale = expectedScale + 0.1;
+    expect(board.scrollLeft).toBeCloseTo(10 * nextScale - 10);
+    expect(board.scrollTop).toBeCloseTo((5 / expectedScale) * nextScale - 5);
 
     board.dispatchEvent(createTouchEvent('touchend', []));
   });
@@ -250,6 +252,13 @@ describe('useZoomWithScroll', () => {
       return 1;
     });
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
+
+    let scrollLeft = 0;
+    let scrollTop = 0;
+    Object.defineProperties(board, {
+      scrollLeft: { configurable: true, get: () => scrollLeft, set: (value: number) => { scrollLeft = value; } },
+      scrollTop: { configurable: true, get: () => scrollTop, set: (value: number) => { scrollTop = value; } }
+    });
 
     rerender(<ZoomHarness isEnabled />);
 
@@ -273,25 +282,27 @@ describe('useZoomWithScroll', () => {
     const gestureEnd = getGestureHandler('gestureend');
 
     gestureStart(createGestureEvent('gesturestart', 1, 10, 10));
-    expect(setDebugMarker).toHaveBeenCalledTimes(1);
 
     // A second gesturestart while the first is still active must be ignored --
     // the origin (and the derived active signal) must not move mid-gesture.
     gestureStart(createGestureEvent('gesturestart', 1, 999, 999));
-    expect(setDebugMarker).toHaveBeenCalledTimes(1);
+    gestureChange(createGestureEvent('gesturechange', 2, 10, 10));
+    expect(workspaceMock.setScale).toHaveBeenLastCalledWith(2);
+    expect(board.scrollLeft).toBeCloseTo(10 * 2 - 10);
+    expect(board.scrollTop).toBeCloseTo(10 * 2 - 10);
 
     gestureEnd(new Event('gestureend', { cancelable: true }));
 
     // gestureend resets the signal synchronously (no timer needed), so a
-    // brand new gesture can start right away with a fresh origin.
+    // brand new gesture can start right away with a fresh origin: board point
+    // ((10 + 50) / 2, (10 + 50) / 2) under the viewport point (50, 50).
     gestureStart(createGestureEvent('gesturestart', 1, 50, 50));
-    expect(setDebugMarker).toHaveBeenCalledTimes(2);
-    expect(setDebugMarker.mock.calls[1][0].viewportX).toBe(50);
-    expect(setDebugMarker.mock.calls[1][0].viewportY).toBe(50);
 
     // A change event on the fresh gesture must apply against the new origin,
     // not any stale state left over from the first gesture.
-    gestureChange(createGestureEvent('gesturechange', 2, 50, 50));
-    expect(workspaceMock.setScale).toHaveBeenCalledWith(2);
+    gestureChange(createGestureEvent('gesturechange', 0.5, 50, 50));
+    expect(workspaceMock.setScale).toHaveBeenLastCalledWith(1);
+    expect(board.scrollLeft).toBeCloseTo(30 * 1 - 50);
+    expect(board.scrollTop).toBeCloseTo(30 * 1 - 50);
   });
 });

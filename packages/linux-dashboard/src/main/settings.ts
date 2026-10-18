@@ -187,16 +187,6 @@ export class DashboardSettings extends EventEmitter {
     this.save();
   }
 
-  setDisplayPreviewShortcut(shortcut: string | null): void {
-    this.displayPreviewShortcut = shortcut;
-    this.save();
-  }
-
-  setDisplayPreviewDismissShortcut(shortcut: string | null): void {
-    this.displayPreviewDismissShortcut = shortcut;
-    this.save();
-  }
-
   private get autostartPath(): string {
     const configHome = process.env.XDG_CONFIG_HOME && process.env.XDG_CONFIG_HOME.trim() !== ''
       ? process.env.XDG_CONFIG_HOME

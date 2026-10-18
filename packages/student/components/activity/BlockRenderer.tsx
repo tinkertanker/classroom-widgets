@@ -50,5 +50,3 @@ export function BlockRenderer({ block }: BlockRendererProps) {
       return <CodeEditorBlock block={block} />;
   }
 }
-
-export default BlockRenderer;

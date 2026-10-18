@@ -59,7 +59,7 @@ export function saveStorage(data: StorageFormatV2): boolean {
 /**
  * Generate a unique workspace ID
  */
-export function generateWorkspaceId(): string {
+function generateWorkspaceId(): string {
   return `workspace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
 

@@ -47,13 +47,13 @@ describe('WidgetList layouts', () => {
   });
 
   it('renders every widget including stamps in the canvas layout', () => {
-    render(<CanvasWidgetList dashboardVisible />);
+    render(<CanvasWidgetList />);
 
     expect(widgetIdsFor('widget-body')).toEqual(['timer-1', 'stamp-1']);
   });
 
   it('excludes stamps from the column layout', () => {
-    render(<ColumnWidgetList dashboardVisible />);
+    render(<ColumnWidgetList />);
 
     expect(widgetIdsFor('widget-body')).toEqual(['timer-1']);
   });

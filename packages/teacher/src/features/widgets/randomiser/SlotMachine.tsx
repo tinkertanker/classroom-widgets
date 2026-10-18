@@ -5,7 +5,6 @@ interface SlotMachineProps {
   selectedIndex: number;
   isSpinning: boolean;
   duration: number;
-  onSpinComplete?: () => void;
 }
 
 // Font sizing bounds for slot items (text-3xl = 30px is the original fixed size)
@@ -89,8 +88,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
   items, 
   selectedIndex, 
   isSpinning, 
-  duration,
-  onSpinComplete 
+  duration
 }) => {
   const [displayIndex, setDisplayIndex] = useState(0);
   const [displayOffset, setDisplayOffset] = useState(0);
@@ -271,9 +269,6 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
           // Ensure we end exactly at selected index
           setDisplayIndex(selectedIndex);
           setDisplayOffset(0);
-          if (onSpinComplete) {
-            onSpinComplete();
-          }
         }
       };
       
@@ -285,7 +280,7 @@ const SlotMachine: React.FC<SlotMachineProps> = ({
         }
       };
     }
-  }, [isSpinning, selectedIndex, items.length, duration, onSpinComplete]);
+  }, [isSpinning, selectedIndex, items.length, duration]);
   
   const getItemAtPosition = (position: number) => {
     if (items.length === 0) return '';

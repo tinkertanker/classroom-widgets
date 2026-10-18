@@ -14,7 +14,6 @@ interface ModalOptions {
 interface ModalContextType {
   showModal: (options: ModalOptions) => void;
   hideModal: () => void;
-  isOpen: boolean;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -98,8 +97,8 @@ export const ModalProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, [isOpen]);
 
   const contextValue = useMemo(
-    () => ({ showModal, hideModal, isOpen }),
-    [showModal, hideModal, isOpen]
+    () => ({ showModal, hideModal }),
+    [showModal, hideModal]
   );
 
   return (

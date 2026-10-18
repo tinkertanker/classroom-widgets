@@ -137,5 +137,3 @@ export function CodeEditorBlock({ block }: CodeEditorBlockProps) {
     </div>
   );
 }
-
-export default CodeEditorBlock;

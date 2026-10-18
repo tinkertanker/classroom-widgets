@@ -80,7 +80,6 @@ All development variables PLUS:
 | `BACKEND_DOMAIN` | Backend domain for nginx-proxy | `api.example.com` |
 | `FRONTEND_EMAIL` | Email for SSL cert (Let's Encrypt) | `admin@example.com` |
 | `BACKEND_EMAIL` | Email for SSL cert (Let's Encrypt) | `admin@example.com` |
-| `UMAMI_DOMAIN` | Umami analytics domain | `analytics.example.com` |
 | `UMAMI_EMAIL` | Email for Umami SSL cert | `admin@example.com` |
 | `UMAMI_DB_USER` | Umami database username | `umami` |
 | `UMAMI_DB_PASSWORD` | Umami database password | `secure-password` |
@@ -239,7 +238,7 @@ SHORTIO_DOMAIN=go.example.edu
 
 - [Deployment Guide](./docs/DEPLOYMENT.md) - Full deployment instructions
 - [Getting Started](./docs/GETTING_STARTED.md) - Development setup
-- [Architecture](./docs/ARCHITECTURE.md) - System overview
+- [Architecture](./architecture.md) - System overview
 
 ## ✅ Checklist
 

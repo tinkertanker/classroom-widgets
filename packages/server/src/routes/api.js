@@ -1,5 +1,4 @@
 const express = require('express');
-const { isValidSessionCode } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { ipMissRateLimit } = require('../middleware/rateLimit');
 const serverConfig = require('../config/server.config');
@@ -33,7 +32,9 @@ module.exports = (sessionManager) => {
   router.get('/sessions/:code/exists', ipMissRateLimit(serverConfig.HTTP_RATE_LIMITS.SESSION_EXISTS), (req, res) => {
     const { code } = req.params;
 
-    const exists = isValidSessionCode(code) && sessionManager.getSession(code) !== undefined;
+    // Sessions live in a Map keyed by generated codes, so any other string
+    // (malformed or not) simply misses.
+    const exists = sessionManager.getSession(code) !== undefined;
     if (!exists) {
       req.rateLimitMiss();
     }

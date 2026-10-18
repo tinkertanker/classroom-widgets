@@ -171,6 +171,27 @@ that **Arrange Widgets** is greyed out once no widget is on screen. It writes
 `classroom-widgets-test-evidence/linux-arrange` directory under the system
 temp directory).
 
+Three more real-Electron checks run the same way; each file's header lists what
+it covers and the evidence it writes to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`:
+
+```bash
+(
+  set -e
+  for case in reload-failure termination-failure frames quit quit-late-inventory autostart; do
+    xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/lifecycle.cjs --background --case="$case"
+  done
+  xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/widgetEditing.cjs
+  xvfb-run -a -s '-screen 0 1920x1080x24' packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/panelHover.cjs --background
+)
+```
+
+`lifecycle.cjs` covers host reload and termination recovery, saved panel frames,
+quit and autostart; `widgetEditing.cjs` checks Randomiser saved lists and
+manual timer edits in real panels;
+`panelHover.cjs` moves the X pointer with `xdotool` to check each panel's chrome
+strip. The output-volume check, `test/volume.e2e.cjs`, is described in
+[`DESKTOP_OUTPUT_VOLUME.md`](DESKTOP_OUTPUT_VOLUME.md).
+
 The first nine available widget types, in tray menu order, default to **Ctrl-Alt-Shift-1** through **Ctrl-Alt-Shift-9**. Installs whose widget shortcuts are all still the earlier defaults (numbered Randomiser, Timer, List, …) are renumbered to the menu order once, on the first launch that loads the widgets; any customised, cleared or extra widget shortcut leaves every widget shortcut as it was, and Display and Move shortcuts are never changed. Settings can change, clear, or restore each shortcut. Per-widget launch shortcuts use Electron's global shortcut API. They work on X11, but a Wayland compositor may restrict global shortcuts from XWayland applications; an assigned shortcut can therefore remain saved while Settings reports it as unavailable. Users should resolve compositor or application conflicts rather than expecting every Wayland session to accept global shortcuts.
 
 ## Publishing a release

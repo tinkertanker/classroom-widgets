@@ -189,7 +189,6 @@ classroom-widgets/
 
 ### Games
 - **Tic Tac Toe** - Two-player game
-- **Wordle** - Word guessing game
 - **Snake** - Classic snake game
 
 All widgets support:
@@ -422,13 +421,13 @@ const addWidget = useWorkspaceStore(state => state.addWidget);
 ## Next Steps
 
 - **Add a new widget**: See [ADDING_NEW_WIDGET.md](./ADDING_NEW_WIDGET.md)
-- **Understand architecture**: See [ARCHITECTURE.md](./ARCHITECTURE.md)
+- **Understand architecture**: See [architecture.md](./architecture.md)
 - **Deploy to production**: See [DEPLOYMENT.md](./DEPLOYMENT.md)
 - **Socket events reference**: See [SOCKET_EVENTS.md](./SOCKET_EVENTS.md)
 
 ## Getting Help
 
-- Check [ARCHITECTURE.md](./ARCHITECTURE.md) for detailed documentation
+- Check [architecture.md](./architecture.md) for detailed documentation
 - Check [DEPLOYMENT.md](./DEPLOYMENT.md) for deployment issues
 - Open an issue on GitHub
 - Review existing code in `packages/teacher/src/features/widgets/` for examples

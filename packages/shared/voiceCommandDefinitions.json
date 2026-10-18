@@ -324,17 +324,6 @@
         }
       ]
     },
-    "wordle": {
-      "displayName": "Wordle",
-      "targetName": "wordle",
-      "widgetType": "WORDLE",
-      "actions": [
-        {
-          "name": "CREATE_WORDLE",
-          "description": "Create a Wordle game widget"
-        }
-      ]
-    },
     "snake": {
       "displayName": "Snake",
       "targetName": "snake",

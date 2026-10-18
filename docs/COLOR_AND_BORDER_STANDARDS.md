@@ -66,13 +66,6 @@ The application uses a warm, neutral color palette designed for classroom enviro
 - **Sky 400**: `#6da0db` - Clickable link text (dark mode)
 - **Constraint**: Use sky exclusively for anchor (`<a>`) link text. Do not use sky for buttons, pills, badges, borders, or any UI chrome. This preserves the warm palette character of the application while honouring the universal blue-link convention.
 
-### Status Colors
-
-#### Game States (Wordle)
-- **Emerald 500**: `#10b981` - Correct letters
-- **Yellow 500**: `#eab308` - Present letters
-- **Warm Gray 400/600**: Absent letters
-
 ## Border System
 
 ### Standard Border Hierarchy
@@ -413,7 +406,6 @@ All widgets listed below use the standard border pattern: `bg-soft-white/90 dark
 - **Timer** (`src/features/widgets/timer/Timer.tsx`) - Countdown/timer functionality with customizable durations
 - **Tic Tac Toe** (`src/features/widgets/ticTacToe/TicTacToe.tsx`) - Classic two-player game with win detection
 - **Snake** (`src/features/widgets/snake/Snake.tsx`) - Classic snake game with keyboard controls and score tracking
-- **Wordle** (`src/features/widgets/wordle/wordle.tsx`) - Word guessing game with keyboard input and visual feedback
 
 #### Visual & Display Widgets
 - **Image Display** (`src/features/widgets/imageDisplay/ImageDisplay.tsx`) - Image viewer with drag-and-drop, paste support, and double-click to change

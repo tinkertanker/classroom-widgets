@@ -69,7 +69,11 @@ app.whenReady().then(async () => {
   assert.equal(DashboardSettings.load().linkShortener.shortioApiKey, 'pk_verification_only');
   assert.equal(DashboardSettings.load().backgroundOpacity, 0.45);
   assert.equal(DashboardSettings.load().widgetShortcuts['6'], 'Ctrl+Alt+K');
-  assert.equal(await win.webContents.executeJavaScript("document.querySelectorAll('.shortcut-row').length"), 2);
+  // The fixed Display and Move Widget rows precede one row per widget option.
+  assert.deepEqual(
+    await win.webContents.executeJavaScript("Array.from(document.querySelectorAll('.shortcut-row .shortcut-name'), n => n.textContent)"),
+    ['Display', 'Move Widget to Previous Display', 'Move Widget to Next Display', 'Link Shortener', 'Timer'],
+  );
   assert.equal(await win.webContents.executeJavaScript("document.querySelector('#shortioFields').hidden"), false);
   // capturePage may return the previous compositor frame immediately after input.
   await new Promise(resolve => setTimeout(resolve, 200));

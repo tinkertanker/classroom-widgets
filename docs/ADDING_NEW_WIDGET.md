@@ -109,15 +109,13 @@ For widgets that require real-time communication with students:
 ```typescript
 [WidgetType.MY_NETWORKED_WIDGET]: {
   // ... basic configuration ...
-  category: WidgetCategory.NETWORKED,
-  networked: {
-    roomType: 'myWidget' as RoomType,  // Must be unique
-    hasStartStop: true,                 // Can be paused/resumed
-    startsActive: false,                // Initial state
-    studentComponentName: 'MyWidgetActivity'  // Student app component
-  }
+  category: WidgetCategory.NETWORKED
 }
 ```
+
+Also add the type to `NETWORKED_WIDGET_TYPES` in
+`packages/teacher/src/contexts/session/networkedWidgets.ts`, so a room left
+behind by a deleted widget is closed.
 
 ### 2. Create Widget Component Using Shared Infrastructure
 
@@ -132,7 +130,7 @@ import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '../../../shared/utils/styles';
 import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import type { WidgetProps } from '../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 
 function MyWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
@@ -149,9 +147,7 @@ function MyWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'myWidget',
-    savedState,
-    onStateChange
+    roomType: 'myWidget'
   });
 
   // Active state management - handles pause/resume with socket sync
@@ -253,8 +249,7 @@ function MyWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-// Export with WidgetProvider wrapper
-export default withWidgetProvider(MyWidget, 'MyWidget');
+export default MyWidget;
 ```
 
 ### Shared Components Reference
@@ -268,7 +263,6 @@ export default withWidgetProvider(MyWidget, 'MyWidget');
 | `NetworkedWidgetControlBar` | Play/pause, settings, clear buttons |
 | `NetworkedWidgetOverlays` | Paused, reconnecting, disconnected overlays |
 | `NetworkedWidgetStats` | Floating stats display (top-right) |
-| `withWidgetProvider` | HOC to wrap with WidgetProvider |
 | `getEmptyStateButtonText` | Button text based on connection state |
 | `getEmptyStateDisabled` | Button disabled state logic |
 

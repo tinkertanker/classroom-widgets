@@ -57,5 +57,3 @@ export function TextInputBlock({ block }: TextInputBlockProps) {
     </div>
   );
 }
-
-export default TextInputBlock;

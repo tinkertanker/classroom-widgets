@@ -1,20 +1,18 @@
-import { useState, useEffect, useRef, RefObject } from 'react';
+import { useState, useEffect, RefObject } from 'react';
 
 interface UseResponsiveSizeOptions {
   threshold?: number;
-  containerRef?: RefObject<HTMLElement>;
+  containerRef: RefObject<HTMLElement>;
 }
 
 /**
  * Hook to detect and manage responsive size changes
  */
-export function useResponsiveSize({ 
+export function useResponsiveSize({
   threshold = 400,
-  containerRef 
-}: UseResponsiveSizeOptions = {}) {
+  containerRef: ref
+}: UseResponsiveSizeOptions) {
   const [isLarge, setIsLarge] = useState(false);
-  const internalRef = useRef<HTMLDivElement>(null);
-  const ref = containerRef || internalRef;
 
   useEffect(() => {
     if (!ref.current) return;
@@ -34,8 +32,5 @@ export function useResponsiveSize({
     };
   }, [threshold, ref]);
 
-  return {
-    isLarge,
-    containerRef: ref
-  };
+  return { isLarge };
 }

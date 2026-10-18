@@ -193,7 +193,6 @@ export function useDesktopDashboardMode() {
     backgroundOpacity,
     setCompactLayout,
     setDashboardVisible,
-    requestWindowMode,
-    toggleDashboard: toggle
+    requestWindowMode
   };
 }

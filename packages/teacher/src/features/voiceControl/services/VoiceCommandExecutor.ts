@@ -131,8 +131,6 @@ export class VoiceCommandExecutor {
           return await createWidget(WidgetType.LINK_SHORTENER);
         case 'CREATE_TIC_TAC_TOE':
           return await createWidget(WidgetType.TIC_TAC_TOE);
-        case 'CREATE_WORDLE':
-          return await createWidget(WidgetType.WORDLE);
         case 'CREATE_SNAKE':
           return await createWidget(WidgetType.SNAKE);
 

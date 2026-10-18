@@ -34,8 +34,6 @@ export const ROOM_TYPES = ['poll', 'linkShare', 'rtfeedback', 'questions', 'hand
 
 export type RoomType = (typeof ROOM_TYPES)[number];
 
-const isRoomType = (type: string): type is RoomType => (ROOM_TYPES as readonly string[]).includes(type);
-
 /** Tailwind classes for the three tinted surfaces of a room card's header. */
 export interface RoomPalette {
   /** Bottom border, background and hover background of the clickable header strip. */
@@ -67,13 +65,13 @@ export interface RoomTypeMeta {
  * header deliberately has no hover classes here, matching the pre-refactor markup: a stopped
  * room stays visually flat even though the header is still clickable to collapse.
  */
-export const INACTIVE_ROOM_PALETTE: RoomPalette = {
+const INACTIVE_ROOM_PALETTE: RoomPalette = {
   header: 'border-warm-gray-400 dark:border-warm-gray-600 bg-warm-gray-100 dark:bg-warm-gray-800',
   title: 'text-warm-gray-600 dark:text-warm-gray-400',
   badge: 'bg-warm-gray-500 dark:bg-warm-gray-600 text-white'
 };
 
-export const ROOM_TYPE_META: Record<RoomType, RoomTypeMeta> = {
+const ROOM_TYPE_META: Record<RoomType, RoomTypeMeta> = {
   poll: {
     label: 'Poll Activity',
     description: '',
@@ -141,12 +139,12 @@ export const ROOM_TYPE_META: Record<RoomType, RoomTypeMeta> = {
  * type added after this bundle shipped. The old inline chains ended in the `questions` branch,
  * so such a room was labelled "Ask Questions" in sky blue and then rendered an empty body,
  * which reads as a broken Questions widget rather than as an unknown one. This entry instead
- * gives it a neutral grey card and a generic label, and `isKnownRoomType` lets `App.tsx`
+ * gives it a neutral grey card and a generic label, and `isKnownRoomType` lets `RoomCard.tsx`
  * explain the empty body rather than leaving it blank.
  *
  * Unreachable for any room the current server can create; see `ROOM_TYPES` above.
  */
-export const UNKNOWN_ROOM_TYPE_META: RoomTypeMeta = {
+const UNKNOWN_ROOM_TYPE_META: RoomTypeMeta = {
   label: 'Activity',
   description: '',
   showsPerInstanceTitle: false,
@@ -194,7 +192,7 @@ export interface ResolvedRoomMeta {
  * substring of the accessible name, as WCAG 2.5.3 Label in Name requires.
  */
 export const resolveRoomMeta = (room: RoomMetaInput): ResolvedRoomMeta => {
-  const meta = isRoomType(room.type) ? ROOM_TYPE_META[room.type] : UNKNOWN_ROOM_TYPE_META;
+  const meta = isKnownRoomType(room.type) ? ROOM_TYPE_META[room.type] : UNKNOWN_ROOM_TYPE_META;
   const details = meta.showsPerInstanceTitle ? room.initialData?.activity : undefined;
   const instructions = details?.instructions || meta.description;
 

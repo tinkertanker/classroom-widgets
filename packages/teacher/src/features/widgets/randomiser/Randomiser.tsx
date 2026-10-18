@@ -234,7 +234,6 @@ function Randomiser({ savedState, onStateChange }: RandomiserProps) {
       </div>
       <RandomiserControlBar
         buttonSettings={buttonSettings}
-        isSpinning={isSpinning}
         isLoading={isLoading}
         result={result}
         removedChoices={removedChoices}

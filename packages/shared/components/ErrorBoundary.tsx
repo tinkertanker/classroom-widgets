@@ -2,7 +2,6 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
-  fallback?: (error: Error, resetError: () => void) => ReactNode;
   widgetName?: string;
 }
 
@@ -31,11 +30,6 @@ class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback(this.state.error!, this.resetError);
-      }
-
-      // Default error UI
       return (
         <div className="flex flex-col items-center justify-center h-full p-4 bg-warm-gray-50 dark:bg-warm-gray-800 rounded-lg">
           <div className="text-center">

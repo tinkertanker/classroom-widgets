@@ -569,12 +569,10 @@ function App() {
     };
 
     window.getStickerState = () => stickerStateRef.current;
-    window.getStickerMode = () => stickerStateRef.current.mode;
 
     return () => {
       delete window.setStickerMode;
       delete window.getStickerState;
-      delete window.getStickerMode;
     };
   }, [updateStickerMode]);
 
@@ -666,11 +664,11 @@ function App() {
           <div className="h-full relative overflow-hidden">
             {isDashboardMode && windowMode === 'compact' ? null : layoutFormat === 'column' ? (
               <ColumnBoard>
-                <ColumnWidgetList dashboardVisible={isDashboardVisible} />
+                <ColumnWidgetList />
               </ColumnBoard>
             ) : (
               <Board onBoardClick={handleBoardClick} stickerMode={stickerMode}>
-                <CanvasWidgetList dashboardVisible={isDashboardVisible} />
+                <CanvasWidgetList />
               </Board>
             )}
           </div>

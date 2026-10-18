@@ -180,10 +180,8 @@ export interface PollVoteUpdateData {
 }
 
 export interface PollRequestStateData {
-  sessionCode: string; // Standardized from 'code'
+  sessionCode: string;
   widgetId: string;
-  /** @deprecated Use sessionCode instead */
-  code?: string;
 }
 
 // ============================================================================
@@ -234,10 +232,8 @@ export interface LinkShareSubmissionDeletedData {
 }
 
 export interface LinkShareRequestStateData {
-  sessionCode: string; // Standardized from 'code'
+  sessionCode: string;
   widgetId: string;
-  /** @deprecated Use sessionCode instead */
-  code?: string;
 }
 
 export interface LinkShareStateChangedData {
@@ -405,9 +401,7 @@ import type {
   ActivityAction,
   ActivityResults,
   StudentAnswers,
-  ActivityType as ActivityTypeEnum,
-  ActivityItem,
-  ActivityTarget
+  ActivityItem
 } from './activity.types';
 
 export interface SessionActivityUpdateData {
@@ -512,7 +506,6 @@ export interface SessionResetData {
 
 export interface ServerToClientEvents {
   // Session events
-  'session:created': (data: SessionCreatedResponse) => void;
   'session:joined': (data: SessionJoinedResponse) => void;
   'session:participantUpdate': (data: SessionParticipantUpdateData) => void;
   'session:roomCreated': (data: SessionRoomCreatedData) => void;

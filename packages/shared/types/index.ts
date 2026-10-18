@@ -1,7 +1,7 @@
 // Core type definitions for the teacher app
 
 // Widget System Types
-export interface WidgetInstance {
+export interface Widget {
   id: string;
   type: WidgetType;
   position: Position;
@@ -10,9 +10,6 @@ export interface WidgetInstance {
   state?: unknown;
   hidden?: boolean; // Compact dashboard panels hide instead of unloading
 }
-
-// Alias for backwards compatibility
-export type Widget = WidgetInstance;
 
 export interface Position {
   x: number;
@@ -43,7 +40,7 @@ export enum WidgetType {
   RT_FEEDBACK = 15,
   TIC_TAC_TOE = 16,
   QUESTIONS = 17,
-  WORDLE = 18,
+  WORDLE = 18, // Widget removed; the number stays reserved so saved boards keep their numbering
   SNAKE = 19,
   HANDOUT = 20,
   FILL_BLANK = 21,
@@ -68,7 +65,6 @@ export interface WidgetConfig {
   maintainAspectRatio?: boolean;
   category?: WidgetCategory;
   features?: WidgetFeatures;
-  networked?: NetworkedWidgetConfig;
   description?: string;
   /** How the widget is sized in column layout. Defaults to 'fixed'. */
   columnSizing?: ColumnSizing;
@@ -86,23 +82,10 @@ export interface WidgetConfig {
 
 // Widget Features
 export interface WidgetFeatures {
-  hasSettings?: boolean;
-  hasStateManagement?: boolean;
-  requiresApiKey?: boolean;
   hasAudioPlayback?: boolean;
-  hasFaceDetection?: boolean;
   isResizable?: boolean;
-  canTriggerConfetti?: boolean;
   isTransparent?: boolean;
   hidden?: boolean;
-}
-
-// Networked Widget Configuration
-export interface NetworkedWidgetConfig {
-  roomType: string;
-  hasStartStop?: boolean;
-  startsActive?: boolean;
-  studentComponentName?: string;
 }
 
 export enum WidgetCategory {

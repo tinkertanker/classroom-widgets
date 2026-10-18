@@ -6,6 +6,8 @@ const { closeRoomAndNotify } = require('../closeRoom');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
 const { usageLog } = require('../../services/usageLog');
+const PollRoom = require('../../models/PollRoom');
+const { resolveHostRoom } = require('./resolveHostRoom');
 
 const SESSION_DEBUG = process.env.SESSION_DEBUG === 'true';
 const JOIN_MISS_EVENT = 'session:join:miss';
@@ -555,8 +557,9 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
     }
   });
   
-  // Unified reset handler for all widget types
-  socket.on('session:reset', async (data) => {
+  // Clear a poll's votes (host only). The teacher Poll widget is the only
+  // client that sends this; other rooms reset through their own events.
+  socket.on('session:reset', (data) => {
     if (SESSION_DEBUG) {
       logger.info('[server] Received session:reset:', data);
     }
@@ -564,62 +567,20 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
       const { sessionCode, widgetId } = data;
       const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
 
-      if (!session || !session.isHost(socket.id)) {
+      const guard = resolveHostRoom(session, socket, 'poll', PollRoom, widgetId);
+      if (!guard.ok) {
         if (SESSION_DEBUG) {
-          logger.info('[server] Unauthorized reset attempt');
-        }
-        return;
-      }
-      
-      // Find the room by widgetId
-      let room = null;
-      let roomType = null;
-      
-      // Search through all active rooms to find the one with this widgetId
-      for (const [roomKey, roomInstance] of session.activeRooms) {
-        if (roomKey.includes(widgetId) || (roomInstance.widgetId === widgetId)) {
-          room = roomInstance;
-          roomType = roomInstance.getType();
-          break;
-        }
-      }
-      
-      if (!room) {
-        if (SESSION_DEBUG) {
-          logger.info('[server] Room not found for reset with widgetId:', widgetId);
+          logger.info('[server] Reset rejected:', guard.error);
         }
         return;
       }
 
-      // Call the room's reset method if it exists
-      if (typeof room.reset === 'function') {
-        if (SESSION_DEBUG) {
-          logger.info('[server] Calling reset on room:', roomType);
-        }
-        room.reset();
-        
-        // Emit appropriate update event based on room type
-        const roomId = widgetId ? `${roomType}:${widgetId}` : roomType;
-        const roomNamespace = `${session.code}:${roomId}`;
-        
-        // Get the updated state after reset
-        const updateData = room.getUpdateData ? room.getUpdateData() : {};
-        updateData.widgetId = widgetId;
-        
-        // Emit room-specific update event
-        // For poll, use voteUpdate, for others use update
-        const eventName = roomType === 'poll' ? 'poll:voteUpdate' : `${roomType}:update`;
-        io.to(roomNamespace).emit(eventName, updateData);
-        
-        if (SESSION_DEBUG) {
-          logger.info('[server] Reset complete, update emitted');
-        }
-      } else {
-        if (SESSION_DEBUG) {
-          logger.info('[server] Room type does not support reset:', roomType);
-        }
-      }
-      
+      guard.room.reset();
+      io.to(`${session.code}:${guard.roomId}`).emit(EVENTS.POLL.VOTE_UPDATE, {
+        ...guard.room.getUpdateData(),
+        widgetId
+      });
+
       session.updateActivity();
     } catch (error) {
       console.error('Error handling reset:', error);

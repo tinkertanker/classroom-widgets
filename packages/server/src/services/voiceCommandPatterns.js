@@ -16,7 +16,7 @@ const INTENT_KEYWORDS = [
   'poll', 'question', 'questions',
   'feedback', 'traffic', 'light', 'banner', 'sound', 'sticker', 'stamp', 'list',
   'link', 'shorten', 'shortener', 'image', 'qr', 'qrcode', 'task', 'cue',
-  'visualiser', 'visualizer', 'volume', 'monitor', 'snake', 'wordle', 'tic',
+  'visualiser', 'visualizer', 'volume', 'monitor', 'snake', 'tic',
   'tac', 'toe', 'activity', 'fill', 'blank', 'handout', 'drop', 'box', 'share',
   'create', 'add', 'make', 'start', 'stop', 'pause', 'reset', 'restart',
   'enable', 'disable', 'open', 'close', 'play', 'set', 'change', 'show',
@@ -402,14 +402,6 @@ function buildVoiceCommandPatterns() {
       target: 'ticTacToe',
       parameters: () => ({}),
       message: () => 'Creating a tic-tac-toe game',
-      confidence: 0.88
-    },
-    {
-      pattern: /(?:create|add|play).*wordle/i,
-      action: 'CREATE_WORDLE',
-      target: 'wordle',
-      parameters: () => ({}),
-      message: () => 'Creating a Wordle game',
       confidence: 0.88
     },
     {

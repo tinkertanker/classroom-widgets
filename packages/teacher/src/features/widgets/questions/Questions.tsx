@@ -7,7 +7,7 @@ import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
 import { getQuestionColor, questionColors } from '@shared/constants/questionColors';
-import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import type { WidgetProps } from '../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 import type { QuestionsNewQuestionData } from '@shared/types/socket.types';
 
@@ -124,9 +124,7 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'questions',
-    savedState,
-    onStateChange
+    roomType: 'questions'
   });
 
   // Active state management
@@ -319,4 +317,4 @@ function Questions({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-export default withWidgetProvider(Questions, 'Questions');
+export default Questions;

@@ -124,9 +124,6 @@ export class WidgetRegistry {
       },
       columnSizing: 'aspect-ratio',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
-        canTriggerConfetti: true,
         isResizable: true
       }
     });
@@ -150,8 +147,6 @@ export class WidgetRegistry {
       },
       columnSizing: 'aspect-ratio',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         hasAudioPlayback: true,
         isResizable: true
       }
@@ -176,9 +171,6 @@ export class WidgetRegistry {
       columnSizing: 'fixed',
       columnHeight: 400,
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
-        canTriggerConfetti: true,
         isResizable: true
       }
     });
@@ -204,8 +196,6 @@ export class WidgetRegistry {
       columnSizing: 'content',
       features: {
         isTransparent: true,
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: false
       }
     });
@@ -228,8 +218,6 @@ export class WidgetRegistry {
       },
       columnSizing: 'content',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isTransparent: true,
         isResizable: true
       }
@@ -248,7 +236,6 @@ export class WidgetRegistry {
       description: 'Audio level visualization',
       columnSizing: 'fixed',
       features: {
-        hasSettings: true,
         isResizable: false
       }
     });
@@ -295,8 +282,6 @@ export class WidgetRegistry {
       },
       columnSizing: 'content',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: true
       }
     });
@@ -313,8 +298,6 @@ export class WidgetRegistry {
       description: 'Image viewer widget',
       columnSizing: 'aspect-ratio',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: true
       }
     });
@@ -337,8 +320,6 @@ export class WidgetRegistry {
       },
       columnSizing: 'aspect-ratio',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: true
       }
     });
@@ -398,8 +379,6 @@ export class WidgetRegistry {
       description: 'Audio frequency visualization',
       columnSizing: 'aspect-ratio',
       features: {
-        hasSettings: true,
-        hasFaceDetection: true,
         isResizable: true
       }
     });
@@ -417,8 +396,6 @@ export class WidgetRegistry {
       description: 'Classic tic-tac-toe game',
       columnSizing: 'fixed',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: false,
         hidden: true
       }
@@ -437,7 +414,6 @@ export class WidgetRegistry {
       description: 'Classic snake game with arrow key controls',
       columnSizing: 'fixed',
       features: {
-        hasStateManagement: true,
         isResizable: false,
         hidden: true
       }
@@ -458,15 +434,7 @@ export class WidgetRegistry {
       description: 'Real-time polling with student participation',
       columnSizing: 'fixed',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: true
-      },
-      networked: {
-        roomType: 'poll',
-        hasStartStop: true,
-        startsActive: false,
-        studentComponentName: 'PollActivity'
       }
     });
 
@@ -482,14 +450,7 @@ export class WidgetRegistry {
       description: 'Collect links or text submissions from students',
       columnSizing: 'fixed',
       features: {
-        hasStateManagement: true,
         isResizable: true
-      },
-      networked: {
-        roomType: 'linkShare',
-        hasStartStop: false,
-        startsActive: true,
-        studentComponentName: 'LinkShareActivity'
       }
     });
 
@@ -505,14 +466,7 @@ export class WidgetRegistry {
       description: 'Real-time feedback slider for student understanding',
       columnSizing: 'fixed',
       features: {
-        hasStateManagement: true,
         isResizable: true
-      },
-      networked: {
-        roomType: 'rtfeedback',
-        hasStartStop: true,
-        startsActive: true,
-        studentComponentName: 'RTFeedbackActivity'
       }
     });
 
@@ -528,14 +482,7 @@ export class WidgetRegistry {
       description: 'Collect questions and comments with moderation',
       columnSizing: 'fixed',
       features: {
-        hasStateManagement: true,
         isResizable: true
-      },
-      networked: {
-        roomType: 'questions',
-        hasStartStop: true,
-        startsActive: true,
-        studentComponentName: 'QuestionsActivity'
       }
     });
 
@@ -551,14 +498,7 @@ export class WidgetRegistry {
       description: 'Push text or links to students',
       columnSizing: 'fixed',
       features: {
-        hasStateManagement: true,
         isResizable: true
-      },
-      networked: {
-        roomType: 'handout',
-        hasStartStop: true,
-        startsActive: true,
-        studentComponentName: 'HandoutActivity'
       }
     });
 
@@ -575,15 +515,7 @@ export class WidgetRegistry {
       description: 'Interactive fill-in-the-blank activities',
       columnSizing: 'fixed',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: true
-      },
-      networked: {
-        roomType: 'activity',
-        hasStartStop: true,
-        startsActive: false,
-        studentComponentName: 'ActivityRenderer'
       }
     });
 
@@ -600,15 +532,7 @@ export class WidgetRegistry {
       description: 'Code completion activities with syntax highlighting',
       columnSizing: 'fixed',
       features: {
-        hasSettings: true,
-        hasStateManagement: true,
         isResizable: true
-      },
-      networked: {
-        roomType: 'activity',
-        hasStartStop: true,
-        startsActive: false,
-        studentComponentName: 'ActivityRenderer'
       }
     });
   }

@@ -14,14 +14,12 @@ interface TimerControlBarProps {
   showStartButton: boolean;
   showPauseButton: boolean;
   showResumeButton: boolean;
-  isRunning: boolean;
   onStart: () => void;
   onPause: () => void;
   onResume: () => void;
   onRestart: () => void;
   disabled?: boolean;
   className?: string;
-  soundMode?: 'short' | 'long';
   onSoundModeToggle?: () => void;
   soundModeIcon?: React.ReactNode;
   soundModeTitle?: string;
@@ -40,14 +38,12 @@ export const TimerControlBar: React.FC<TimerControlBarProps> = ({
   showStartButton,
   showPauseButton,
   showResumeButton,
-  isRunning,
   onStart,
   onPause,
   onResume,
   onRestart,
   disabled = false,
   className,
-  soundMode,
   onSoundModeToggle,
   soundModeIcon,
   soundModeTitle,

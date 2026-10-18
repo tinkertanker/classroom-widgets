@@ -339,14 +339,6 @@ const collectionCases: CollectionCase[] = [
     remove: id => store().deleteRandomiserList(id)
   },
   {
-    label: 'question banks',
-    dictKey: 'questionBanks',
-    idPrefix: 'questions-',
-    save: name => store().saveQuestionBank(name, [{ text: 'why?' }]),
-    list: () => store().getQuestionBanks(),
-    remove: id => store().deleteQuestionBank(id)
-  },
-  {
     label: 'poll questions',
     dictKey: 'pollQuestions',
     idPrefix: 'poll-',

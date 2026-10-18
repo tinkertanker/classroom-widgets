@@ -12,14 +12,6 @@ const ERROR_CODES = {
     code: 'INVALID_SESSION',
     message: 'Session not found or expired'
   },
-  SESSION_FULL: {
-    code: 'SESSION_FULL',
-    message: 'Session has reached maximum participants'
-  },
-  NOT_HOST: {
-    code: 'NOT_HOST',
-    message: 'Only the host can perform this action'
-  },
 
   // Room errors
   ROOM_NOT_FOUND: {
@@ -34,19 +26,11 @@ const ERROR_CODES = {
     code: 'WIDGET_PAUSED',
     message: 'Widget is currently paused'
   },
-  MAX_ROOMS_REACHED: {
-    code: 'MAX_ROOMS_REACHED',
-    message: 'Maximum rooms limit reached'
-  },
 
   // Input errors
   INVALID_INPUT: {
     code: 'INVALID_INPUT',
     message: 'Invalid input provided'
-  },
-  MISSING_REQUIRED_FIELD: {
-    code: 'MISSING_REQUIRED_FIELD',
-    message: 'Required field is missing'
   },
 
   // Rate limiting
@@ -131,7 +115,6 @@ function createRateLimitResponse(retryAfterMs) {
 }
 
 module.exports = {
-  ERROR_CODES,
   createErrorResponse,
   createSuccessResponse,
   createRateLimitResponse

@@ -315,17 +315,6 @@ The redesigned component maintains the same API:
 
 No changes required to existing integrations.
 
-### Original Preserved
-
-The original implementation is preserved at:
-`src/features/voiceControl/components/VoiceInterface.original.tsx`
-
-To revert:
-```bash
-mv VoiceInterface.tsx VoiceInterface.redesigned.tsx
-mv VoiceInterface.original.tsx VoiceInterface.tsx
-```
-
 ## Testing Checklist
 
 - [x] Modal opens smoothly

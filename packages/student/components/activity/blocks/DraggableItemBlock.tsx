@@ -68,5 +68,3 @@ export function DraggableItemBlock({ block }: DraggableItemBlockProps) {
     </div>
   );
 }
-
-export default DraggableItemBlock;

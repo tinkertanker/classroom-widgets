@@ -44,7 +44,6 @@ interface RestoredSnapshot {
 
 interface UseTimerCountdownProps {
   onTimeUp?: () => void;
-  onTick?: (time: number) => void;
   restoredState?: TimerPersistedState;
 }
 
@@ -53,7 +52,7 @@ interface UseTimerCountdownProps {
  * Handles start, pause, resume, restart, and time calculations
  * Supports state persistence via restoredState and getPersistedState
  */
-export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerCountdownProps = {}) {
+export function useTimerCountdown({ onTimeUp, restoredState }: UseTimerCountdownProps = {}) {
   // Compute restored values once on mount
   const restoredRef = useRef(restoredState);
   const hasRestoredRef = useRef(false);
@@ -107,12 +106,10 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
 
   // Store callbacks in refs to avoid dependency issues
   const onTimeUpRef = useRef(onTimeUp);
-  const onTickRef = useRef(onTick);
 
   useEffect(() => {
     onTimeUpRef.current = onTimeUp;
-    onTickRef.current = onTick;
-  }, [onTimeUp, onTick]);
+  }, [onTimeUp]);
 
   const getElapsedSeconds = useCallback(() => {
     if (startTimeRef.current === null) {
@@ -158,11 +155,8 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
       clearScheduledTick();
       setStatus({ kind: 'finished' });
       onTimeUpRef.current?.();
-      onTickRef.current?.(0);
       return;
     }
-
-    onTickRef.current?.(newTime);
 
     const msUntilNextSecond = Math.max(16, endTime - now - (newTime - 1) * 1000);
     timeoutRef.current = setTimeout(() => tick(endTime), msUntilNextSecond);
@@ -250,7 +244,6 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
       setStatus({ kind: 'running', endTime: status.endTime + safeDelta * 1000 });
       setTime(nextTime);
       setInitialTime(prev => prev + safeDelta);
-      onTickRef.current?.(nextTime);
       return nextTime;
     }
 
@@ -262,7 +255,6 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
 
     setTime(nextTime);
     setInitialTime(prev => status.kind === 'idle' || editedTime !== time ? nextTime : prev + safeDelta);
-    onTickRef.current?.(nextTime);
     return nextTime;
   }, [getRunningRemainingTime, status, time]);
 
@@ -285,7 +277,6 @@ export function useTimerCountdown({ onTimeUp, onTick, restoredState }: UseTimerC
   return {
     time,
     initialTime,
-    originalTime: originalTimeRef.current,
     status,
     isRunning,
     isPaused,

@@ -121,7 +121,7 @@ classroom-widgets/
 │   │   │       ├── WidgetWrapper.tsx
 │   │   │       ├── NetworkedWidgetHeader.tsx
 │   │   │       ├── NetworkedWidgetEmpty.tsx
-│   │   │       ├── withWidgetProvider.tsx      # HOC for WidgetProvider
+│   │   │       ├── widgetProps.ts              # WidgetProps shared by networked widgets
 │   │   │       ├── components/
 │   │   │       │   ├── NetworkedWidgetControlBar.tsx
 │   │   │       │   ├── NetworkedWidgetOverlays.tsx  # Paused/reconnecting/disconnected
@@ -245,8 +245,6 @@ The app uses a versioned storage format to support future multi-workspace featur
 // localStorage key: 'classroom-widgets-storage-v2'
 interface StorageFormatV2 {
   version: 2;
-  migratedFrom?: number;      // Previous version if migrated
-  migratedAt?: number;        // Migration timestamp
 
   currentWorkspaceId: string; // Active workspace
 
@@ -716,7 +714,6 @@ All networked widgets use shared components for consistency. The architecture pr
 - `NetworkedWidgetControlBar` - Play/pause, settings, clear buttons
 - `NetworkedWidgetOverlays` - Paused, reconnecting, disconnected overlays
 - `NetworkedWidgetStats` - Floating statistics display
-- `withWidgetProvider` - HOC to wrap with WidgetProvider
 
 **Shared Utilities:**
 - `getEmptyStateButtonText()` - Returns button text based on connection state
@@ -729,13 +726,13 @@ import { useNetworkedWidget } from '../../session/hooks/useNetworkedWidget';
 import { useNetworkedWidgetState } from '../../session/hooks/useNetworkedWidgetState';
 import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
-import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import type { WidgetProps } from '../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 
 function NetworkedWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
   // Room lifecycle management
   const { hasRoom, isStarting, error, handleStart, session, recoveryData } =
-    useNetworkedWidget({ widgetId, roomType: 'myWidget', savedState, onStateChange });
+    useNetworkedWidget({ widgetId, roomType: 'myWidget' });
 
   // Active state with automatic socket sync and recovery
   const { isActive, toggleActive } = useNetworkedWidgetState({
@@ -796,7 +793,7 @@ function NetworkedWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-export default withWidgetProvider(NetworkedWidget, 'NetworkedWidget');
+export default NetworkedWidget;
 ```
 
 ## Testing Strategy

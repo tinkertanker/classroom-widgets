@@ -63,20 +63,4 @@ export function useAnimationFrame(
       }
     };
   }, [isActive, animate]);
-
-  // Return control functions
-  return {
-    start: () => {
-      if (requestRef.current === null) {
-        requestRef.current = requestAnimationFrame(animate);
-      }
-    },
-    stop: () => {
-      if (requestRef.current !== null) {
-        cancelAnimationFrame(requestRef.current);
-        requestRef.current = null;
-        previousTimeRef.current = null;
-      }
-    }
-  };
 }

@@ -30,5 +30,3 @@ export function ContainerBlock({ block }: ContainerBlockProps) {
     </div>
   );
 }
-
-export default ContainerBlock;

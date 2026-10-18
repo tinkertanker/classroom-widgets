@@ -33,7 +33,6 @@ export function useTemporaryState<T>(initialValue: T, defaultDurationMs: number)
 
   return {
     value,
-    setValue,
     setTemporaryValue,
     clear
   };

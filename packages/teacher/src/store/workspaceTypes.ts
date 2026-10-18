@@ -1,5 +1,5 @@
 import { BackgroundType, WidgetType, Widget, Position, Size } from '@shared/types';
-import { SavedCollections, SavedRandomiserList, SavedQuestionBank, SavedPollQuestion, LayoutFormat } from '@shared/types/storage';
+import { SavedCollections, SavedRandomiserList, SavedPollQuestion, LayoutFormat } from '@shared/types/storage';
 import type { ShortenerSettings } from '@shared/utils/urlShortener';
 
 export interface BottomBarConfig {
@@ -59,7 +59,6 @@ export interface WorkspaceStore {
   setBackground: (background: BackgroundType) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setScale: (scale: number) => void;
-  setScrollPosition: (position: Position) => void;
   setLayoutFormat: (format: LayoutFormat) => void;
   
   // Widget actions
@@ -77,9 +76,6 @@ export interface WorkspaceStore {
 
   // Link shortener actions
   updateLinkShortener: (updates: Partial<ShortenerSettings>) => void;
-  toggleWidgetVisibility: (widgetType: WidgetType) => void;
-  pinWidget: (widgetType: WidgetType) => void;
-  unpinWidget: (widgetType: WidgetType) => void;
   
   // Widget state management
   updateWidgetState: (widgetId: string, state: unknown) => void;
@@ -95,9 +91,6 @@ export interface WorkspaceStore {
   saveRandomiserList: (name: string, choices: string[]) => string;
   getRandomiserLists: () => SavedRandomiserList[];
   deleteRandomiserList: (id: string) => void;
-  saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>) => string;
-  getQuestionBanks: () => SavedQuestionBank[];
-  deleteQuestionBank: (id: string) => void;
   savePollQuestion: (name: string, question: string, options: string[]) => string;
   getPollQuestions: () => SavedPollQuestion[];
   deletePollQuestion: (id: string) => void;

@@ -94,14 +94,9 @@ export function useWidgetState<T>({
     setState(prev => ({ ...prev, ...updates }));
   }, [setState]);
 
-  const resetState = useCallback(() => {
-    setState(initialState);
-  }, [setState, initialState]);
-
   return {
     state,
     setState,
-    updateState,
-    resetState
+    updateState
   };
 }

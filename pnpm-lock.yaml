@@ -41,9 +41,6 @@ importers:
       socket.io:
         specifier: ^4.8.1
         version: 4.8.3(supports-color@5.5.0)
-      socket.io-client:
-        specifier: ^4.8.1
-        version: 4.8.3(supports-color@5.5.0)
       tlds:
         specifier: ^1.261.0
         version: 1.261.0
@@ -51,6 +48,9 @@ importers:
       nodemon:
         specifier: ^3.0.1
         version: 3.1.14
+      socket.io-client:
+        specifier: ^4.8.1
+        version: 4.8.3(supports-color@5.5.0)
       tsx:
         specifier: ^4.20.6
         version: 4.23.13
@@ -215,9 +215,6 @@ importers:
       socket.io-client:
         specifier: ^4.8.1
         version: 4.8.3(supports-color@8.1.1)
-      tailwind-merge:
-        specifier: ^3.3.1
-        version: 3.6.0
       uuid:
         specifier: ^11.1.1
         version: 11.1.1
@@ -234,15 +231,9 @@ importers:
       '@types/testing-library__jest-dom':
         specifier: ^5.14.9
         version: 5.14.9
-      '@types/uuid':
-        specifier: ^10.0.0
-        version: 10.0.0
       '@vitejs/plugin-react':
         specifier: ^4.6.0
         version: 4.7.0(supports-color@8.1.1)(vite@7.3.6(@types/node@26.4.0)(jiti@1.21.7)(tsx@4.23.13))
-      '@vitest/ui':
-        specifier: ^3.2.4
-        version: 3.2.7(vitest@3.2.7)
       autoprefixer:
         specifier: ^10.4.21
         version: 10.5.4(postcss@8.5.26)
@@ -1023,9 +1014,6 @@ packages:
 
   '@types/testing-library__jest-dom@5.14.9':
     resolution: {integrity: sha512-FSYhIjFlfOpGSRyVoMBMuS3ws5ehFQODymf3vlI7U1K8c7PHwWwFY7VREfmsuzHSOnoKs/9/Y983ayOs7eRzqw==}
-
-  '@types/uuid@10.0.0':
-    resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
 
   '@types/ws@8.18.1':
     resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
@@ -2924,7 +2912,8 @@ snapshots:
       '@nodelib/fs.scandir': 2.1.5
       fastq: 1.20.3
 
-  '@polka/url@1.0.0-next.29': {}
+  '@polka/url@1.0.0-next.29':
+    optional: true
 
   '@resvg/resvg-js-android-arm-eabi@2.6.2':
     optional: true
@@ -3177,8 +3166,6 @@ snapshots:
     dependencies:
       '@types/jest': 29.5.14
 
-  '@types/uuid@10.0.0': {}
-
   '@types/ws@8.18.1':
     dependencies:
       '@types/node': 26.4.0
@@ -3247,6 +3234,7 @@ snapshots:
       tinyglobby: 0.2.17
       tinyrainbow: 2.0.0
       vitest: 3.2.7(@types/node@26.4.0)(@vitest/ui@3.2.7)(jiti@1.21.7)(jsdom@26.1.0(supports-color@8.1.1))(supports-color@8.1.1)(tsx@4.23.13)
+    optional: true
 
   '@vitest/utils@3.2.7':
     dependencies:
@@ -3688,7 +3676,8 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.7
 
-  fflate@0.8.3: {}
+  fflate@0.8.3:
+    optional: true
 
   fill-range@7.1.1:
     dependencies:
@@ -3711,7 +3700,8 @@ snapshots:
       locate-path: 5.0.0
       path-exists: 4.0.0
 
-  flatted@3.4.4: {}
+  flatted@3.4.4:
+    optional: true
 
   forwarded@0.2.0: {}
 
@@ -3973,7 +3963,8 @@ snapshots:
     dependencies:
       brace-expansion: 5.0.9
 
-  mrmime@2.0.1: {}
+  mrmime@2.0.1:
+    optional: true
 
   ms@2.0.0: {}
 
@@ -4388,6 +4379,7 @@ snapshots:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
       totalist: 3.0.1
+    optional: true
 
   slash@3.0.0: {}
 
@@ -4575,7 +4567,8 @@ snapshots:
 
   toidentifier@1.0.1: {}
 
-  totalist@3.0.1: {}
+  totalist@3.0.1:
+    optional: true
 
   touch@3.1.1: {}
 

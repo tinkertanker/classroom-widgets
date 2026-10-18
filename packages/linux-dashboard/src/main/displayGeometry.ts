@@ -23,19 +23,6 @@ function finiteRect(rect: Rect): boolean {
   return [rect.x, rect.y, rect.width, rect.height].every(Number.isFinite);
 }
 
-export function aspectFit(contentSize: Size, bounds: Rect): Rect | null {
-  if (!positiveFiniteSize(contentSize) || !finiteRect(bounds) || bounds.width <= 0 || bounds.height <= 0) return null;
-  const scale = Math.min(bounds.width / contentSize.width, bounds.height / contentSize.height);
-  const width = contentSize.width * scale;
-  const height = contentSize.height * scale;
-  return {
-    x: bounds.x + (bounds.width - width) / 2,
-    y: bounds.y + (bounds.height - height) / 2,
-    width,
-    height,
-  };
-}
-
 export function mapPreviewPointToSource(point: Point, imageRect: Rect, sourceBounds: Rect): Point | null {
   if (![point.x, point.y].every(Number.isFinite)
     || !finiteRect(imageRect) || imageRect.width <= 0 || imageRect.height <= 0

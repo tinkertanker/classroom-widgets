@@ -397,17 +397,6 @@ export const VOICE_WIDGET_DEFINITIONS: Record<string, WidgetDefinition> = {
       }
     ]
   },
-  "wordle": {
-    "displayName": "Wordle",
-    "targetName": "wordle",
-    "widgetType": "WORDLE",
-    "actions": [
-      {
-        "name": "CREATE_WORDLE",
-        "description": "Create a Wordle game widget"
-      }
-    ]
-  },
   "snake": {
     "displayName": "Snake",
     "targetName": "snake",
@@ -450,7 +439,6 @@ export const VOICE_WIDGET_TARGET_MAP: Record<string, WidgetType> = {
   'linkshortener': WidgetType.LINK_SHORTENER,
   'tictactoe': WidgetType.TIC_TAC_TOE,
   'game': WidgetType.TIC_TAC_TOE,
-  'wordle': WidgetType.WORDLE,
   'snake': WidgetType.SNAKE,
 };
 
@@ -477,7 +465,6 @@ export const VOICE_ACTION_NAMES = [
   'CREATE_TRAFFIC_LIGHT',
   'CREATE_VISUALISER',
   'CREATE_VOLUME_MONITOR',
-  'CREATE_WORDLE',
   'LAUNCH_WIDGET',
   'PAUSE_RT_FEEDBACK',
   'PAUSE_TIMER',

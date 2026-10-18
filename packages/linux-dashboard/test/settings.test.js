@@ -28,8 +28,10 @@ test('Display Show and Dismiss explicit null assignments survive save and reload
   const h = persistedSettings(t, { displayPreviewShortcut: 'Ctrl+Alt+S', displayPreviewDismissShortcut: 'Ctrl+Alt+D' });
   const settings = h.load();
   assert.equal(settings.displayPreviewDismissShortcut, 'Ctrl+Alt+D');
-  settings.setDisplayPreviewShortcut(null);
-  settings.setDisplayPreviewDismissShortcut(null);
+  // WidgetShortcutController.setDisplayShortcut assigns the field, then notifies.
+  settings.displayPreviewShortcut = null;
+  settings.displayPreviewDismissShortcut = null;
+  settings.notifyChanged();
   assert.equal(h.raw().displayPreviewShortcut, null);
   assert.equal(h.raw().displayPreviewDismissShortcut, null);
   const reloaded = h.load();
@@ -43,7 +45,8 @@ test('legacy Display Show is retained and missing Dismiss stays distinguishable 
   settings.save();
   assert.equal(h.raw().displayPreviewShortcut, 'Ctrl+Alt+S');
   assert.equal(Object.hasOwn(h.raw(), 'displayPreviewDismissShortcut'), false);
-  settings.setDisplayPreviewDismissShortcut(null);
+  settings.displayPreviewDismissShortcut = null;
+  settings.notifyChanged();
   assert.equal(h.load().displayPreviewDismissShortcut, null);
 });
 

@@ -166,15 +166,6 @@ export const statusColors = {
   }
 } as const;
 
-// Icon size utilities
-export const iconSizes = {
-  xs: "w-3 h-3",
-  sm: "w-4 h-4",
-  md: "w-5 h-5",
-  lg: "w-6 h-6",
-  xl: "w-8 h-8"
-} as const;
-
 // Helper to get status color classes
 export function getStatusColor(status: number | string, type: 'bg' | 'surface' | 'text' = 'bg') {
   const colorMap: Record<number | string, keyof typeof statusColors> = {

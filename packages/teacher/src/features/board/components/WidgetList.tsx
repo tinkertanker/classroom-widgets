@@ -14,7 +14,6 @@ import {
 } from './WidgetRenderer';
 
 interface WidgetListProps {
-  dashboardVisible?: boolean;
   renderer: BoundWidgetRenderer;
   excludeTypes?: readonly WidgetType[];
 }
@@ -22,7 +21,7 @@ interface WidgetListProps {
 // Stamps are canvas-only; the column layout has no free positioning to place them in.
 const COLUMN_EXCLUDED_TYPES: readonly WidgetType[] = [WidgetType.STAMP];
 
-const WidgetList: React.FC<WidgetListProps> = ({ dashboardVisible, renderer: Renderer, excludeTypes }) => {
+const WidgetList: React.FC<WidgetListProps> = ({ renderer: Renderer, excludeTypes }) => {
   // Subscribe only to widget IDs using shallow comparison
   // This prevents re-renders when widget properties (position/size) change
   // Only re-renders when widgets are added/removed
@@ -35,7 +34,7 @@ const WidgetList: React.FC<WidgetListProps> = ({ dashboardVisible, renderer: Ren
   return (
     <>
       {widgetIds.map((widgetId) => (
-        <Renderer key={widgetId} widgetId={widgetId} dashboardVisible={dashboardVisible} />
+        <Renderer key={widgetId} widgetId={widgetId} />
       ))}
     </>
   );
@@ -43,20 +42,13 @@ const WidgetList: React.FC<WidgetListProps> = ({ dashboardVisible, renderer: Ren
 
 const MemoizedWidgetList = memo(WidgetList);
 
-interface LayoutWidgetListProps {
-  dashboardVisible?: boolean;
-}
-
-export const CanvasWidgetList: React.FC<LayoutWidgetListProps> = ({ dashboardVisible }) => (
-  <MemoizedWidgetList renderer={CanvasWidgetRenderer} dashboardVisible={dashboardVisible} />
+export const CanvasWidgetList: React.FC = () => (
+  <MemoizedWidgetList renderer={CanvasWidgetRenderer} />
 );
 
-export const ColumnWidgetList: React.FC<LayoutWidgetListProps> = ({ dashboardVisible }) => (
+export const ColumnWidgetList: React.FC = () => (
   <MemoizedWidgetList
     renderer={ColumnWidgetRenderer}
     excludeTypes={COLUMN_EXCLUDED_TYPES}
-    dashboardVisible={dashboardVisible}
   />
 );
-
-export default MemoizedWidgetList;

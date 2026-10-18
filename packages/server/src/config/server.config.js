@@ -6,7 +6,6 @@ module.exports = {
   PORT: process.env.PORT || 3001,
 
   // Environment
-  NODE_ENV: process.env.NODE_ENV || 'development',
   IS_PRODUCTION: process.env.NODE_ENV === 'production' || process.env.NODE_ENV === 'staging',
 
   // Number of trusted reverse-proxy hops (X-Forwarded-For entries) in front
