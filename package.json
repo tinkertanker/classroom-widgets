@@ -17,6 +17,7 @@
     "build:student": "pnpm --filter @classroom-widgets/student build",
     "build:all": "pnpm run build",
     "test": "pnpm --filter @classroom-widgets/teacher test",
+    "typecheck": "pnpm -r --no-bail --if-present typecheck",
     "test:build-config": "node scripts/check-root-build-config.cjs",
     "generate:voice-types": "node scripts/generateVoiceCommandTypes.cjs",
     "generate:desktop-scripts": "node scripts/generateDesktopHostScripts.cjs",
