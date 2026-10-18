@@ -65,7 +65,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
   setLayoutFormat: (format) => set({ layoutFormat: format }),
   setTheme: (theme) => set({ theme }),
   setScale: (scale) => set({ scale }),
-  setScrollPosition: (position) => set({ scrollPosition: position }),
   
   ...createWidgetActions(set, get),
   setClassEndTime: (time) => {
@@ -90,9 +89,6 @@ export const useWorkspaceStore = create<WorkspaceStore>()(
       linkShortener: { ...state.linkShortener, ...updates }
     }));
   },
-  toggleWidgetVisibility: () => {},
-  pinWidget: () => {},
-  unpinWidget: () => {},
 
   // Workspace management actions
   ...createWorkspaceActions(set, get),

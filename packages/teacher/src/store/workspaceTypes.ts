@@ -59,7 +59,6 @@ export interface WorkspaceStore {
   setBackground: (background: BackgroundType) => void;
   setTheme: (theme: 'light' | 'dark') => void;
   setScale: (scale: number) => void;
-  setScrollPosition: (position: Position) => void;
   setLayoutFormat: (format: LayoutFormat) => void;
   
   // Widget actions
@@ -77,9 +76,6 @@ export interface WorkspaceStore {
 
   // Link shortener actions
   updateLinkShortener: (updates: Partial<ShortenerSettings>) => void;
-  toggleWidgetVisibility: (widgetType: WidgetType) => void;
-  pinWidget: (widgetType: WidgetType) => void;
-  unpinWidget: (widgetType: WidgetType) => void;
   
   // Widget state management
   updateWidgetState: (widgetId: string, state: unknown) => void;

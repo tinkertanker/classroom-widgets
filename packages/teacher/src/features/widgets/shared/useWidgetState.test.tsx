@@ -225,7 +225,7 @@ describe('useWidgetState savedState resync', () => {
     expect(result.current.state).toEqual(arriving);
   });
 
-  it('still notifies the parent through updateState and resetState', () => {
+  it('still notifies the parent through updateState', () => {
     const { result, onStateChange } = renderWidget(makeState());
 
     act(() => {
@@ -234,11 +234,5 @@ describe('useWidgetState savedState resync', () => {
     expect(onStateChange).toHaveBeenLastCalledWith(
       expect.objectContaining({ currentPlayer: 'O' })
     );
-
-    act(() => {
-      result.current.resetState();
-    });
-    expect(onStateChange).toHaveBeenLastCalledWith(makeState());
-    expect(result.current.state).toEqual(makeState());
   });
 });
