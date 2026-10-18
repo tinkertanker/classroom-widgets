@@ -371,10 +371,17 @@ final class WidgetCheckpointTests: XCTestCase {
             if rejectedApplies > 1 {
                 // A persistently unavailable bridge must stop retrying, retain AB,
                 // and allow an explicit retry once the host is available again.
-                try await Task.sleep(nanoseconds: 4_000_000_000)
-                let before = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
-                try await Task.sleep(nanoseconds: 400_000_000)
-                let after = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                // Retries run every 150 ms plus a host round trip, so how long
+                // they take depends on the machine. Wait for the count to hold
+                // still for longer than one retry interval, within a deadline.
+                var before: NSNumber?
+                var after: NSNumber?
+                let deadline = Date().addingTimeInterval(15)
+                repeat {
+                    before = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                    try await Task.sleep(nanoseconds: 600_000_000)
+                    after = try await host.webView.evaluateJavaScript("window.rejectedCheckpoints") as? NSNumber
+                } while before != after && Date() < deadline
                 XCTAssertEqual(before, after, "Recovery attempts must be bounded")
                 XCTAssertNil(panelWebView(title: "List"), "Failed application must not expose stale A")
                 _ = try await host.webView.evaluateJavaScript("window.rejectedAppliesRemaining = 0; true")
