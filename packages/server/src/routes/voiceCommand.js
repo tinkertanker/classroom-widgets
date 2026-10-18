@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { createIpRateLimiter } = require('../middleware/socketAuth');
+const { ipRateLimit } = require('../middleware/rateLimit');
 const PatternMatchingService = require('../services/PatternMatchingService');
 
 const VOICE_COMMAND_DEBUG = process.env.VOICE_COMMAND_DEBUG === 'true';
@@ -45,8 +45,14 @@ if (VOICE_COMMAND_DEBUG) {
   console.log(`🤖 Voice Command Processing Mode: ${aiServiceName}`);
 }
 
+// The teacher app shows the body's `error` text to the teacher.
+const voiceRateLimit = ipRateLimit(
+  { windowMs: 10_000, max: 20 },
+  { body: { error: 'Too many voice command requests. Please slow down.' } }
+);
+
 // Per-client limit on the unauthenticated POST; /health stays unlimited.
-router.post('/', createIpRateLimiter({ windowMs: 10_000, max: 20 }), async (req, res) => {
+router.post('/', voiceRateLimit, async (req, res) => {
   const requestId = Math.random().toString(36).slice(2, 11);
   const startTime = Date.now();
 

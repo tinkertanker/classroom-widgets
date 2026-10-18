@@ -97,15 +97,8 @@ const asyncHandler = (fn) => {
 };
 
 module.exports = {
-  // Error classes
-  AppError,
   AuthorizationError,
-
-  // Handlers
   expressErrorHandler,
   setupGlobalErrorHandlers,
-
-  // Utilities
-  logError,
   asyncHandler
 };

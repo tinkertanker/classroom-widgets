@@ -1,9 +1,20 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { generateCode } = require('./codeGenerator');
+const { generateCode, generateSessionCode } = require('./codeGenerator');
+const sessionCode = require('@classroom-widgets/shared/constants/sessionCode.json');
 const { SAFE_CHARACTERS } = require('../config/constants');
 
 describe('generateCode', () => {
+  // Moved from the removed middleware/validation.test.js: student and teacher
+  // validate codes against packages/shared/constants/sessionCode.json, so
+  // every session code the server hands out must match it.
+  it('generates session codes the shared client validators accept', () => {
+    const pattern = new RegExp(`^[${sessionCode.alphabet}]{${sessionCode.length}}$`);
+    for (let i = 0; i < 200; i++) {
+      assert.match(generateSessionCode(new Map()), pattern);
+    }
+  });
+
   it('generates codes of the requested length from safe characters only', () => {
     for (const length of [1, 5, 20]) {
       const code = generateCode(length);

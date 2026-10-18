@@ -81,10 +81,10 @@ const createWindowCounter = (limit) => {
   return check;
 };
 
-const sendRateLimited = (res, result) => {
+const sendRateLimited = (res, result, body) => {
   const retryAfterSeconds = Math.max(1, Math.ceil(result.retryAfter / 1000));
   res.set('Retry-After', String(retryAfterSeconds));
-  res.status(429).json({
+  res.status(429).json(body || {
     success: false,
     error: 'RATE_LIMITED',
     message: 'Too many requests. Please try again later.',
@@ -97,8 +97,10 @@ const requestIp = (req) => getClientIp(req.headers, req.socket && req.socket.rem
 /**
  * Express middleware limiting requests per client IP.
  * @param {{ windowMs: number, max: number }} limit
+ * @param {{ body?: Object }} [options] - body replaces the default 429 JSON
+ *   body, for clients that show a route-specific `error` message
  */
-const ipRateLimit = (limit) => {
+const ipRateLimit = (limit, { body } = {}) => {
   const check = createWindowCounter(limit);
 
   return (req, res, next) => {
@@ -106,7 +108,7 @@ const ipRateLimit = (limit) => {
     if (result.allowed) {
       return next();
     }
-    sendRateLimited(res, result);
+    sendRateLimited(res, result, body);
   };
 };
 

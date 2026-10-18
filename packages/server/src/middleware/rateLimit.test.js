@@ -1,7 +1,7 @@
 const { describe, it, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const serverConfig = require('../config/server.config');
-const { getClientIp, ipRateLimit, ipMissRateLimit, stopRateLimiterCleanup } = require('./rateLimit');
+const { getClientIp, ipRateLimit, ipMissRateLimit, pendingCleanupHandles, stopRateLimiterCleanup } = require('./rateLimit');
 
 function fakeRes() {
   return {
@@ -62,6 +62,91 @@ describe('ipRateLimit', () => {
     assert.equal(nextCalls, 3);
   });
 });
+
+describe('ipRateLimit timers and windows', () => {
+  it('registers unrefed cleanup timers with the shared shutdown registry', (t) => {
+    t.after(() => stopRateLimiterCleanup());
+    const initialHandleCount = pendingCleanupHandles.length;
+
+    assert.equal(typeof ipRateLimit({ windowMs: 10_000, max: 20 }), 'function');
+    assert.equal(typeof ipMissRateLimit({ windowMs: 60_000, max: 3 }), 'function');
+
+    const newHandles = pendingCleanupHandles.slice(initialHandleCount);
+    assert.equal(newHandles.length, 2);
+    assert.notEqual(newHandles[0], newHandles[1]);
+    for (const handle of newHandles) {
+      assert.equal(handle.hasRef(), false);
+    }
+
+    const handles = [...pendingCleanupHandles];
+    const clear = t.mock.method(global, 'clearInterval');
+    stopRateLimiterCleanup();
+
+    assert.equal(pendingCleanupHandles.length, 0);
+    assert.equal(clear.mock.callCount(), handles.length);
+    assert.deepEqual(new Set(clear.mock.calls.map(call => call.arguments[0])), new Set(handles));
+
+    // Shutdown may be requested more than once; no handle should be cleared twice.
+    stopRateLimiterCleanup();
+    assert.equal(clear.mock.callCount(), handles.length);
+  });
+
+  it('preserves per-IP counts, Retry-After rounding and the window expiry boundary', (t) => {
+    t.after(() => stopRateLimiterCleanup());
+    t.mock.timers.enable({ apis: ['Date'] });
+    const body = { error: 'Too many voice command requests. Please slow down.' };
+    const middleware = ipRateLimit({ windowMs: 2500, max: 2 }, { body });
+    let nextCalls = 0;
+    const run = (ip) => {
+      const res = fakeRes();
+      middleware(fakeReq(ip), res, () => { nextCalls += 1; });
+      return res;
+    };
+
+    const first = run('10.0.0.1');
+    assert.equal(first.statusCode, 200);
+    assert.equal(first.body, undefined);
+    assert.deepEqual(first.headers, {});
+    run('10.0.0.1');
+    assert.equal(nextCalls, 2);
+
+    t.mock.timers.tick(1001);
+    const blocked = run('10.0.0.1');
+    assert.equal(nextCalls, 2);
+    assert.equal(blocked.statusCode, 429);
+    assert.equal(blocked.headers['Retry-After'], '2');
+    assert.deepEqual(blocked.body, body);
+
+    run('10.0.0.2');
+    assert.equal(nextCalls, 3);
+
+    // Existing windows expire strictly after windowMs, not at the boundary.
+    t.mock.timers.tick(1499);
+    const boundary = run('10.0.0.1');
+    assert.equal(boundary.statusCode, 429);
+    // Never advertise Retry-After: 0 while still refusing the request.
+    assert.equal(boundary.headers['Retry-After'], '1');
+    assert.equal(nextCalls, 3);
+
+    t.mock.timers.tick(1);
+    run('10.0.0.1');
+    run('10.0.0.1');
+    assert.equal(nextCalls, 5);
+    const resetLimit = run('10.0.0.1');
+    assert.equal(resetLimit.statusCode, 429);
+    assert.equal(resetLimit.headers['Retry-After'], '3');
+    assert.equal(nextCalls, 5);
+
+    // The second IP's later window must retain its earlier request count.
+    run('10.0.0.2');
+    assert.equal(nextCalls, 6);
+    const otherLimit = run('10.0.0.2');
+    assert.equal(otherLimit.statusCode, 429);
+    assert.equal(otherLimit.headers['Retry-After'], '1');
+    assert.equal(nextCalls, 6);
+  });
+});
+
 
 describe('ipMissRateLimit', () => {
   afterEach(() => stopRateLimiterCleanup());
