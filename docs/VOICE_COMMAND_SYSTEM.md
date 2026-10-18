@@ -146,7 +146,7 @@ The Classroom Widgets application now includes a comprehensive voice command sys
 | **Utility Widgets** | 1 | "create link shortener" |
 | **Games** | 2 | "play tic tac toe", "play snake" |
 
-**Total**: 20 widgets with 100+ command variations
+**Total**: 19 widgets with 100+ command variations
 
 ### Complex Commands
 

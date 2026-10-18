@@ -175,11 +175,14 @@ Three more real-Electron checks run the same way; each file's header lists what
 it covers and the evidence it writes to `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`:
 
 ```bash
-for case in reload-failure termination-failure frames quit quit-late-inventory autostart; do
-  xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/lifecycle.cjs --background --case="$case" || break
-done
-xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/widgetEditing.cjs
-xvfb-run -a -s '-screen 0 1920x1080x24' packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/panelHover.cjs --background
+(
+  set -e
+  for case in reload-failure termination-failure frames quit quit-late-inventory autostart; do
+    xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/lifecycle.cjs --background --case="$case"
+  done
+  xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/widgetEditing.cjs
+  xvfb-run -a -s '-screen 0 1920x1080x24' packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/panelHover.cjs --background
+)
 ```
 
 `lifecycle.cjs` covers host reload and termination recovery, saved panel frames,
