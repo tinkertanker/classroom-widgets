@@ -441,11 +441,8 @@ node --version
 
 **TypeScript errors:**
 ```bash
-# Check teacher app type errors
-pnpm --filter @classroom-widgets/teacher typecheck
-
-# Check student app type errors
-pnpm --filter @classroom-widgets/student build
+# Check teacher and student app type errors
+pnpm typecheck
 ```
 
 **Missing environment variables:**

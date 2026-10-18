@@ -22,7 +22,10 @@
   flags directly, as in `pnpm macos:dmg --distribution`, not
   `pnpm macos:dmg -- --distribution`.
 - `pnpm test` runs the teacher suite only. When you change the server, also run
-  `pnpm --filter @classroom-widgets/server test`.
+  `pnpm --filter @classroom-widgets/server test`. `pnpm typecheck` checks the
+  teacher and student apps. The `web-tests.yml` workflow runs both suites on
+  Node 22 and 26, and the typecheck on Node 22, for pull requests that touch
+  the web, server or shared code.
 - `packages/shared/voiceCommandDefinitions.json` is the source of truth for the
   generated voice-command constants under `packages/shared/constants/` and
   `packages/server/src/shared/constants/`. Edit the JSON, then run

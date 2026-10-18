@@ -1,0 +1,77 @@
+name: Web and server tests
+
+# Typecheck plus the teacher and server suites. The desktop native tests run in
+# desktop-tests.yml.
+
+on:
+  pull_request:
+    paths:
+      - 'packages/teacher/**'
+      - 'packages/student/**'
+      - 'packages/server/**'
+      - 'packages/shared/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/actions/install-pnpm/**'
+      - '.github/workflows/web-tests.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/teacher/**'
+      - 'packages/student/**'
+      - 'packages/server/**'
+      - 'packages/shared/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/actions/install-pnpm/**'
+      - '.github/workflows/web-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: web-tests-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Web and server checks (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 is the oldest supported Node. 26 is the newest release line, and
+        # Node 25+ defines its own Web Storage (see teacher src/setupTests.ts).
+        node: [22, 26]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: ./.github/actions/install-pnpm
+      # Type errors do not depend on the Node version.
+      - name: Typecheck the teacher and student apps
+        if: matrix.node == 22
+        run: pnpm typecheck
+      - name: Teacher tests
+        run: pnpm test --run
+      - name: Server tests
+        env:
+          CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/server-test-evidence
+        run: pnpm --filter @classroom-widgets/server test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: server-test-evidence-node-${{ matrix.node }}
+          path: ${{ runner.temp }}/server-test-evidence
+          if-no-files-found: ignore

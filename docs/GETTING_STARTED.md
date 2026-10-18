@@ -202,8 +202,14 @@ All widgets support:
 ### Run Tests
 
 ```bash
-# Run all tests
+# Run the teacher tests
 pnpm test
+
+# Run the server tests
+pnpm --filter @classroom-widgets/server test
+
+# Check types in the teacher and student apps
+pnpm typecheck
 
 # Run tests in watch mode
 pnpm test --watch
@@ -327,11 +333,8 @@ pnpm dev
 
 **TypeScript errors:**
 ```bash
-# Check teacher app type errors
-pnpm --filter @classroom-widgets/teacher typecheck
-
-# Check student app type errors
-pnpm --filter @classroom-widgets/student build
+# Check teacher and student app type errors
+pnpm typecheck
 ```
 
 ## Coding Standards
