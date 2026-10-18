@@ -40,7 +40,7 @@ export enum WidgetType {
   RT_FEEDBACK = 15,
   TIC_TAC_TOE = 16,
   QUESTIONS = 17,
-  WORDLE = 18,
+  WORDLE = 18, // Widget removed; the number stays reserved so saved boards keep their numbering
   SNAKE = 19,
   HANDOUT = 20,
   FILL_BLANK = 21,

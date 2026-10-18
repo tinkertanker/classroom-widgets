@@ -27,20 +27,20 @@ function makeService(handler) {
 }
 
 const OK_RESULT = {
-  action: 'CREATE_WORDLE',
-  target: 'wordle',
+  action: 'CREATE_SNAKE',
+  target: 'snake',
   confidence: 0.9,
   parameters: {},
-  feedback: { message: 'Starting Wordle', type: 'success', shouldSpeak: true }
+  feedback: { message: 'Starting Snake', type: 'success', shouldSpeak: true }
 };
 
 test('passes the shared widget/action catalog into ParseVoiceCommand', async () => {
   const { service, calls } = makeService(() => OK_RESULT);
 
-  await service.processVoiceCommand('start a wordle');
+  await service.processVoiceCommand('start a snake game');
 
   assert.equal(calls.length, 1);
-  assert.equal(calls[0].transcript, 'start a wordle');
+  assert.equal(calls[0].transcript, 'start a snake game');
   assert.deepEqual(calls[0].widgetTargets, EXPECTED_TARGETS);
   assert.deepEqual(calls[0].actionNames, EXPECTED_ACTIONS);
 });

@@ -374,17 +374,6 @@ const VOICE_WIDGET_DEFINITIONS = {
       }
     ]
   },
-  "wordle": {
-    "displayName": "Wordle",
-    "targetName": "wordle",
-    "widgetType": "WORDLE",
-    "actions": [
-      {
-        "name": "CREATE_WORDLE",
-        "description": "Create a Wordle game widget"
-      }
-    ]
-  },
   "snake": {
     "displayName": "Snake",
     "targetName": "snake",
@@ -426,7 +415,6 @@ const VOICE_WIDGET_TARGET_MAP = {
   'linkshortener': 'LINK_SHORTENER',
   'tictactoe': 'TIC_TAC_TOE',
   'game': 'TIC_TAC_TOE',
-  'wordle': 'WORDLE',
   'snake': 'SNAKE',
 };
 
@@ -453,7 +441,6 @@ const VOICE_ACTION_NAMES = [
   'CREATE_TRAFFIC_LIGHT',
   'CREATE_VISUALISER',
   'CREATE_VOLUME_MONITOR',
-  'CREATE_WORDLE',
   'LAUNCH_WIDGET',
   'PAUSE_RT_FEEDBACK',
   'PAUSE_TIMER',

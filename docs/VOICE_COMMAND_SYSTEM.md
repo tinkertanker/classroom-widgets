@@ -144,7 +144,7 @@ The Classroom Widgets application now includes a comprehensive voice command sys
 | **Display Widgets** | 3 | "create image display", "create QR code", "add sticker" |
 | **Audio Widgets** | 2 | "create visualiser", "add volume monitor" |
 | **Utility Widgets** | 1 | "create link shortener" |
-| **Games** | 3 | "play tic tac toe", "create wordle", "play snake" |
+| **Games** | 2 | "play tic tac toe", "play snake" |
 
 **Total**: 20 widgets with 100+ command variations
 

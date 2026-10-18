@@ -323,18 +323,7 @@ All commands follow this structure:
 
 ---
 
-### 19. Wordle Widget
-
-**Widget Type**: `WORDLE` (WidgetType.WORDLE)
-
-#### Create Wordle
-- **Patterns**: "create wordle", "add word game"
-- **Action**: `CREATE_WORDLE`
-- **Parameters**: `{}`
-
----
-
-### 20. Snake Game Widget
+### 19. Snake Game Widget
 
 **Widget Type**: `SNAKE` (WidgetType.SNAKE)
 

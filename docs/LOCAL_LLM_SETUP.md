@@ -114,7 +114,7 @@ class OllamaLLMService {
     const systemPrompt = `You are a voice command processor for a classroom widget application.
 Convert natural language commands into structured JSON commands.
 
-Available widgets: timer, randomiser, list, poll, questions, feedback, banner, sound effects, task cue, traffic light, image, qr code, sticker, visualiser, volume monitor, link shortener, tic-tac-toe, wordle, snake.
+Available widgets: timer, randomiser, list, poll, questions, feedback, banner, sound effects, task cue, traffic light, image, qr code, sticker, visualiser, volume monitor, link shortener, tic-tac-toe, snake.
 
 Available actions:
 - CREATE_TIMER: { duration: number (seconds) }

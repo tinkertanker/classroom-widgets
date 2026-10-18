@@ -189,7 +189,6 @@ classroom-widgets/
 
 ### Games
 - **Tic Tac Toe** - Two-player game
-- **Wordle** - Word guessing game
 - **Snake** - Classic snake game
 
 All widgets support:
