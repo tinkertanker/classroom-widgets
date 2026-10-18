@@ -12,9 +12,6 @@ export type WidgetRecoveryData = ReturnType<ReturnType<typeof useSession>['getWi
 interface UseNetworkedWidgetProps {
   widgetId?: string;
   roomType: RoomType;
-  // Widgets pass their props straight through; the hook does not read these.
-  savedState?: unknown;
-  onStateChange?: (state: unknown) => void;
 }
 
 interface UseNetworkedWidgetResult {
@@ -46,9 +43,7 @@ interface UseNetworkedWidgetResult {
 
 export function useNetworkedWidget({
   widgetId,
-  roomType,
-  savedState,
-  onStateChange
+  roomType
 }: UseNetworkedWidgetProps): UseNetworkedWidgetResult {
   const session = useSession();
   // The session's room list is the single source of truth: it is filled by

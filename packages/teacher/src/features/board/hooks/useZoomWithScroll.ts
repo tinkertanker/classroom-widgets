@@ -26,8 +26,6 @@ const isWebKitGestureEvent = (event: Event): event is WebKitGestureEvent => {
 export const useZoomWithScroll = (
   containerRef: React.RefObject<HTMLDivElement>,
   scaleRef: React.RefObject<HTMLDivElement>,
-  setDebugMarker: (marker: { x: number; y: number; visible: boolean; viewportX?: number; viewportY?: number }) => void,
-  setViewportRect: (rect: { x: number; y: number; visible: boolean }) => void,
   options: ZoomOptions = {}
 ) => {
   const { scale, setScale } = useWorkspace();
@@ -36,7 +34,6 @@ export const useZoomWithScroll = (
   const initialScale = useRef(1);
   const zoomCenter = useRef({ x: 0, y: 0 });
   const zoomOriginBoard = useRef<{ x: number; y: number } | null>(null);
-  const resetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wheelEndTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scrollRaf = useRef<number | null>(null);
 
@@ -90,10 +87,6 @@ export const useZoomWithScroll = (
     };
 
     const startZoomGesture = (clientX: number, clientY: number) => {
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-        resetTimeout.current = null;
-      }
       initialScale.current = currentScaleRef.current;
 
       const containerRect = container.getBoundingClientRect();
@@ -105,15 +98,6 @@ export const useZoomWithScroll = (
         x: (container.scrollLeft + zoomCenter.current.x) / currentScaleRef.current,
         y: (container.scrollTop + zoomCenter.current.y) / currentScaleRef.current
       };
-
-      setDebugMarker({
-        x: zoomOriginBoard.current.x,
-        y: zoomOriginBoard.current.y,
-        visible: true,
-        viewportX: zoomCenter.current.x,
-        viewportY: zoomCenter.current.y
-      });
-      setViewportRect({ x: zoomCenter.current.x, y: zoomCenter.current.y, visible: true });
     };
 
     const handleTouchStart = (event: TouchEvent) => {
@@ -138,15 +122,6 @@ export const useZoomWithScroll = (
     const resetZoomGesture = () => {
       initialDistance.current = null;
       zoomOriginBoard.current = null;
-
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
-      resetTimeout.current = setTimeout(() => {
-        setDebugMarker({ x: 0, y: 0, visible: false });
-        setViewportRect({ x: 0, y: 0, visible: false });
-        resetTimeout.current = null;
-      }, 500);
     };
 
     const handleTouchEnd = (event: TouchEvent) => {
@@ -219,9 +194,6 @@ export const useZoomWithScroll = (
       container.removeEventListener('gestureend', handleGestureEnd);
       container.removeEventListener('wheel', handleWheel);
 
-      if (resetTimeout.current) {
-        clearTimeout(resetTimeout.current);
-      }
       if (wheelEndTimeout.current) {
         clearTimeout(wheelEndTimeout.current);
       }
@@ -231,5 +203,5 @@ export const useZoomWithScroll = (
         setScale(currentScaleRef.current);
       }
     };
-  }, [containerRef, scaleRef, maxScale, minScale, scaleSensitivity, setDebugMarker, setScale, setViewportRect]);
+  }, [containerRef, scaleRef, maxScale, minScale, scaleSensitivity, setScale]);
 };

@@ -202,7 +202,6 @@ interface TimerProps {
   savedState?: TimerSavedState;
   onStateChange?: (state: TimerSavedState) => void;
   renderTheme?: 'light' | 'dark';
-  isCompactPanel?: boolean;
 }
 
 const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme }) => {
@@ -628,12 +627,10 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
               showStartButton={showStartButton}
               showPauseButton={showPauseButton}
               showResumeButton={showResumeButton}
-              isRunning={isRunning}
               onStart={handleStart}
               onPause={pauseTimer}
               onResume={handleResume}
               onRestart={handleRestart}
-              soundMode={soundMode}
               onSoundModeToggle={cycleSoundMode}
               soundModeIcon={getSoundModeIcon()}
               soundModeTitle={getSoundModeTitle()}

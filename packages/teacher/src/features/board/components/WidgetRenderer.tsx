@@ -11,15 +11,13 @@ import ErrorBoundary from '@shared/components/ErrorBoundary';
 import { Card } from '../../../components/ui';
 import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 
-export interface WidgetWrapperComponentProps {
+interface WidgetWrapperComponentProps {
   widgetId: string;
   children: React.ReactNode;
-  dashboardVisible?: boolean;
 }
 
-export interface BoundWidgetRendererProps {
+interface BoundWidgetRendererProps {
   widgetId: string;
-  dashboardVisible?: boolean;
 }
 
 export type BoundWidgetRenderer = React.ComponentType<BoundWidgetRendererProps>;
@@ -37,7 +35,7 @@ const WidgetLoader: React.FC = () => (
   </Card>
 );
 
-const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId, dashboardVisible, wrapper: Wrapper }) => {
+const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId, wrapper: Wrapper }) => {
   const { widget, state, setState } = useWidget(widgetId);
   // Subscribe only to whether THIS widget is focused, not the focusedWidgetId value
   // This prevents all widgets from re-rendering when focus changes
@@ -63,7 +61,7 @@ const WidgetRenderer: React.FC<WidgetRendererProps> = ({ widgetId, dashboardVisi
   };
 
   return (
-    <Wrapper widgetId={widgetId} dashboardVisible={dashboardVisible}>
+    <Wrapper widgetId={widgetId}>
       <ErrorBoundary widgetName={widgetName}>
         <Suspense fallback={<WidgetLoader />}>
           <Component {...widgetProps} />
@@ -81,5 +79,3 @@ export const CanvasWidgetRenderer: BoundWidgetRenderer = (props) => (
 export const ColumnWidgetRenderer: BoundWidgetRenderer = (props) => (
   <WidgetRenderer {...props} wrapper={ColumnWidgetWrapper} />
 );
-
-export default WidgetRenderer;

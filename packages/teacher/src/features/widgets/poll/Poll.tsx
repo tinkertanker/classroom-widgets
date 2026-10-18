@@ -12,7 +12,7 @@ import PollSettings from './PollSettings';
 import { getDefaultPollQuestion } from './pollQuestions';
 import { useWidget } from '@shared/hooks/useWidget';
 import { debug } from '@shared/utils/debug';
-import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import type { WidgetProps } from '../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 import type { PollData, PollDataUpdateData, PollResults, PollVoteUpdateData } from '@shared/types/socket.types';
 
@@ -57,9 +57,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'poll',
-    savedState,
-    onStateChange
+    roomType: 'poll'
   });
 
   // Active state management
@@ -374,4 +372,4 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-export default withWidgetProvider(Poll, 'Poll');
+export default Poll;

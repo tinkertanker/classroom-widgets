@@ -9,7 +9,7 @@ import type { CompactWidgetOption } from '@shared/types/compactPanel';
  * registry order. The shells assign default launch shortcuts (1–9) in this
  * order.
  */
-export const COMPACT_WIDGET_MENU_GROUPS: readonly (readonly WidgetType[])[] = [
+const COMPACT_WIDGET_MENU_GROUPS: readonly (readonly WidgetType[])[] = [
   [WidgetType.TIMER, WidgetType.TEXT_BANNER],
   [WidgetType.TRAFFIC_LIGHT, WidgetType.TASK_CUE],
   [WidgetType.RANDOMISER, WidgetType.LIST]

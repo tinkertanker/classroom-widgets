@@ -11,7 +11,7 @@ import FillBlankEditor from './FillBlankEditor';
 import { renderBlankPreview } from './blankPreview';
 import type { FillBlankData, FillBlankVariant } from './variants';
 import { debug } from '@shared/utils/debug';
-import type { WidgetProps } from '../../shared/withWidgetProvider';
+import type { WidgetProps } from '../../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../../shared/utils/networkedWidgetHelpers';
 import type { ActivityResponseReceivedData } from '@shared/types/socket.types';
 
@@ -28,7 +28,7 @@ interface StudentResponse {
  * The Fill in the Blanks and Code Fill-in-the-Blanks widgets. Everything that
  * differs between them comes from `variant` (see ./variants).
  */
-export function FillBlankWidget({ variant, widgetId, savedState, onStateChange }: WidgetProps & { variant: FillBlankVariant }) {
+function FillBlankWidget({ variant, widgetId, savedState, onStateChange }: WidgetProps & { variant: FillBlankVariant }) {
   // State
   const [activityData, setActivityData] = useState<FillBlankData>(() => savedState?.activityData || variant.defaults);
 
@@ -51,9 +51,7 @@ export function FillBlankWidget({ variant, widgetId, savedState, onStateChange }
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'activity',
-    savedState,
-    onStateChange
+    roomType: 'activity'
   });
 
   // Active state management

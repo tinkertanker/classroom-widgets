@@ -21,7 +21,7 @@ interface FillBlankEditorProps {
  * "The {{mitochondria}} is the powerhouse of the {{cell}}." or
  * "def {{greet}}(name):".
  */
-export function FillBlankEditor({ variant, initialData, onSave, onClose, editorScope }: FillBlankEditorProps) {
+function FillBlankEditor({ variant, initialData, onSave, onClose, editorScope }: FillBlankEditorProps) {
   const { editor: config, mono } = variant;
   const editor = useSessionEditor(editorScope);
   const [template, setTemplate] = useState(initialData?.template || '');

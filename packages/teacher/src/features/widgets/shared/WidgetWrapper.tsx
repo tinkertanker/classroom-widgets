@@ -18,10 +18,9 @@ import { WidgetActions } from './WidgetActions';
 interface WidgetWrapperProps {
   widgetId: string;
   children: React.ReactNode;
-  dashboardVisible?: boolean;
 }
 
-const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children, dashboardVisible = true }) => {
+const WidgetWrapper: React.FC<WidgetWrapperProps> = ({ widgetId, children }) => {
   const { widget, move, resize, focus, remove } = useWidget(widgetId);
   const { isBeingDragged, startDrag, stopDrag } = useWidgetDrag(widgetId);
   const { scale } = useWorkspace();

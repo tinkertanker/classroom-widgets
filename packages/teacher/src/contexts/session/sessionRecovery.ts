@@ -6,7 +6,7 @@ import type { ActiveRoom } from './sessionTypes';
 // the server decides whether it is still alive (host reconnect grace and
 // idle-room expiry in packages/server/src/config/constants.js). If it is
 // gone, recovery fails and the next widget start creates a new session.
-export const RECOVERY_TIMEOUT = 5000; // 5 seconds per attempt
+const RECOVERY_TIMEOUT = 5000; // 5 seconds per attempt
 export const MAX_RECOVERY_ATTEMPTS = 3;
 
 export const SESSION_ENDED_MESSAGE = 'Your previous session ended. Press Start to begin a new one.';

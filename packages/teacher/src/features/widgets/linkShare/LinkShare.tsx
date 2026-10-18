@@ -8,7 +8,7 @@ import { isSafeHttpUrl } from '@shared/utils/validation';
 import { useTemporaryState } from '@shared/hooks/useTemporaryState';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, NetworkedWidgetControlBar } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import type { WidgetProps } from '../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 import { formatSubmissionsAsCsv, formatSubmissionsAsText, getSubmissionsCsvFilename } from './submissionExport';
 import type { LinkShareNewSubmissionData, LinkSubmission } from '@shared/types/socket.types';
@@ -108,9 +108,7 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'linkShare',
-    savedState,
-    onStateChange
+    roomType: 'linkShare'
   });
 
   // Active state management
@@ -390,4 +388,4 @@ function LinkShare({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-export default withWidgetProvider(LinkShare, 'LinkShare');
+export default LinkShare;

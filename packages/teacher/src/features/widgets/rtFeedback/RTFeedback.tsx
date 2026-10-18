@@ -6,7 +6,7 @@ import { NetworkedWidgetEmpty } from '../shared/NetworkedWidgetEmpty';
 import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
 import { NetworkedWidgetControlBar, NetworkedWidgetOverlays, NetworkedWidgetStats } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import type { WidgetProps } from '../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 import type { RTFeedbackUpdateData } from '@shared/types/socket.types';
 
@@ -49,9 +49,7 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'rtfeedback',
-    savedState,
-    onStateChange
+    roomType: 'rtfeedback'
   });
 
   // Active state management
@@ -199,4 +197,4 @@ function RTFeedback({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-export default withWidgetProvider(RTFeedback, 'RTFeedback');
+export default RTFeedback;

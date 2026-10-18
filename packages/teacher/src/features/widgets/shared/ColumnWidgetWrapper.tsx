@@ -10,10 +10,9 @@ import { WidgetActions } from './WidgetActions';
 interface ColumnWidgetWrapperProps {
   widgetId: string;
   children: React.ReactNode;
-  dashboardVisible?: boolean;
 }
 
-const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children, dashboardVisible = true }) => {
+const ColumnWidgetWrapper: React.FC<ColumnWidgetWrapperProps> = ({ widgetId, children }) => {
   const { widget, remove } = useWidget(widgetId);
   const setFocusedWidget = useWorkspaceUiStore((state) => state.setFocusedWidget);
   // Use a boolean selector to avoid re-rendering all widgets on every focus change

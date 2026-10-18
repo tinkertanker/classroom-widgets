@@ -7,7 +7,7 @@ import { widgetWrapper, widgetContainer } from '@shared/utils/styles';
 import { isSafeHttpUrl } from '@shared/utils/validation';
 import { NetworkedWidgetOverlays, NetworkedWidgetStats, WidgetControlBar, PlayPauseButton, ClearButton } from '../shared/components';
 import { useSocketEvents } from '../../session/hooks/useSocketEvents';
-import { withWidgetProvider, WidgetProps } from '../shared/withWidgetProvider';
+import type { WidgetProps } from '../shared/widgetProps';
 import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/networkedWidgetHelpers';
 import type { HandoutItem, HandoutItemAddedData } from '@shared/types/socket.types';
 
@@ -27,9 +27,7 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'handout',
-    savedState,
-    onStateChange
+    roomType: 'handout'
   });
 
   // Active state management
@@ -292,4 +290,4 @@ function Handout({ widgetId, savedState, onStateChange }: WidgetProps) {
   );
 }
 
-export default withWidgetProvider(Handout, 'Handout');
+export default Handout;

@@ -4,7 +4,7 @@ export interface PollQuestion {
   options: string[];
 }
 
-export const classroomPulsePoll: PollQuestion = {
+const classroomPulsePoll: PollQuestion = {
   question: 'How is the lesson for you right now?',
   options: ['Way too fast', 'Too fast', 'Just right', 'Too slow', 'Way too slow']
 };

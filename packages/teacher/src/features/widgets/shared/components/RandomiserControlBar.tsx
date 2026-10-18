@@ -5,7 +5,6 @@ import { cn, buttons } from '@shared/utils/styles';
 
 interface RandomiserControlBarProps {
   buttonSettings: 'normal' | 'result';
-  isSpinning: boolean;
   isLoading: boolean;
   result: string;
   removedChoices: string[];
@@ -21,7 +20,6 @@ interface RandomiserControlBarProps {
  */
 export const RandomiserControlBar: React.FC<RandomiserControlBarProps> = ({
   buttonSettings,
-  isSpinning,
   isLoading,
   result,
   removedChoices,

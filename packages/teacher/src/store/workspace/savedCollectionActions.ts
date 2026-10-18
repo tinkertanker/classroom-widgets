@@ -5,7 +5,6 @@ import {
   SavedCollections,
   SavedItem,
   SavedRandomiserList,
-  SavedQuestionBank,
   SavedPollQuestion
 } from '@shared/types/storage';
 import { saveStorage } from '@shared/utils/storageMigration';
@@ -125,9 +124,6 @@ export const createSavedCollectionActions = (set: StoreSet, get: StoreGet): Pick
   | 'saveRandomiserList'
   | 'getRandomiserLists'
   | 'deleteRandomiserList'
-  | 'saveQuestionBank'
-  | 'getQuestionBanks'
-  | 'deleteQuestionBank'
   | 'savePollQuestion'
   | 'getPollQuestions'
   | 'deletePollQuestion'
@@ -141,17 +137,6 @@ export const createSavedCollectionActions = (set: StoreSet, get: StoreGet): Pick
 
   deleteRandomiserList: (id: string) => {
     deleteCollectionItem(set, 'randomiserLists', id);
-  },
-
-  saveQuestionBank: (name: string, questions: Array<{ text: string; studentName?: string }>): string =>
-    saveCollectionItem(set, 'questionBanks', 'questions', 'question bank', name,
-      (base): SavedQuestionBank => ({ ...base, type: 'questions', questions })),
-
-  getQuestionBanks: (): SavedQuestionBank[] =>
-    getCollectionItems(get().savedCollections, 'questionBanks'),
-
-  deleteQuestionBank: (id: string) => {
-    deleteCollectionItem(set, 'questionBanks', id);
   },
 
   savePollQuestion: (name: string, question: string, options: string[]): string =>

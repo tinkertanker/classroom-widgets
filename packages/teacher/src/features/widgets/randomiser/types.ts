@@ -1,12 +1,12 @@
 // Type definitions for Randomiser widget
 
-export interface RandomiserState {
+interface RandomiserState {
   input: string;
   choices: string[];
   removedChoices: string[];
 }
 
-export interface RandomiserSavedState {
+interface RandomiserSavedState {
   input: string;
   choices: string[];
   removedChoices?: string[];
@@ -17,9 +17,3 @@ export interface RandomiserProps {
   onStateChange?: (state: RandomiserState) => void;
 }
 
-export interface RandomiserSettingsProps {
-  choices: string[];
-  removedChoices: string[];
-  onUpdateChoices: (choices: string[]) => void;
-  onUpdateRemovedChoices: (choices: string[]) => void;
-}

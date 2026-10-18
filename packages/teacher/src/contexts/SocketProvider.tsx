@@ -41,10 +41,6 @@ export const SocketProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       debug.error('Connection error:', error);
       setServerStatus({ connected: false, error: error.message });
     });
-    
-    newSocket.on('reconnect_attempt', (attemptNumber: number) => {
-      debug(`Reconnecting... (attempt ${attemptNumber})`);
-    });
 
     return () => {
       detachUsage();

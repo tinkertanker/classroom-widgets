@@ -5,7 +5,6 @@ import { useWorkspaceUiStore } from '../../../store/workspaceUiStore';
 // LLM fallback (Ollama) usually answers in under a second, but a wedged
 // backend would otherwise leave the voice UI waiting forever
 const COMMAND_TIMEOUT_MS = 15000;
-const HEALTH_CHECK_TIMEOUT_MS = 5000;
 
 // AbortSignal.timeout() is newer than the app's build target; fall back to a
 // manual controller so older runtimes still send the request un-bounded by
@@ -29,7 +28,7 @@ function timeoutSignal(ms: number): AbortSignal | undefined {
   return controller.signal;
 }
 
-export class VoiceCommandService {
+class VoiceCommandService {
   // The API lives on the backend server, not the origin serving this app
   // (widgets.tk.sg has no /api route), so use the configured server URL
   private get baseUrl(): string {
@@ -96,37 +95,6 @@ export class VoiceCommandService {
           shouldSpeak: false
         }
       };
-    }
-  }
-
-  /**
-   * Get current widget context for voice commands
-   */
-  getWidgetContext(): VoiceContext {
-    // This will be implemented when we integrate with the main app
-    // For now, return a basic context structure
-    return {
-      activeWidgets: [],
-      availableWidgets: [
-        'timer', 'list', 'poll', 'randomiser', 'questions',
-        'image', 'linkShare', 'rtFeedback', 'ticTacToe'
-      ],
-      screenPosition: { x: 0, y: 0 }
-    };
-  }
-
-  /**
-   * Check if the voice command service is available
-   */
-  async checkHealth(): Promise<boolean> {
-    try {
-      const response = await fetch(`${this.baseUrl}/voice-command/health`, {
-        signal: timeoutSignal(HEALTH_CHECK_TIMEOUT_MS)
-      });
-      return response.ok;
-    } catch (error) {
-      debug.error('Voice command service health check failed:', error);
-      return false;
     }
   }
 }

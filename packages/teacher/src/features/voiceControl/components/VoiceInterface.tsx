@@ -17,14 +17,12 @@ interface VoiceInterfaceProps {
   isOpen: boolean;
   onClose: () => void;
   onTranscriptComplete: (transcript: string) => Promise<VoiceCommandResponse>;
-  className?: string;
 }
 
 const VoiceInterface: React.FC<VoiceInterfaceProps> = ({
   isOpen,
   onClose,
-  onTranscriptComplete,
-  className = ''
+  onTranscriptComplete
 }) => {
   const [voiceState, setVoiceState] = useState<VoiceInterfaceState>('idle');
   const [parsedCommand, setParsedCommand] = useState<VoiceCommandResponse | null>(null);

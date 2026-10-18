@@ -16,7 +16,6 @@ interface Window {
   playTrashSound?: () => void
   setStickerMode?: (mode: boolean, type?: string | null) => void
   getStickerState?: () => { mode: boolean; type: string | null }
-  getStickerMode?: () => boolean
   activateVoiceControl?: () => void
   getVoiceControlActive?: () => boolean
 }

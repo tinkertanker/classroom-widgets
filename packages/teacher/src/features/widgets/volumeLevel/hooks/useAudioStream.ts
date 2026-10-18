@@ -92,10 +92,4 @@ export function useAudioStream({ isEnabled, onStreamReady }: UseAudioStreamOptio
       analyserRef.current = null;
     };
   }, [isEnabled]);
-
-  return {
-    audioContext: audioContextRef.current,
-    analyser: analyserRef.current,
-    mediaStream: mediaStreamRef.current
-  };
 }
