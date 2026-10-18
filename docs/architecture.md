@@ -732,7 +732,7 @@ import { getEmptyStateButtonText, getEmptyStateDisabled } from '../shared/utils/
 function NetworkedWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
   // Room lifecycle management
   const { hasRoom, isStarting, error, handleStart, session, recoveryData } =
-    useNetworkedWidget({ widgetId, roomType: 'myWidget', savedState, onStateChange });
+    useNetworkedWidget({ widgetId, roomType: 'myWidget' });
 
   // Active state with automatic socket sync and recovery
   const { isActive, toggleActive } = useNetworkedWidgetState({

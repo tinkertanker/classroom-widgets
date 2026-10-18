@@ -147,9 +147,7 @@ function MyWidget({ widgetId, savedState, onStateChange }: WidgetProps) {
     recoveryData
   } = useNetworkedWidget({
     widgetId,
-    roomType: 'myWidget',
-    savedState,
-    onStateChange
+    roomType: 'myWidget'
   });
 
   // Active state management - handles pause/resume with socket sync
