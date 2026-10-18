@@ -23,7 +23,7 @@ Events follow a `namespace:action` structure, for example `session:create` or `p
 **Teacher Creates Session**
 
 *   `Teacher → Server`: `session:create` with `{ existingCode?, hostToken? }`
-*   `Server → Teacher`: `session:created` with `{ success, code, isExisting?, activeRooms?, hostToken? }`
+*   `Server → Teacher`: the `session:create` acknowledgement callback receives `{ success, code, isExisting?, activeRooms?, hostToken? }`
 
 The server issues a per-session `hostToken` in the response; the teacher must present it (with `existingCode`) to reclaim the host role after a reconnect. The token is rotated on every successful reclaim — always use the latest one returned.
 
