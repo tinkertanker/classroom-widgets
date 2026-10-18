@@ -659,4 +659,4 @@ When reporting issues, include:
 4. Steps to reproduce
 5. Error messages from browser console
 
-For more help, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) or open an issue on GitHub.
+For more help, see [Troubleshooting](#troubleshooting) above or open an issue on GitHub.

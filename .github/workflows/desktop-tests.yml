@@ -60,6 +60,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Test the Linux dependency cache action
+        run: node --test .github/actions/install-linux-dependencies/cache.test.cjs
       - uses: ./.github/actions/install-linux-dependencies
       - run: npm test
         working-directory: packages/linux-dashboard

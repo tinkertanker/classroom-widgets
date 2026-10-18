@@ -471,7 +471,7 @@ The API remains the same - BAMLVoiceCommandService implements the same interface
 ## References
 
 - [BAML Documentation](https://docs.boundaryml.com/)
-- [Ollama Setup](../OLLAMA_QUICKSTART.md)
+- [Ollama Setup](../packages/server/OLLAMA_QUICKSTART.md)
 - [Voice Command System](./VOICE_COMMAND_SYSTEM.md)
 - [Voice Command Shared Definitions](./VOICE_COMMAND_SHARED_DEFINITIONS.md)
 

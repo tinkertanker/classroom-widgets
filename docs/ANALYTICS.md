@@ -74,9 +74,6 @@ Add to `.env.production`:
 VITE_UMAMI_SCRIPT_URL=https://analytics.yourdomain.com/script.js
 VITE_UMAMI_WEBSITE_ID=your-production-website-id
 
-# Umami server
-UMAMI_DOMAIN=analytics.yourdomain.com
-
 # Database credentials (use strong passwords!)
 UMAMI_DB_USER=umami
 UMAMI_DB_PASSWORD=your-secure-password-here

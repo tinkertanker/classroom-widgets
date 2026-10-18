@@ -23,7 +23,6 @@ secrets
 **/secrets
 src/secrets
 .playwright-cli
-.repopromt
 .clawpatch
 .wrangler
 # Cloudflare deploy tooling (its staged teacher build, wrangler state); no
