@@ -65,7 +65,6 @@ export interface SavedCollections {
 // CURRENT FORMAT (Version 2) - Multi-workspace support
 // =============================================================================
 
-export const CURRENT_STORAGE_VERSION = 2;
 export const STORAGE_KEY = 'classroom-widgets-storage-v2';
 export const LEGACY_STORAGE_KEY = 'workspace-storage';  // Zustand's old key
 
@@ -129,8 +128,6 @@ export interface GlobalSettings {
  */
 export interface StorageFormatV2 {
   version: 2;
-  migratedFrom?: number;  // Previous version if migrated
-  migratedAt?: number;    // Timestamp of migration
 
   // Active workspace
   currentWorkspaceId: string;
@@ -190,7 +187,7 @@ export function createDefaultWorkspace(id: string, name: string = DEFAULT_WORKSP
   };
 }
 
-export function createDefaultGlobalSettings(): GlobalSettings {
+function createDefaultGlobalSettings(): GlobalSettings {
   return {
     theme: 'light',
     linkShortener: createDefaultShortenerSettings(),

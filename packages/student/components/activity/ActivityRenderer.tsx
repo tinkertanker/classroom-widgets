@@ -5,8 +5,7 @@ import { Socket } from 'socket.io-client';
 import type {
   ActivityDefinition,
   ActivityAction,
-  ActivityResults,
-  StudentAnswers
+  ActivityResults
 } from '@shared/types/activity.types';
 import type {
   ActivityFeedbackData,
@@ -332,5 +331,3 @@ function ActivityContentInner() {
     </div>
   );
 }
-
-export default ActivityRenderer;

@@ -7,7 +7,6 @@ import { useCompactHeader } from './hooks/useCompactHeader';
 import JoinForm from './components/JoinForm';
 import AdminPanel from './components/AdminPanel';
 import RoomCard from './components/RoomCard';
-import type { RoomType } from './utils/roomTypeMeta';
 import {
   createJoinedRoom,
   roomIdentity,
@@ -19,10 +18,6 @@ import {
   type SessionRoomSnapshot,
   type SessionWidgetStateChangedEvent
 } from './utils/joinedRooms';
-
-// The room-type union lives with the presentation table it keys, so that adding a type forces
-// a table entry. Re-exported here because this module is where consumers have always found it.
-export type { RoomType };
 
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);

@@ -12,7 +12,7 @@ export function DropZoneBlock({ block }: DropZoneBlockProps) {
   const { filled, item, feedback, correctAnswer } = useActivityTarget(targetId);
   const { isActive, results, activity, removeItem } = useActivity();
 
-  const { setNodeRef, isOver, active } = useDroppable({
+  const { setNodeRef, isOver } = useDroppable({
     id: targetId,
     disabled: !isActive || !!results
   });
@@ -135,5 +135,3 @@ export function DropZoneBlock({ block }: DropZoneBlockProps) {
     </div>
   );
 }
-
-export default DropZoneBlock;

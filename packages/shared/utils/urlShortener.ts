@@ -65,10 +65,8 @@ export const SHORTENER_PROVIDERS: readonly ShortenerProviderInfo[] = [
   }
 ] as const;
 
-export const DEFAULT_SHORTENER_PROVIDER: ShortenerProvider = DEFAULT_SHORTENER_PROVIDER_ID;
-
 export function createDefaultShortenerSettings(): ShortenerSettings {
-  return { provider: DEFAULT_SHORTENER_PROVIDER, shortioApiKey: '', shortioDomain: '' };
+  return { provider: DEFAULT_SHORTENER_PROVIDER_ID, shortioApiKey: '', shortioDomain: '' };
 }
 
 export function getProviderInfo(provider: ShortenerProvider): ShortenerProviderInfo {

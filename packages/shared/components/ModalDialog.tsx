@@ -10,9 +10,6 @@ interface ModalDialogProps {
   children: ReactNode;
   className?: string;
   footer?: ReactNode;
-  subtitle?: ReactNode;
-  showCloseButton?: boolean;
-  contentClassName?: string;
   maxHeight?: string;
 }
 
@@ -22,9 +19,6 @@ const ModalDialog: React.FC<ModalDialogProps> = ({
   children,
   className = '',
   footer,
-  subtitle,
-  showCloseButton = true,
-  contentClassName = '',
   maxHeight = '80vh',
 }) => {
   // Handle escape key to close
@@ -62,25 +56,18 @@ const ModalDialog: React.FC<ModalDialogProps> = ({
           <h2 className="text-xl font-semibold text-warm-gray-800 dark:text-warm-gray-100">
             {title}
           </h2>
-          {showCloseButton && (
-            <button
-              onClick={onClose}
-              className="text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 text-2xl leading-none"
-              aria-label="Close dialog"
-            >
-              ×
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            className="text-warm-gray-500 hover:text-warm-gray-700 dark:text-warm-gray-400 dark:hover:text-warm-gray-200 text-2xl leading-none"
+            aria-label="Close dialog"
+          >
+            ×
+          </button>
         </div>
-        {subtitle && (
-          <div>
-            {subtitle}
-          </div>
-        )}
       </div>
       
       {/* Content */}
-      <div className={`flex-1 overflow-y-auto ${contentClassName}`}>
+      <div className="flex-1 overflow-y-auto">
         {children}
       </div>
       

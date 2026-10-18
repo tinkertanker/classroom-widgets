@@ -1,10 +1,10 @@
 // SavedCollectionsDialog - Shared dialog for saving/loading reusable content
 
 import React, { useState } from 'react';
-import { SavedRandomiserList, SavedQuestionBank, SavedPollQuestion } from '../types/storage';
+import { SavedRandomiserList, SavedPollQuestion } from '../types/storage';
 import ModalDialog from './ModalDialog';
 
-type SavedItem = SavedRandomiserList | SavedQuestionBank | SavedPollQuestion;
+type SavedItem = SavedRandomiserList | SavedPollQuestion;
 
 interface SavedCollectionsDialogProps<T extends SavedItem> {
   type: T['type'];
@@ -35,8 +35,6 @@ function SavedCollectionsDialog<T extends SavedItem>({
     switch (type) {
       case 'randomiser':
         return { title: 'Saved Lists', itemLabel: 'list', itemLabelPlural: 'lists', saveHint: 'choices' };
-      case 'questions':
-        return { title: 'Saved Question Banks', itemLabel: 'question bank', itemLabelPlural: 'question banks', saveHint: 'questions' };
       case 'poll':
         return { title: 'Saved Poll Questions', itemLabel: 'poll', itemLabelPlural: 'polls', saveHint: 'poll question' };
     }
@@ -67,9 +65,6 @@ function SavedCollectionsDialog<T extends SavedItem>({
   const getItemCount = (item: SavedItem) => {
     if (item.type === 'randomiser') {
       return item.choices.length;
-    }
-    if (item.type === 'questions') {
-      return item.questions.length;
     }
     // Poll: show number of options
     return item.options.length;

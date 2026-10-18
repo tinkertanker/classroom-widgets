@@ -23,5 +23,3 @@ export function TextBlock({ block }: TextBlockProps) {
     </span>
   );
 }
-
-export default TextBlock;

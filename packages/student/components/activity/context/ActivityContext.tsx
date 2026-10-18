@@ -16,7 +16,6 @@ interface ActivityContextValue {
   correctAnswers: Record<string, string> | null;
 
   // Student answers
-  placements: ItemPlacement[];
   textInputs: Record<string, string>;
 
   // Actions
@@ -111,7 +110,6 @@ export function ActivityProvider({
     actions,
     results,
     correctAnswers,
-    placements,
     textInputs,
     placeItem,
     removeItem,
@@ -129,7 +127,6 @@ export function ActivityProvider({
     actions,
     results,
     correctAnswers,
-    placements,
     textInputs,
     placeItem,
     removeItem,
