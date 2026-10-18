@@ -49,7 +49,19 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: ./.github/actions/install-pnpm
+        with:
+          cache: store
+      # Without the teacher build the real-WebKit tests (WidgetCheckpointTests and
+      # friends) skip themselves.
+      - run: pnpm --filter @classroom-widgets/teacher build:desktop
       - run: swift test --package-path packages/macos-dashboard
+        env:
+          CLASSROOM_WIDGETS_WEB_ROOT: ${{ github.workspace }}/packages/teacher/build
 
   linux:
     name: Linux unit tests
