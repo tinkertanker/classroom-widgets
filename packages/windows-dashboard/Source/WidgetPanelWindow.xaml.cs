@@ -26,7 +26,6 @@ public partial class WidgetPanelWindow : Window
     private double _backgroundOpacity;
     private readonly DashboardSettings _settings;
     private bool _isDark;
-    private IReadOnlyList<CompactWidgetOption> _options = Array.Empty<CompactWidgetOption>();
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _frameTimer;
     private DateTime _pointerLeftAt = DateTime.MinValue;
@@ -146,7 +145,6 @@ public partial class WidgetPanelWindow : Window
 
     public void SetWidgetCreationOptions(IReadOnlyList<CompactWidgetOption> options)
     {
-        _options = options;
         AddMenu.Items.Clear();
         var display = new MenuItem { Header = CompactWidgetMenu.DisplayLabel };
         display.Click += (_, _) => DisplayPreviewRequested?.Invoke();
