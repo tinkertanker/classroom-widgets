@@ -1,7 +1,7 @@
 import { BrowserWindow, ipcMain, Menu, screen, WebContentsView } from 'electron';
 import { EventEmitter } from 'node:events';
 import type { Rect } from './displayGeometry';
-import { buildUrl, ORIGIN } from './appProtocol';
+import { buildUrl } from './appProtocol';
 import { log } from './log';
 import {
   clampSize,
@@ -30,8 +30,6 @@ interface ChromeUpdate {
 }
 
 const CHROME_HEIGHT = 30;
-const LIGHT_BACKGROUND = '#F5F5F7';
-const DARK_BACKGROUND = '#1E1F24';
 
 const panelsByChromeContents = new Map<number, WidgetPanelWindow>();
 let chromeListenerInstalled = false;

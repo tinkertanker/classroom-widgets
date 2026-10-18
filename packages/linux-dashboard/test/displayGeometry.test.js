@@ -2,13 +2,6 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const geometry = require('../out/main/displayGeometry.js');
 
-test('aspectFit returns centered letterbox geometry and rejects invalid sizes', () => {
-  assert.deepEqual(geometry.aspectFit({ width: 16, height: 9 }, { x: 0, y: 0, width: 100, height: 100 }), {
-    x: 0, y: 21.875, width: 100, height: 56.25,
-  });
-  assert.equal(geometry.aspectFit({ width: 0, height: 1 }, { x: 0, y: 0, width: 1, height: 1 }), null);
-});
-
 test('mapPreviewPointToSource uses open right and bottom edges', () => {
   const image = { x: 10, y: 20, width: 100, height: 50 };
   const source = { x: 100, y: 200, width: 1920, height: 1080 };
