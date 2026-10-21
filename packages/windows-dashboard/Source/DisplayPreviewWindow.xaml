@@ -6,7 +6,8 @@
         ShowInTaskbar="True"
         Background="Black"
         MinWidth="320"
-        MinHeight="282">
+        MinHeight="282"
+        UseLayoutRounding="True">
     <Grid Background="Black">
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />

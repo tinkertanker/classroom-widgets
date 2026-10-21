@@ -157,6 +157,110 @@ public sealed class DisplayPreviewCoordinatorTests
         }
     }
 
+    // #211: the preview must ask for frames at its own pixel size. Ways this goes wrong: the
+    // coordinator does not pass the preview size (full-size frames again), passes DIPs instead
+    // of pixels (only visible above 100% scaling), or passes the window size instead of the
+    // image area. The expected size is worked out from the window's client rectangle, not
+    // from the code under test.
+    [Fact]
+    public void LivePreviewCapturesAtItsOwnPixelSize()
+    {
+        var realDataDirectory = DashboardSettings.DataDirectory;
+        var testDataDirectory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
+        DashboardSettings.UseDataDirectory(testDataDirectory);
+        try
+        {
+            WpfTestHost.Run(() =>
+            {
+                var scale = PrimaryScale();
+                // 640x480 DIP of source, in physical pixels, so the minimum-size preview is
+                // well under half of it at any scaling.
+                var sourceBounds = new Rect(0, 0, Math.Round(640 * scale), Math.Round(480 * scale));
+                var host = HostDescriptor();
+                var catalog = new DisplayCatalog(() => new[]
+                {
+                    host,
+                    new DisplayDescriptor(SourceId, "Test display", sourceBounds, sourceBounds, false)
+                });
+                // The smallest preview, clear of the source region (fits 1024x768 DIP).
+                var frame = new PanelFrame { Left = 680, Top = 400, Width = 320, Height = 282 };
+                var settings = new DashboardSettings { DisplayPreviewSourceId = SourceId, DisplayPreviewFrame = frame };
+                var content = new SyntheticSourceWindow(sourceBounds);
+                using var coordinator = new DisplayPreviewCoordinator(settings, catalog);
+                try
+                {
+                    content.ShowAndWaitUntilOnScreen();
+                    coordinator.Open();
+                    var window = coordinator.Window!;
+                    WpfTestHost.PumpUntil(() => window.IsVisible && window.StatusText.Text == "Click to see display", Timeout, "the preview to open");
+                    Assert.False(DisplayGeometry.Intersects(window.GetPhysicalBounds(), sourceBounds));
+
+                    // The image area is the client area less the 42 DIP control bar.
+                    Assert.True(NativeMethods.GetClientRect(new System.Windows.Interop.WindowInteropHelper(window).Handle, out var client));
+                    var area = new Size(client.Right - client.Left, client.Bottom - client.Top - Math.Round(42 * scale));
+                    var fit = Math.Min(area.Width / sourceBounds.Width, area.Height / sourceBounds.Height);
+                    var expectedWidth = sourceBounds.Width * fit;
+                    var expectedHeight = sourceBounds.Height * fit;
+                    Assert.True(expectedWidth <= sourceBounds.Width / 2, $"the preview ({area}) must be at most half the source ({sourceBounds.Size}) for a scaled capture");
+
+                    ClickPower(window);
+                    WpfTestHost.PumpUntil(
+                        () => window.PreviewImage.Source is System.Windows.Media.Imaging.BitmapSource { PixelWidth: var w, PixelHeight: var h }
+                            && FitsPreview(w, h, expectedWidth, expectedHeight, sourceBounds.Size),
+                        Timeout, $"a frame of about {expectedWidth:0}x{expectedHeight:0} (preview area {area})");
+                    var image = (System.Windows.Media.Imaging.BitmapSource)window.PreviewImage.Source!;
+                    var (width, height) = (image.PixelWidth, image.PixelHeight);
+                    var rendered = WpfTestHost.RenderOverBlack(image, width, height);
+                    WpfTestHost.SaveEvidence("211-coordinator-preview.png", rendered, width, height);
+                    WpfTestHost.SaveEvidence("211-coordinator-window.png", Snapshot(window));
+                    AssertQuadrant(SyntheticSourceWindow.TopLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height / 4));
+                    AssertQuadrant(SyntheticSourceWindow.BottomRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height * 3 / 4));
+                }
+                finally
+                {
+                    content.Close();
+                }
+            });
+        }
+        finally
+        {
+            DashboardSettings.UseDataDirectory(realDataDirectory);
+            if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Whether a frame has the source's aspect ratio and fills the preview on its limiting side.
+    /// WPF layout rounding can move the image area by a pixel when the 42 DIP bar is a half
+    /// pixel (125%, 175%), which the aspect ratio can turn into about 1.9 px on the other side.
+    /// </summary>
+    private static bool FitsPreview(int width, int height, double expectedWidth, double expectedHeight, Size source)
+        => Math.Abs(height - width * source.Height / source.Width) <= 1.5
+            && Math.Min(Math.Abs(width - expectedWidth), Math.Abs(height - expectedHeight)) <= 1.5
+            && width <= expectedWidth + 2 && height <= expectedHeight + 2;
+
+    /// <summary>The primary monitor's scale factor, read from a throwaway window placed on it.</summary>
+    private static double PrimaryScale()
+    {
+        var probe = new Window { Left = 0, Top = 0, Width = 10, Height = 10, ShowActivated = false, ShowInTaskbar = false, WindowStyle = WindowStyle.None };
+        probe.Show();
+        try
+        {
+            return PresentationSource.FromVisual(probe)!.CompositionTarget!.TransformToDevice.M11;
+        }
+        finally
+        {
+            probe.Close();
+        }
+    }
+
+    private static void AssertQuadrant(System.Windows.Media.Color expected, (byte R, byte G, byte B, byte A) actual)
+    {
+        Assert.InRange(actual.R, Math.Max(0, expected.R - 3), Math.Min(255, expected.R + 3));
+        Assert.InRange(actual.G, Math.Max(0, expected.G - 3), Math.Min(255, expected.G + 3));
+        Assert.InRange(actual.B, Math.Max(0, expected.B - 3), Math.Min(255, expected.B + 3));
+    }
+
     private static DisplayDescriptor HostDescriptor()
     {
         var screen = Forms.Screen.PrimaryScreen!;
@@ -227,5 +331,18 @@ public sealed class DisplayPreviewCoordinatorTests
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetCursorPos(out POINT point);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool GetClientRect(IntPtr handle, out RECT rect);
     }
 }

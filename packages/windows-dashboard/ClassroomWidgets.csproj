@@ -35,6 +35,8 @@
   <ItemGroup>
     <Compile Remove="Tests\**" />
     <None Remove="Tests\**" />
+    <Compile Remove="perf\**" />
+    <None Remove="perf\**" />
   </ItemGroup>
 
   <ItemGroup>

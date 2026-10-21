@@ -13,6 +13,22 @@ public static class DisplayGeometry
         return new Rect(bounds.X + (bounds.Width - width) / 2, bounds.Y + (bounds.Height - height) / 2, width, height);
     }
 
+    /// <summary>
+    /// The pixel size to capture a source of <paramref name="source"/> pixels at, so it fits
+    /// a preview of <paramref name="target"/> pixels. Keeps the source aspect ratio and never
+    /// upscales. Null when the preview has no usable size yet.
+    /// </summary>
+    public static (int Width, int Height)? CaptureSize(Size source, Size target)
+    {
+        if (!Positive(target) || target.Width < 1 || target.Height < 1) return null;
+        var sourceWidth = double.IsFinite(source.Width) ? Math.Max(1, Math.Round(source.Width)) : 1;
+        var sourceHeight = double.IsFinite(source.Height) ? Math.Max(1, Math.Round(source.Height)) : 1;
+        var scale = Math.Min(1, Math.Min(target.Width / sourceWidth, target.Height / sourceHeight));
+        return (
+            (int)Math.Max(1, Math.Round(sourceWidth * scale)),
+            (int)Math.Max(1, Math.Round(sourceHeight * scale)));
+    }
+
     public static Point? MapPreviewPointToSource(Point point, Rect imageRect, Rect sourceBounds)
     {
         if (!Finite(point) || !Positive(imageRect.Size) || !Finite(imageRect) || !Positive(sourceBounds.Size) || !Finite(sourceBounds)) return null;
