@@ -235,15 +235,16 @@ async function join(code, name) {
 
     await check('read budgets cannot grow by creating and closing rooms', async () => {
       // Each budget lives on its socket and at most 2 x MAX_ROOMS_PER_SESSION
-      // are kept, however many rooms a host cycles through. 60 cycles take
-      // longer than one 5 s window only on a very slow machine.
+      // are kept, however many rooms a host cycles through. The first 21
+      // cycles fit in one 5 s window, so the 21st room's read is refused.
       const cycler = await host();
       let answered = 0;
       const started = Date.now();
       for (let i = 0; i < 60; i++) {
         const widgetId = `cycle-${i}`;
-        await cycler.timeout(3000).emitWithAck('session:createRoom', { sessionCode: cycler.code, roomType: 'handout', widgetId });
-        const got = maybe(waitFor(cycler, 'handout:stateUpdate', d => d.widgetId === widgetId, 300));
+        const created = await cycler.timeout(3000).emitWithAck('session:createRoom', { sessionCode: cycler.code, roomType: 'handout', widgetId });
+        assert.equal(created.success, true, `createRoom ${widgetId}: ${created.error}`);
+        const got = maybe(waitFor(cycler, 'handout:stateUpdate', d => d.widgetId === widgetId, i < 20 ? 1500 : 300));
         cycler.emit('handout:requestState', { sessionCode: cycler.code, widgetId });
         if (await got) answered++;
         cycler.emit('session:closeRoom', { sessionCode: cycler.code, roomType: 'handout', widgetId });

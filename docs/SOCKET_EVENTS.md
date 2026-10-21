@@ -89,7 +89,8 @@ All widgets support a state request pattern for synchronizing late-joining stude
 
 Only the session's host and students whose socket joined that session are
 answered; any other read gets no reply and does not keep the room from idle
-expiry. Reads are budgeted per socket and per room (10 per 5 seconds), and
+expiry. Reads are budgeted per socket and per room (10 per 5 seconds), one
+socket can read at most 20 different rooms per 5-second window, and
 over-budget reads get no reply. The student app reads a card's state when it
 needs it on mount and again after every successful `session:joined`, not on
 the bare reconnect, so its reconnect reads always follow the rejoin.

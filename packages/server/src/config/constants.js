@@ -32,6 +32,8 @@ module.exports = {
     MAX_ROOMS_PER_SESSION: 10,
     MAX_PARTICIPANTS_PER_SESSION: 1000, // Maximum participants per session
     MAX_TOTAL_PARTICIPANTS: 50000,      // Server-wide participant limit
+    // Keep at or above MAX_PARTICIPANTS_PER_SESSION: the activity response cap
+    // relies on it so a present student is never refused (ActivityRoom).
     MAX_SUBMISSIONS_PER_ROOM: 1000,
     MAX_QUESTIONS_PER_ROOM: 500,
     ROOM_CODE_LENGTH: sessionCode.length,
