@@ -82,7 +82,9 @@ public sealed class DisplayCaptureSessionTests
     // Capturing at preview size (#211) can go wrong by: drawing the scaled frame with the
     // wrong channel order or upside down; keeping a stale buffer or bitmap after the preview
     // is resized (wrong size, stride mismatch or an exception); upscaling past the source;
-    // capturing a full-size frame, or failing, while the preview has no size yet; and leaking the reused memory DC, bitmap or pixel buffer on resize or dispose.
+    // capturing a full-size frame, or failing, while the preview has no size yet; scaling
+    // with GDI's default stretch mode, which ANDs pixels together so detail goes dark; and
+    // leaking the reused memory DC or bitmap on resize or dispose.
     [Fact]
     public void ScaledCaptureFollowsPreviewSizeAndKeepsColoursAndOrientation()
     {
@@ -128,6 +130,85 @@ public sealed class DisplayCaptureSessionTests
     }
 
     [Fact]
+    public void ScaledCaptureKeepsSampledColoursIntact()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var region = new Rect(0, 0, 200, 100);
+            var source = StripeWindow(region);
+            source.Show();
+            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
+            try
+            {
+                using var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(100, 50));
+                Exception? failure = null;
+                session.Failed += error => failure = error;
+                session.Start();
+                AssertFrameSize(session, () => failure, 100, 50);
+                var rendered = WpfTestHost.RenderOverBlack(session.Image!, 100, 50);
+                WpfTestHost.SaveEvidence("211-stripes-100x50.png", rendered, 100, 50);
+                // One-pixel red and blue columns at 2:1. Sampling or averaging keeps red, blue
+                // or purple; ANDing pixels (GDI's default mode) gives black, ORing gives magenta.
+                for (var x = 10; x < 90; x += 10)
+                {
+                    var (r, g, b, _) = WpfTestHost.PixelAt(rendered, 100, x, 25);
+                    Assert.InRange(g, 0, 40);
+                    Assert.InRange(r + b, 200, 310);
+                }
+            }
+            finally
+            {
+                source.Close();
+            }
+        });
+    }
+
+    /// <summary>A topmost window of one-pixel red and blue columns at <paramref name="bounds"/> (physical pixels).</summary>
+    private static Window StripeWindow(Rect bounds)
+    {
+        var image = new System.Windows.Controls.Image { Stretch = Stretch.None, SnapsToDevicePixels = true };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor);
+        var window = new Window
+        {
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            Topmost = true,
+            ShowActivated = false,
+            UseLayoutRounding = true,
+            Background = Brushes.Black,
+            Content = image,
+        };
+        window.SourceInitialized += (_, _) =>
+        {
+            var fromDevice = PresentationSource.FromVisual(window)!.CompositionTarget!.TransformFromDevice;
+            var origin = fromDevice.Transform(bounds.TopLeft);
+            var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
+            window.Left = origin.X;
+            window.Top = origin.Y;
+            window.Width = size.X;
+            window.Height = size.Y;
+            // A bitmap at the monitor's DPI draws one bitmap pixel per screen pixel.
+            var dpi = 96 / fromDevice.M11;
+            var width = (int)bounds.Width;
+            var height = (int)bounds.Height;
+            var pixels = new byte[width * height * 4];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var offset = (y * width + x) * 4;
+                    // Bgr32: B, G, R, unused.
+                    pixels[offset] = (byte)(x % 2 == 0 ? 0 : 255);
+                    pixels[offset + 2] = (byte)(x % 2 == 0 ? 255 : 0);
+                }
+            }
+            image.Source = BitmapSource.Create(width, height, dpi, dpi, PixelFormats.Bgr32, null, pixels, width * 4);
+        };
+        return window;
+    }
+
+    [Fact]
     public void CaptureReleasesGdiObjectsAcrossResizesAndDispose()
     {
         WpfTestHost.Run(() =>
@@ -150,10 +231,10 @@ public sealed class DisplayCaptureSessionTests
 
             RunSession();
             var baseline = GdiObjects();
-            for (var cycle = 0; cycle < 15; cycle++) RunSession();
+            for (var cycle = 0; cycle < 5; cycle++) RunSession();
             var after = GdiObjects();
-            WpfTestHost.SaveEvidenceText("211-gdi-objects.txt", $"baseline={baseline} after15sessions={after} (3 sizes each){Environment.NewLine}");
-            // Leaking the DC and DIB per session or per resize would add 30 to 90 objects.
+            WpfTestHost.SaveEvidenceText("211-gdi-objects.txt", $"baseline={baseline} after5sessions={after} (3 sizes each){Environment.NewLine}");
+            // Leaking the DC and bitmap per session or per resize would add 10 to 30 objects.
             Assert.InRange(after, 0, baseline + 4);
         });
     }

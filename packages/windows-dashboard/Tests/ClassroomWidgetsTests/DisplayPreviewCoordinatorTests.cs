@@ -157,6 +157,75 @@ public sealed class DisplayPreviewCoordinatorTests
         }
     }
 
+    // #211: the preview must ask for frames at its own pixel size. Ways this goes wrong: the
+    // coordinator does not pass the preview size (full-size frames again), passes DIPs instead
+    // of pixels, or passes the window size instead of the image area.
+    [Fact]
+    public void LivePreviewCapturesAtItsOwnPixelSize()
+    {
+        var realDataDirectory = DashboardSettings.DataDirectory;
+        var testDataDirectory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
+        DashboardSettings.UseDataDirectory(testDataDirectory);
+        try
+        {
+            WpfTestHost.Run(() =>
+            {
+                var sourceBounds = new Rect(0, 0, 640, 480);
+                var host = HostDescriptor();
+                var catalog = new DisplayCatalog(() => new[]
+                {
+                    host,
+                    new DisplayDescriptor(SourceId, "Test display", sourceBounds, sourceBounds, false)
+                });
+                // The smallest preview, clear of the source region on a 1024x768 runner.
+                var frame = new PanelFrame { Left = 680, Top = 400, Width = 320, Height = 282 };
+                var settings = new DashboardSettings { DisplayPreviewSourceId = SourceId, DisplayPreviewFrame = frame };
+                var content = new SyntheticSourceWindow(sourceBounds);
+                content.Show();
+                using var coordinator = new DisplayPreviewCoordinator(settings, catalog);
+                try
+                {
+                    coordinator.Open();
+                    var window = coordinator.Window!;
+                    WpfTestHost.PumpUntil(() => window.IsVisible && window.StatusText.Text == "Click to see display", Timeout, "the preview to open");
+                    Assert.False(DisplayGeometry.Intersects(window.GetPhysicalBounds(), sourceBounds));
+                    ClickPower(window);
+                    var expected = DisplayGeometry.CaptureSize(sourceBounds.Size, window.PreviewSizePixels);
+                    Assert.NotNull(expected);
+                    WpfTestHost.PumpUntil(
+                        () => window.PreviewImage.Source is System.Windows.Media.Imaging.BitmapSource { PixelWidth: var w, PixelHeight: var h }
+                            && (w, h) == expected.Value,
+                        Timeout, $"a {expected.Value.Width}x{expected.Value.Height} frame");
+                    // Half the source or less, so the frame is scaled rather than full size.
+                    Assert.InRange(expected.Value.Width, 1, 320);
+                    var image = (System.Windows.Media.Imaging.BitmapSource)window.PreviewImage.Source!;
+                    var (width, height) = expected.Value;
+                    var rendered = WpfTestHost.RenderOverBlack(image, width, height);
+                    WpfTestHost.SaveEvidence("211-coordinator-preview.png", rendered, width, height);
+                    WpfTestHost.SaveEvidence("211-coordinator-window.png", Snapshot(window));
+                    AssertQuadrant(SyntheticSourceWindow.TopLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height / 4));
+                    AssertQuadrant(SyntheticSourceWindow.BottomRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height * 3 / 4));
+                }
+                finally
+                {
+                    content.Close();
+                }
+            });
+        }
+        finally
+        {
+            DashboardSettings.UseDataDirectory(realDataDirectory);
+            if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
+        }
+    }
+
+    private static void AssertQuadrant(System.Windows.Media.Color expected, (byte R, byte G, byte B, byte A) actual)
+    {
+        Assert.InRange(actual.R, Math.Max(0, expected.R - 3), Math.Min(255, expected.R + 3));
+        Assert.InRange(actual.G, Math.Max(0, expected.G - 3), Math.Min(255, expected.G + 3));
+        Assert.InRange(actual.B, Math.Max(0, expected.B - 3), Math.Min(255, expected.B + 3));
+    }
+
     private static DisplayDescriptor HostDescriptor()
     {
         var screen = Forms.Screen.PrimaryScreen!;

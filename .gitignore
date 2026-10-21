@@ -16,6 +16,8 @@ packages/windows-dashboard/bin/
 packages/windows-dashboard/obj/
 packages/windows-dashboard/dist/
 packages/windows-dashboard/dist-installer/
+# perf/CaptureBench output (default --out is the current directory)
+capture-bench-*/
 .playwright-cli/
 
 # misc

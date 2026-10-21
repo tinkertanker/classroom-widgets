@@ -53,8 +53,8 @@ public sealed class DisplayGeometryTests
 
     // How capture sizing can go wrong (#211): the aspect ratio drifts so the preview is
     // squashed and clicks land in the wrong place; a small source is upscaled (more work,
-    // no gain); a not-yet-laid-out, collapsed or non-finite preview size gives a zero,
-    // negative or NaN capture size and GDI fails; an extreme aspect rounds one side to 0.
+    // no gain); a not-yet-laid-out, collapsed or non-finite preview size gives a zero or NaN
+    // capture size, or a silent full-size capture; an extreme aspect rounds one side to 0.
     [Fact]
     public void CaptureSizeFitsThePreviewKeepsAspectAndNeverUpscales()
     {
@@ -69,12 +69,14 @@ public sealed class DisplayGeometryTests
     }
 
     [Fact]
-    public void CaptureSizeFallsBackToSourceForUnusablePreviewSizes()
+    public void CaptureSizeIsUndefinedUntilThePreviewHasAUsableSize()
     {
         var source = new Size(1920, 1080);
-        Assert.Equal((1920, 1080), DisplayGeometry.CaptureSize(source, new Size(0, 0)));
-        Assert.Equal((1920, 1080), DisplayGeometry.CaptureSize(source, new Size(double.NaN, 300)));
-        Assert.Equal((1920, 1080), DisplayGeometry.CaptureSize(source, new Size(double.PositiveInfinity, double.PositiveInfinity)));
+        Assert.Null(DisplayGeometry.CaptureSize(source, Size.Empty));
+        Assert.Null(DisplayGeometry.CaptureSize(source, new Size(0, 0)));
+        Assert.Null(DisplayGeometry.CaptureSize(source, new Size(0.4, 300)));
+        Assert.Null(DisplayGeometry.CaptureSize(source, new Size(double.NaN, 300)));
+        Assert.Null(DisplayGeometry.CaptureSize(source, new Size(double.PositiveInfinity, double.PositiveInfinity)));
         Assert.Equal((100, 1), DisplayGeometry.CaptureSize(new Size(4000, 10), new Size(100, 100)));
         Assert.Equal((1, 1), DisplayGeometry.CaptureSize(new Size(0, 0), new Size(100, 100)));
     }

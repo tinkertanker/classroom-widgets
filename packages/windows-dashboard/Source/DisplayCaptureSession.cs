@@ -7,7 +7,8 @@ using System.Windows.Threading;
 namespace ClassroomWidgets;
 
 /// <summary>
-/// Copies a source display into a WPF bitmap about 15 times a second on the UI thread.
+/// Copies a source display into a WPF bitmap on the UI thread, at most about 15 times a
+/// second (the 66 ms timer re-arms after each frame, so slow frames lower the rate).
 /// The memory DC, screen-compatible bitmap and pixel buffer are kept until the output size
 /// changes. When the preview is at most half the source size, GDI scales the frame down as it
 /// copies (COLORONCOLOR), so the pixels read back, copied into WPF and uploaded are
@@ -20,14 +21,17 @@ public sealed class DisplayCaptureSession : IDisposable
     private const uint Captureblt = 0x40000000;
     private const int ColorOnColor = 3;
     // Measured on Windows (#211): HALFTONE costs as much as an unscaled copy of the source,
-    // while COLORONCOLOR is cheaper. Its point sampling looks like the bilinear downscale
-    // WPF applied to full-size frames before.
+    // while COLORONCOLOR is cheaper. Its point sampling is comparable to, if somewhat harsher
+    // than, the bilinear downscale WPF applied to full-size frames before.
     private const int StretchMode = ColorOnColor;
     // Above this scale, keep the unscaled copy: the preview shows nearly every source pixel.
     private const double MaxStretchScale = 0.5;
     // While the preview is being resized, keep the current surface until the new size has
     // held for this many frames; Stretch=Uniform covers the difference meanwhile.
     private const int ResizeSettleFrames = 3;
+    // A display mode change, sleep or Remote Desktop switch can fail a frame or two; rebuild
+    // the surface and retry, and only give up after this many failures in a row.
+    private const int MaxConsecutiveFailures = 3;
     private readonly Rect _sourceBounds;
     private readonly Func<bool>? _canCapture;
     private readonly Func<Size>? _targetPixelSize;
@@ -42,6 +46,7 @@ public sealed class DisplayCaptureSession : IDisposable
     private int _height;
     private (int Width, int Height) _pendingSize;
     private int _pendingFrames;
+    private int _consecutiveFailures;
     private bool _failed;
     private bool _disposed;
 
@@ -72,6 +77,7 @@ public sealed class DisplayCaptureSession : IDisposable
     {
         if (_disposed) return;
         _failed = false;
+        _consecutiveFailures = 0;
         _timer.Start();
         CaptureFrame();
     }
@@ -83,7 +89,12 @@ public sealed class DisplayCaptureSession : IDisposable
         var previous = IntPtr.Zero;
         try
         {
-            if (_canCapture is not null && !_canCapture()) return;
+            if (_canCapture is not null && !_canCapture())
+            {
+                // Hidden or minimised: free the surface (up to ~70 MB at 4K) until it is back.
+                ReleaseSurface();
+                return;
+            }
             var sourceWidth = Math.Max(1, (int)Math.Round(_sourceBounds.Width));
             var sourceHeight = Math.Max(1, (int)Math.Round(_sourceBounds.Height));
             if (OutputSize(sourceWidth, sourceHeight) is not { } size) return;
@@ -111,18 +122,20 @@ public sealed class DisplayCaptureSession : IDisposable
             }
 
             _bitmap = PresentFrame(_bitmap, _pixels, width, height);
+            _consecutiveFailures = 0;
             FrameReady?.Invoke();
         }
         catch (Exception error)
         {
-            _failed = true;
-            _timer.Stop();
             if (previous != IntPtr.Zero)
             {
                 NativeMethods.SelectObject(_memoryDc, previous);
                 previous = IntPtr.Zero;
             }
             ReleaseSurface();
+            if (++_consecutiveFailures < MaxConsecutiveFailures) return;
+            _failed = true;
+            _timer.Stop();
             Failed?.Invoke(error);
         }
         finally
@@ -138,9 +151,7 @@ public sealed class DisplayCaptureSession : IDisposable
         var desired = (sourceWidth, sourceHeight);
         if (_targetPixelSize is not null)
         {
-            var target = _targetPixelSize();
-            if (target.IsEmpty || !(target.Width >= 1) || !(target.Height >= 1)) return null;
-            var fitted = DisplayGeometry.CaptureSize(new Size(sourceWidth, sourceHeight), target);
+            if (DisplayGeometry.CaptureSize(new Size(sourceWidth, sourceHeight), _targetPixelSize()) is not { } fitted) return null;
             if (fitted.Width <= sourceWidth * MaxStretchScale && fitted.Height <= sourceHeight * MaxStretchScale)
             {
                 desired = fitted;
@@ -215,6 +226,7 @@ public sealed class DisplayCaptureSession : IDisposable
     /// <summary>Writes a top-down 32-bit BI_RGB GDI frame (B, G, R, unused) into a WPF bitmap.</summary>
     internal static WriteableBitmap PresentFrame(WriteableBitmap? bitmap, byte[] pixels, int width, int height)
     {
+        if (pixels.Length < width * height * 4) throw new ArgumentException("The frame is smaller than its size.", nameof(pixels));
         var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
         try
         {
@@ -317,8 +329,6 @@ public sealed class DisplayCaptureSession : IDisposable
 
         [DllImport("gdi32.dll")]
         public static extern int SetStretchBltMode(IntPtr hDc, int mode);
-
-
 
     }
 }
