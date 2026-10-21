@@ -1,9 +1,11 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Automation.Peers;
 using System.Windows.Automation.Provider;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using ClassroomWidgets;
 using Xunit;
 
@@ -133,6 +135,79 @@ public sealed class SettingsPersistenceTests
     }
 
     [Fact]
+    public void SettingsThatCouldNotBeReadAreNeverOverwrittenWithDefaults()
+    {
+        WithDirectory(directory =>
+        {
+            var path = Path.Combine(directory, "settings.json");
+            var original = new DashboardSettings { LinkShortenerDomain = "go.kept.edu" };
+            original.Save();
+            var bytes = File.ReadAllBytes(path);
+
+            DashboardSettings loaded;
+            using (new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                loaded = DashboardSettings.ReadSettings();
+            }
+            Assert.Equal("", loaded.LinkShortenerDomain);
+
+            loaded.LinkShortenerProvider = DashboardShortenerSettings.ShortioProvider;
+            loaded.Save();
+            Assert.Equal(bytes, File.ReadAllBytes(path));
+            // Other settings objects, such as the next launch's, still save.
+            original.LinkShortenerDomain = "go.next.edu";
+            original.Save();
+            Assert.Equal("go.next.edu", DashboardSettings.ReadSettings().LinkShortenerDomain);
+            SaveEvidence("214-unreadable-kept.txt", $"locked during read: defaults loaded, save skipped, settings.json unchanged ({bytes.Length} bytes)");
+        });
+    }
+
+    [Fact]
+    public void AShortcutHeldByAnotherAppIsRetriedOnlyOnceItIsFree()
+    {
+        WithDirectory(_ => WpfTestHost.Run(() =>
+        {
+            const string shortcut = "Ctrl+Alt+Shift+F11";
+            Assert.True(WidgetShortcutGesture.TryParse(shortcut, out var gesture));
+            var competitor = new HwndSource(new HwndSourceParameters("ClassroomWidgetsTests.Competitor") { ParentWindow = new IntPtr(-3), WindowStyle = 0 });
+            try
+            {
+                Assert.True(RegisterHotKey(competitor.Handle, 1, gesture.Modifiers | 0x4000, gesture.VirtualKey), "the competing app could not take the shortcut");
+                var settings = WithoutShortcuts();
+                settings.DisplayPreviewShortcut = shortcut;
+                settings.DisplayPreviewDismissShortcut = shortcut;
+                var host = new WidgetHostController(settings);
+                using var shortcuts = new WidgetShortcutManager(settings, host, _ => { });
+                Assert.Equal(WidgetShortcutStatus.Conflict, shortcuts.StatusFor(DisplayShortcutLogic.WidgetType, WidgetShortcutAction.Show).Status);
+                var registrations = 0;
+                shortcuts.StatusChanged += () => registrations++;
+
+                settings.LinkShortenerDomain = "go.one.edu";
+                settings.NotifyChanged();
+                var whileHeld = registrations;
+
+                UnregisterHotKey(competitor.Handle, 1);
+                settings.LinkShortenerDomain = "go.two.edu";
+                settings.NotifyChanged();
+                var afterRelease = registrations;
+                var status = shortcuts.StatusFor(DisplayShortcutLogic.WidgetType, WidgetShortcutAction.Show).Status;
+                settings.NotifyChanged();
+
+                SaveEvidence("214-hotkey-conflict.txt", $"re-registrations while held={whileHeld}, after release={afterRelease}, status after release={status}, after a further change={registrations}");
+                Assert.Equal(0, whileHeld);
+                Assert.Equal(1, afterRelease);
+                Assert.Equal(WidgetShortcutStatus.Active, status);
+                Assert.Equal(1, registrations);
+            }
+            finally
+            {
+                UnregisterHotKey(competitor.Handle, 1);
+                competitor.Dispose();
+            }
+        }));
+    }
+
+    [Fact]
     public void TypingShortioFieldsSavesAndAppliesOnceAfterAPause()
     {
         WithDirectory(_ => WpfTestHost.Run(() =>
@@ -140,12 +215,17 @@ public sealed class SettingsPersistenceTests
             var settings = WithoutShortcuts();
             var host = new WidgetHostController(settings);
             using var shortcuts = new WidgetShortcutManager(settings, host, _ => { });
+            // A longer pause window than the 40 ms between keystrokes leaves room for a slow
+            // runner without letting a commit-per-keystroke regression pass.
+            var commitDelay = SettingsWindow.CommitDelay;
+            SettingsWindow.CommitDelay = TimeSpan.FromSeconds(1);
             var window = new SettingsWindow(settings, host, shortcuts);
             try
             {
                 window.Show();
                 WpfTestHost.DoEvents();
                 SelectShortio(window);
+                settings.Save();
                 var path = Path.Combine(DashboardSettings.DataDirectory, "settings.json");
                 var before = File.ReadAllBytes(path);
                 var changes = 0;
@@ -177,6 +257,7 @@ public sealed class SettingsPersistenceTests
             finally
             {
                 window.Close();
+                SettingsWindow.CommitDelay = commitDelay;
             }
         }));
     }
@@ -261,4 +342,12 @@ public sealed class SettingsPersistenceTests
         Directory.CreateDirectory(evidence);
         File.WriteAllText(Path.Combine(evidence, name), text);
     }
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool RegisterHotKey(IntPtr window, int id, uint modifiers, uint virtualKey);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnregisterHotKey(IntPtr window, int id);
 }

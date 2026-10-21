@@ -40,15 +40,11 @@ public sealed class DashboardSettings
     // them (the teacher registry order), which is how they were numbered 1–9.
     private static readonly int[] LegacyWidgetShortcutOrder = { 0, 1, 2, 3, 4, 6, 7, 12, 9 };
 
-    internal static void UseDataDirectory(string directory)
-    {
-        DataDirectory = directory;
-        _keepUnreadableFile = null;
-    }
+    internal static void UseDataDirectory(string directory) => DataDirectory = directory;
 
-    // Set when settings.json exists but could not be read or moved aside. Saving would
-    // replace the user's settings with defaults, so saves are skipped until the next launch.
-    private static string? _keepUnreadableFile;
+    // Set on the defaults returned when settings.json exists but could not be read or kept
+    // aside. Saving them would replace the user's settings, so this object never saves.
+    private string? _keepUnreadableFile;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -101,7 +97,6 @@ public sealed class DashboardSettings
     internal static DashboardSettings ReadSettings()
     {
         var settings = new DashboardSettings();
-        _keepUnreadableFile = null;
         try
         {
             if (File.Exists(SettingsPath))
@@ -111,11 +106,11 @@ public sealed class DashboardSettings
                 try
                 {
                     loaded = DeserializeSettings(json);
-                    if (loaded is null) MoveCorruptSettingsAside("the file holds no settings object");
+                    if (loaded is null) settings._keepUnreadableFile = MoveCorruptSettingsAside("the file holds no settings object");
                 }
                 catch (Exception error) when (error is JsonException or NotSupportedException or InvalidOperationException)
                 {
-                    MoveCorruptSettingsAside(error.Message);
+                    settings._keepUnreadableFile = MoveCorruptSettingsAside(error.Message);
                     loaded = null;
                 }
                 if (loaded is not null)
@@ -129,9 +124,13 @@ public sealed class DashboardSettings
                 }
             }
         }
+        catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException)
+        {
+            DashboardLog.Warn($"Settings file disappeared while reading it: {error.Message}");
+        }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            _keepUnreadableFile = error.Message;
+            settings._keepUnreadableFile = error.Message;
             DashboardLog.Warn($"Unable to read settings, so changes will not be saved this session: {error.Message}");
         }
         return settings;
@@ -146,7 +145,7 @@ public sealed class DashboardSettings
             {
                 return File.ReadAllText(SettingsPath);
             }
-            catch (IOException) when (attempt < 5)
+            catch (IOException error) when (attempt < 5 && IsSharingViolation(error))
             {
                 Thread.Sleep(100);
             }
@@ -190,7 +189,8 @@ public sealed class DashboardSettings
     /// Keeps an unreadable settings file for inspection instead of letting the next save
     /// replace it with defaults, and says so in the log.
     /// </summary>
-    private static void MoveCorruptSettingsAside(string reason)
+    /// <returns>Null when the file was kept aside or is gone; otherwise why it could not be kept.</returns>
+    private static string? MoveCorruptSettingsAside(string reason)
     {
         var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
         var aside = Path.Combine(DataDirectory, $"settings.corrupt-{stamp}.json");
@@ -202,7 +202,7 @@ public sealed class DashboardSettings
         {
             File.Move(SettingsPath, aside);
             DashboardLog.Warn($"Settings file was unreadable ({reason}); moved it to {aside} and started from defaults");
-            return;
+            return null;
         }
         catch (Exception moveError) when (moveError is IOException or UnauthorizedAccessException)
         {
@@ -212,11 +212,16 @@ public sealed class DashboardSettings
         {
             File.Copy(SettingsPath, aside);
             DashboardLog.Warn($"Copied the unreadable settings file to {aside} instead");
+            return null;
+        }
+        catch (Exception gone) when (gone is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
         }
         catch (Exception copyError) when (copyError is IOException or UnauthorizedAccessException)
         {
-            _keepUnreadableFile = copyError.Message;
             DashboardLog.Warn($"Unable to copy the unreadable settings file either, so changes will not be saved this session: {copyError.Message}");
+            return copyError.Message;
         }
     }
 
@@ -261,12 +266,28 @@ public sealed class DashboardSettings
                 File.Move(temporary, SettingsPath, overwrite: true);
                 return;
             }
-            catch (Exception error) when (attempt < 8 && error is IOException or UnauthorizedAccessException)
+            // Antivirus or an indexer holding the old file open usually shows up as access
+            // denied, so retry that too, but not for a read-only file, and only briefly
+            // because this runs on the UI thread.
+            catch (Exception error) when (attempt < 6
+                && (error is UnauthorizedAccessException || (error is IOException io && IsSharingViolation(io)))
+                && !IsReadOnly())
             {
-                Thread.Sleep(25 * attempt);
+                Thread.Sleep(30);
             }
         }
     }
+
+    private static bool IsReadOnly()
+    {
+        try { return File.GetAttributes(SettingsPath).HasFlag(FileAttributes.ReadOnly); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { return false; }
+    }
+
+    // ERROR_SHARING_VIOLATION or ERROR_LOCK_VIOLATION: another process has the file open.
+    // Other errors, such as a read-only file, will not go away by waiting.
+    private static bool IsSharingViolation(IOException error)
+        => (error.HResult & 0xFFFF) is 32 or 33;
 
     public void NotifyChanged()
     {

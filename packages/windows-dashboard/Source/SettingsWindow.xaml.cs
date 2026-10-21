@@ -25,12 +25,8 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         Height = Math.Min(Height, SystemParameters.WorkArea.Height - 40);
 
-        _settingsCommit = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _settingsCommit.Tick += (_, _) =>
-        {
-            _settingsCommit.Stop();
-            _settings.NotifyChanged();
-        };
+        _settingsCommit = new DispatcherTimer { Interval = CommitDelay };
+        _settingsCommit.Tick += (_, _) => Commit();
 
         AlwaysOnTopCheck.IsChecked = _settings.AlwaysOnTop;
         LaunchAtLoginCheck.IsChecked = DashboardSettings.LaunchAtLoginEnabled;
@@ -54,15 +50,20 @@ public partial class SettingsWindow : Window
             _shortcuts.StatusChanged -= OnShortcutStatusChanged;
             _shortcuts.Resume();
             // Apply a pending slider or text edit now rather than after the window has gone.
-            // While quitting, the host is already torn down and quit has saved, so only save.
-            if (_settingsCommit.IsEnabled)
-            {
-                _settingsCommit.Stop();
-                if (App.IsShuttingDown) _settings.Save();
-                else _settings.NotifyChanged();
-            }
+            if (_settingsCommit.IsEnabled) Commit();
         };
         _loading = false;
+    }
+
+    // How long typing or dragging must pause before the change is saved and applied.
+    internal static TimeSpan CommitDelay { get; set; } = TimeSpan.FromMilliseconds(250);
+
+    private void Commit()
+    {
+        _settingsCommit.Stop();
+        // While quitting, the host is being torn down and quit saves anyway, so only save.
+        if (App.IsShuttingDown) _settings.Save();
+        else _settings.NotifyChanged();
     }
 
     private void AlwaysOnTopCheck_Changed(object sender, RoutedEventArgs args)
