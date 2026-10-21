@@ -1,0 +1,196 @@
+// #213 real Electron check: an inventory that changes nothing about a panel's
+// presentation must not touch its native window, its chrome or the tray menu.
+// Build the teacher app (vite build) and this package first, then from the
+// repository root:
+// CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=<dir> xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/panelPresentation.cjs
+// Evidence: panel-presentation.txt (per-step counts) and dark-panels.png.
+const { app, BrowserWindow, globalShortcut, nativeTheme, Tray } = require('electron');
+const assert = require('node:assert/strict');
+const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = require('node:fs');
+const { tmpdir } = require('node:os');
+const { join, resolve } = require('node:path');
+
+const root = resolve(__dirname, '..');
+const evidence = resolve(process.env.CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR
+  || join(tmpdir(), 'classroom-widgets-test-evidence/panel-presentation'));
+mkdirSync(evidence, { recursive: true });
+const temporary = mkdtempSync(join(tmpdir(), 'classroom-panel-presentation-'));
+app.setAppPath(root);
+app.setPath('userData', temporary);
+app.setPath('sessionData', temporary);
+process.env.XDG_CONFIG_HOME = temporary;
+nativeTheme.themeSource = 'light';
+const { registerPrivilegedScheme, installProtocolHandler } = require('../out/main/appProtocol');
+const { DashboardSettings } = require('../out/main/settings');
+const { WidgetHostController } = require('../out/main/hostController');
+const { WidgetShortcutController } = require('../out/main/widgetShortcuts');
+const { TrayController } = require('../out/main/tray');
+registerPrivilegedScheme();
+
+const lines = [];
+const record = message => { lines.push(message); console.log(message); };
+const delay = ms => new Promise(done => setTimeout(done, ms));
+async function until(label, check) {
+  for (let i = 0; i < 300; i++) {
+    const value = await check();
+    if (value) return value;
+    await delay(50);
+  }
+  throw new Error(`Timed out: ${label}`);
+}
+
+// Count every native presentation call per window, every chrome update and
+// every tray menu the app builds.
+const SETTERS = ['setTitle', 'setMinimumSize', 'setMaximumSize', 'setResizable', 'setAspectRatio'];
+const counts = new Map();
+const countFor = win => {
+  if (!counts.has(win.id)) counts.set(win.id, { setters: 0, chrome: 0, calls: [] });
+  return counts.get(win.id);
+};
+app.on('browser-window-created', (_event, win) => {
+  for (const name of SETTERS) {
+    const original = win[name].bind(win);
+    win[name] = (...args) => {
+      const entry = countFor(win);
+      entry.setters++;
+      entry.calls.push(name);
+      return original(...args);
+    };
+  }
+  const send = win.webContents.send.bind(win.webContents);
+  win.webContents.send = (channel, ...args) => {
+    if (channel === 'panel-chrome-update') countFor(win).chrome++;
+    return send(channel, ...args);
+  };
+});
+let trayMenus = 0;
+let lastMenu = null;
+const setContextMenu = Tray.prototype.setContextMenu;
+Tray.prototype.setContextMenu = function (menu) {
+  trayMenus++;
+  lastMenu = menu;
+  return setContextMenu.call(this, menu);
+};
+const resetCounts = () => { counts.clear(); trayMenus = 0; };
+const panelWindows = () => BrowserWindow.getAllWindows()
+  .filter(win => !win.isDestroyed() && win.webContents.getURL().endsWith('panel-chrome.html'));
+const summary = () => {
+  let setters = 0;
+  let chrome = 0;
+  const calls = {};
+  for (const entry of counts.values()) {
+    setters += entry.setters;
+    chrome += entry.chrome;
+    for (const name of entry.calls) calls[name] = (calls[name] ?? 0) + 1;
+  }
+  return { setters, chrome, trayMenus, calls };
+};
+
+const inventory = host => host.panelCoordinator.lastInventory;
+const texts = view => view.executeJavaScript(`Array.from(document.querySelectorAll('textarea')).map(e => e.value)`);
+const watchdog = setTimeout(() => finish(new Error('E2E timed out')), 150000);
+let tray = null;
+
+app.whenReady().then(async () => {
+  installProtocolHandler();
+  const settings = new DashboardSettings();
+  const host = new WidgetHostController(settings, 'panel-presentation-e2e');
+  const noop = () => {};
+  const shortcuts = new WidgetShortcutController(settings, globalShortcut, noop, noop, noop,
+    { open: noop, close: noop, isOpen: () => false });
+  host.on('widgetOptionsChanged', () => shortcuts.updateOptions(host.widgetOptions));
+  tray = new TrayController(host, settings, shortcuts, 'panel-presentation-e2e', noop, noop, noop, noop);
+  await host.start();
+  await until('host ready', () => host.widgetOptions.length > 0);
+
+  // Four Lists, a Timer and a Traffic Light: resizable, fixed and
+  // aspect-locked panels all have to stay untouched while one List is typed in.
+  for (const type of [2, 2, 2, 2, 1, 4]) await host.addWidget(type);
+  await until('six panels', () => inventory(host)?.widgets.length === 6 && panelWindows().length === 6);
+  await until('six panels shown', () => panelWindows().every(win => win.isVisible()));
+  const listId = inventory(host).widgets[0].id;
+  // Seed the first List with a row in edit mode so keys go to its text box.
+  const hostView = BrowserWindow.getAllWindows().find(win => win.webContents.getURL().includes('dashboard=1')).webContents;
+  await hostView.executeJavaScript(`window.classroomPanelHost.applyStateChange(${JSON.stringify({
+    schemaVersion: 1, widgetId: listId, baseRevision: 0, flush: true,
+    state: { items: [{ id: 'row-0', text: 'Row', status: 0, isEditing: true }], inputs: ['Row'], statuses: [0] }
+  })})`);
+  const view = await until('editable List panel', async () => {
+    for (const win of panelWindows()) {
+      const child = win.contentView.children[0]?.webContents;
+      if (child && (await texts(child))[0] === 'Row') return child;
+    }
+  });
+  await delay(1000);
+
+  // 1. Typing: one inventory per key, nothing presented changes.
+  resetCounts();
+  const startRevision = inventory(host).revision;
+  await view.executeJavaScript(`document.querySelector('textarea').focus()`);
+  for (const [index, key] of [...'ABCDE'].entries()) {
+    view.sendInputEvent({ type: 'char', keyCode: key });
+    await until(`edit ${index}`, () => inventory(host).widgets.find(widget => widget.id === listId)
+      ?.snapshotPayload.state?.inputs?.[0] === `Row${'ABCDE'.slice(0, index + 1)}`);
+  }
+  await delay(500);
+  const typed = summary();
+  const inventories = inventory(host).revision - startRevision;
+  record(`typing 5 keys into one of 6 panels: inventories=${inventories} setters=${typed.setters} chromeUpdates=${typed.chrome} trayMenus=${typed.trayMenus} calls=${JSON.stringify(typed.calls)}`);
+
+  // 2. Theme: every panel's chrome must follow, still without native setters.
+  resetCounts();
+  nativeTheme.themeSource = 'dark';
+  await until('dark inventory', () => inventory(host).widgets.every(widget => widget.snapshotPayload.theme === 'dark'));
+  await until('dark chrome', async () => {
+    const dark = await Promise.all(panelWindows().map(win => win.webContents.executeJavaScript(
+      `document.getElementById('chrome').classList.contains('dark')`)));
+    return dark.every(Boolean);
+  });
+  await delay(500);
+  const themed = summary();
+  record(`theme light->dark: setters=${themed.setters} chromeUpdates=${themed.chrome} trayMenus=${themed.trayMenus} calls=${JSON.stringify(themed.calls)}`);
+  writeFileSync(join(evidence, 'dark-panels.png'), (await panelWindows()[0].capturePage()).toPNG());
+
+  // 3. Hide and show the Timer: the tray menu must still follow visibility.
+  resetCounts();
+  await host.toggleWidget(1);
+  await until('Timer hidden', () => inventory(host).widgets.find(widget => widget.snapshotPayload.widgetType === 1)?.hidden);
+  await until('Timer window hidden', () => panelWindows().filter(win => win.isVisible()).length === 5);
+  const afterHide = trayMenus;
+  await host.showWidget(1);
+  await until('Timer shown', () => !inventory(host).widgets.find(widget => widget.snapshotPayload.widgetType === 1)?.hidden);
+  await until('Timer window shown', () => panelWindows().filter(win => win.isVisible()).length === 6);
+  await delay(300);
+  const toggled = summary();
+  record(`hide then show Timer: trayMenus after hide=${afterHide}, after show=${toggled.trayMenus} setters=${toggled.setters} chromeUpdates=${toggled.chrome}`);
+
+  // 4. Close every panel: the Arrange item must end up disabled.
+  resetCounts();
+  // Through each panel's own close button, as a teacher would.
+  for (const win of panelWindows()) await win.webContents.executeJavaScript(`document.getElementById('close').click()`);
+  await until('panels removed', () => inventory(host).widgets.length === 0);
+  await until('no panel windows', () => panelWindows().length === 0);
+  const arrangeEnabled = lastMenu.items.find(item => item.label === 'Arrange Widgets').enabled;
+  record(`close all panels: trayMenus=${trayMenus} arrangeEnabled=${arrangeEnabled}`);
+
+  assert.ok(inventories >= 5, 'each key sends an inventory');
+  assert.equal(typed.setters, 0, 'typing must not call native window setters');
+  assert.equal(typed.chrome, 0, 'typing must not resend panel chrome');
+  assert.equal(typed.trayMenus, 0, 'typing must not rebuild the tray menu');
+  assert.equal(themed.setters, 0, 'a theme change must not call size or title setters');
+  assert.equal(themed.chrome, 6, 'a theme change updates each panel chrome once');
+  assert.ok(afterHide >= 1, 'hiding a panel rebuilds the tray menu');
+  assert.ok(toggled.trayMenus > afterHide, 'showing a panel rebuilds the tray menu');
+  assert.ok(trayMenus >= 1, 'removing panels rebuilds the tray menu');
+  assert.equal(arrangeEnabled, false, 'Arrange is disabled once no panel is shown');
+  record('PASS no native, chrome or tray work for unchanged panels; theme, visibility and removal still apply');
+}).then(() => finish(), finish);
+
+function finish(error) {
+  clearTimeout(watchdog);
+  if (error) record(`FAIL: ${error.stack || error}`);
+  writeFileSync(join(evidence, 'panel-presentation.txt'), lines.join('\n') + '\n');
+  try { tray?.destroy(); } catch {}
+  rmSync(temporary, { recursive: true, force: true });
+  app.exit(error ? 1 : 0);
+}

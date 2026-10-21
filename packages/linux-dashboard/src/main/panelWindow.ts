@@ -54,6 +54,29 @@ function sizeLimits(descriptor: WidgetPanelDescriptor) {
   };
 }
 
+function chromeTheme(descriptor: WidgetPanelDescriptor): 'light' | 'dark' {
+  return descriptor.snapshotPayload.theme === 'dark' ? 'dark' : 'light';
+}
+
+interface AppliedPresentation {
+  title: string;
+  limitsKey: string;
+  isResizable: boolean;
+  aspectRatio: number;
+  theme: 'light' | 'dark';
+}
+
+function presentationOf(descriptor: WidgetPanelDescriptor): AppliedPresentation {
+  const limits = sizeLimits(descriptor);
+  return {
+    title: descriptor.title,
+    limitsKey: `${limits.minWidth}x${limits.minHeight}:${limits.maxWidth ?? '-'}x${limits.maxHeight ?? '-'}`,
+    isResizable: descriptor.isResizable,
+    aspectRatio: descriptor.aspectRatio && descriptor.aspectRatio > 0 ? descriptor.aspectRatio : 0,
+    theme: chromeTheme(descriptor),
+  };
+}
+
 /**
  * A borderless always-on-top window presenting exactly one compact widget.
  * The chrome strip (title, add, arrange, close) is revealed while the pointer
@@ -76,6 +99,9 @@ export class WidgetPanelWindow extends EventEmitter {
   private lastProgrammaticBounds: Rect | null = null;
   private lastPushedRevision: number | null = null;
   private lastPushedStateRevision: number | null = null;
+  // Null until the first apply(), which sets everything (the constructor
+  // does not set the aspect ratio).
+  private appliedPresentation: AppliedPresentation | null = null;
   private writesCheckpoint: { resolve: () => void } | null = null;
   private frameTimer: NodeJS.Timeout | null = null;
   private pointerLeftAt: number | null = null;
@@ -372,28 +398,39 @@ export class WidgetPanelWindow extends EventEmitter {
     );
   }
 
+  /**
+   * Every inventory re-applies each panel's descriptor, and a List sends one
+   * inventory per keystroke. Only touch the native window and the chrome
+   * when a presented field changed (#213).
+   */
   private applyDescriptorPresentation(): void {
     if (this.win.isDestroyed()) return;
-    this.win.setTitle(this.descriptor.title);
+    const next = presentationOf(this.descriptor);
+    const previous = this.appliedPresentation;
+    this.appliedPresentation = next;
 
-    const limits = sizeLimits(this.descriptor);
-    this.win.setMinimumSize(limits.minWidth, limits.minHeight);
-    this.win.setMaximumSize(limits.maxWidth ?? 100_000, limits.maxHeight ?? 100_000);
-    this.win.setResizable(this.descriptor.isResizable);
-    if (this.descriptor.aspectRatio && this.descriptor.aspectRatio > 0) {
-      this.win.setAspectRatio(this.descriptor.aspectRatio, { width: 0, height: CHROME_HEIGHT });
-    } else {
-      this.win.setAspectRatio(0);
+    if (previous?.title !== next.title) this.win.setTitle(next.title);
+    if (previous?.limitsKey !== next.limitsKey || previous?.isResizable !== next.isResizable) {
+      const limits = sizeLimits(this.descriptor);
+      this.win.setMinimumSize(limits.minWidth, limits.minHeight);
+      this.win.setMaximumSize(limits.maxWidth ?? 100_000, limits.maxHeight ?? 100_000);
+      this.win.setResizable(next.isResizable);
     }
-    this.pushChromeUpdate();
+    if (previous?.aspectRatio !== next.aspectRatio) {
+      if (next.aspectRatio > 0) {
+        this.win.setAspectRatio(next.aspectRatio, { width: 0, height: CHROME_HEIGHT });
+      } else {
+        this.win.setAspectRatio(0);
+      }
+    }
+    if (previous?.title !== next.title || previous?.theme !== next.theme) this.pushChromeUpdate();
   }
 
   private pushChromeUpdate(): void {
     if (this.win.isDestroyed() || this.win.webContents.isDestroyed()) return;
-    const theme = this.descriptor.snapshotPayload.theme === 'dark' ? 'dark' : 'light';
     const update: ChromeUpdate = {
       title: this.descriptor.title,
-      theme,
+      theme: chromeTheme(this.descriptor),
       opacity: this.backgroundOpacity,
       outputVolume: this.settings.outputVolume,
       outputVolumeLabel: outputVolumeLabel(this.settings.outputVolume),

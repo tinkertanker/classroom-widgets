@@ -135,7 +135,12 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
         if previous.title != descriptor.title {
             window?.title = descriptor.title
         }
-        Self.applySizeConstraints(for: descriptor, to: window)
+        if previous.preferredContentSize != descriptor.preferredContentSize
+            || previous.minimumContentSize != descriptor.minimumContentSize
+            || previous.maximumContentSize != descriptor.maximumContentSize
+            || previous.isResizable != descriptor.isResizable {
+            Self.applySizeConstraints(for: descriptor, to: window)
+        }
     }
 
     func applyPresentationSettings(backgroundOpacity: Double, keepOnAllSpaces: Bool) {
@@ -172,13 +177,13 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
     }
 
     private func presentNow() {
-        let wasVisible = window?.isVisible == true
+        // Every inventory re-runs show(); re-ordering a visible panel would
+        // raise it over the panel the teacher is typing in (#213).
+        guard window?.isVisible != true else { return }
         window?.orderFront(nil)
-        if !wasVisible {
-            PerfProbe.mark("panel.shown", ["widgetId": widgetID])
-            revealChrome()
-            scheduleChromeHide()
-        }
+        PerfProbe.mark("panel.shown", ["widgetId": widgetID])
+        revealChrome()
+        scheduleChromeHide()
     }
 
     private func presentPendingShow() {

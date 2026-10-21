@@ -146,7 +146,11 @@ export class WidgetPanelCoordinator extends EventEmitter {
    * panels; a fresh web process has a new instance ID and restarts at zero.
    */
   reconcile(inventory: WidgetPanelInventory): boolean {
+    // The tray menu only reflects which panels exist and are shown, so only
+    // announce a change when that set moved, not on every inventory (#213).
+    let membershipChanged = false;
     if (this.lastInventory && inventory.hostInstanceId !== this.lastInventory.hostInstanceId) {
+      membershipChanged = this.panels.size > 0;
       for (const panel of this.panels.values()) panel.closePermanently();
       this.panels.clear();
       this.lastFocusedId = null;
@@ -158,6 +162,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     const incomingIds = new Set(inventory.widgets.map((widget) => widget.id));
     for (const [id, panel] of [...this.panels]) {
       if (incomingIds.has(id)) continue;
+      membershipChanged = true;
       panel.closePermanently();
       this.panels.delete(id);
       this.freeformFrames.delete(id);
@@ -189,7 +194,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     }
 
     if ((created || visibilityChanged) && this.layout !== 'freeform') this.arrange(this.layout);
-    this.emit('changed');
+    if (created || visibilityChanged || membershipChanged) this.emit('changed');
     return true;
   }
 
@@ -197,7 +202,9 @@ export class WidgetPanelCoordinator extends EventEmitter {
     this.active = true;
     if (this.panels.size === 0 && this.lastInventory) this.reconcile(this.lastInventory);
     if (this.panels.size === 0) return false;
+    const wasPresenting = this.hasVisiblePanels;
     for (const panel of this.panels.values()) panel.showPanel();
+    if (this.hasVisiblePanels !== wasPresenting) this.emit('changed');
     return true;
   }
 
