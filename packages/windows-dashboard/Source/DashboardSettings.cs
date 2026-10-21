@@ -29,6 +29,8 @@ public sealed class DashboardSettings
 
     private static string SettingsPath => Path.Combine(DataDirectory, "settings.json");
 
+    private static readonly object SaveLock = new();
+
     private bool? _loadedDisplayPreviewShortcutWasPresent;
 
     private static readonly string[] NumberedWidgetDefaults =
@@ -87,7 +89,16 @@ public sealed class DashboardSettings
         {
             if (File.Exists(SettingsPath))
             {
-                var loaded = DeserializeSettings(File.ReadAllText(SettingsPath));
+                DashboardSettings? loaded;
+                try
+                {
+                    loaded = DeserializeSettings(File.ReadAllText(SettingsPath));
+                }
+                catch (JsonException error)
+                {
+                    MoveCorruptSettingsAside(error);
+                    loaded = null;
+                }
                 if (loaded is not null)
                 {
                     loaded.BackgroundOpacity = Math.Clamp(loaded.BackgroundOpacity, 0, 1);
@@ -99,7 +110,7 @@ public sealed class DashboardSettings
                 }
             }
         }
-        catch (Exception error) when (error is IOException or JsonException or UnauthorizedAccessException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             DashboardLog.Warn($"Unable to read settings: {error.Message}");
         }
@@ -140,16 +151,72 @@ public sealed class DashboardSettings
     internal static bool HasBackgroundArgument(string command)
         => Regex.IsMatch(command, @"(?:^|\s)--background(?=\s|$)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
-    public void Save()
+    /// <summary>
+    /// Keeps an unreadable settings file for inspection instead of letting the next save
+    /// replace it with defaults, and says so in the log.
+    /// </summary>
+    private static void MoveCorruptSettingsAside(JsonException error)
     {
+        var aside = Path.Combine(DataDirectory, $"settings.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+        for (var suffix = 2; File.Exists(aside); suffix++)
+        {
+            aside = Path.Combine(DataDirectory, $"settings.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}-{suffix}.json");
+        }
         try
         {
-            Directory.CreateDirectory(DataDirectory);
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(this, JsonOptions));
+            File.Move(SettingsPath, aside);
+            DashboardLog.Warn($"Settings file was unreadable ({error.Message}); moved it to {aside} and started from defaults");
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        catch (Exception moveError) when (moveError is IOException or UnauthorizedAccessException)
         {
-            DashboardLog.Warn($"Unable to write settings: {error.Message}");
+            DashboardLog.Warn($"Settings file was unreadable ({error.Message}) and could not be moved aside: {moveError.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Writes the whole file to a temporary sibling, flushes it to disk, then renames it over
+    /// settings.json, so a crash, kill or failed write leaves the previous file intact.
+    /// </summary>
+    public void Save()
+    {
+        lock (SaveLock)
+        {
+            var temporary = SettingsPath + ".tmp";
+            try
+            {
+                Directory.CreateDirectory(DataDirectory);
+                var json = JsonSerializer.SerializeToUtf8Bytes(this, JsonOptions);
+                using (var stream = new FileStream(temporary, FileMode.Create, FileAccess.Write, FileShare.None))
+                {
+                    stream.Write(json);
+                    stream.Flush(flushToDisk: true);
+                }
+                ReplaceSettingsFile(temporary);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+                DashboardLog.Warn($"Unable to write settings: {error.Message}");
+                try { File.Delete(temporary); }
+                catch (Exception cleanup) when (cleanup is IOException or UnauthorizedAccessException) { }
+            }
+        }
+    }
+
+    // A virus scanner or indexer can briefly hold settings.json open without delete
+    // sharing, which makes the rename fail; retry a few times before giving up.
+    private static void ReplaceSettingsFile(string temporary)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                File.Move(temporary, SettingsPath, overwrite: true);
+                return;
+            }
+            catch (Exception error) when (attempt < 5 && error is IOException or UnauthorizedAccessException)
+            {
+                Thread.Sleep(20);
+            }
         }
     }
 

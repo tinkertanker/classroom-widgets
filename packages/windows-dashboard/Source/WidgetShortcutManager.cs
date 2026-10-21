@@ -92,6 +92,10 @@ public sealed class WidgetShortcutManager : IDisposable
     private readonly Dictionary<int, (int WidgetType, WidgetShortcutAction Action)> _registeredIds = new();
     private readonly Dictionary<(int WidgetType, WidgetShortcutAction Action), WidgetShortcutRegistration> _statuses = new();
     private bool _suspended;
+    // What the registered hotkeys were built from, so unrelated settings changes
+    // (opacity, Short.io fields, frames) do not unregister and re-register them all.
+    private string? _registeredBindings;
+    private bool _registrationFailed;
 
     public event Action? StatusChanged;
 
@@ -108,7 +112,7 @@ public sealed class WidgetShortcutManager : IDisposable
             WindowStyle = 0
         });
         _source.AddHook(WndProc);
-        _settings.Changed += Refresh;
+        _settings.Changed += OnSettingsChanged;
         _host.WidgetOptionsChanged += OnWidgetOptionsChanged;
         Refresh();
     }
@@ -163,10 +167,33 @@ public sealed class WidgetShortcutManager : IDisposable
                 : _settings.MoveWidgetPreviousShortcut)
             .Any(existing => WidgetShortcutGesture.TryParse(existing, out var assigned) && assigned == candidate);
 
+    private void OnSettingsChanged()
+    {
+        // A shortcut another app held may be free now, so failed registrations still retry.
+        if (!_registrationFailed && _registeredBindings == CurrentBindings()) return;
+        Refresh();
+    }
+
+    private string CurrentBindings()
+    {
+        static string Describe(Dictionary<int, string?> bindings)
+            => string.Join(';', bindings.OrderBy(entry => entry.Key).Select(entry => $"{entry.Key}={entry.Value}"));
+        return string.Join('|',
+            string.Join(',', _host.WidgetOptions.Select(option => option.WidgetType)),
+            Describe(_settings.WidgetShortcuts),
+            Describe(_settings.WidgetDismissShortcuts),
+            _settings.DisplayPreviewShortcut,
+            _settings.DisplayPreviewDismissShortcut,
+            _settings.MoveWidgetPreviousShortcut,
+            _settings.MoveWidgetNextShortcut);
+    }
+
     public void Refresh()
     {
         if (_suspended) return;
         UnregisterAll(clearStatuses: true);
+        _registeredBindings = CurrentBindings();
+        _registrationFailed = false;
         var optionTypes = _host.WidgetOptions.Select(option => option.WidgetType).ToHashSet();
         var id = 1;
         var seen = new HashSet<WidgetShortcutGesture>();
@@ -226,6 +253,7 @@ public sealed class WidgetShortcutManager : IDisposable
             return;
         }
         var error = new Win32Exception(Marshal.GetLastWin32Error());
+        _registrationFailed = true;
         _statuses[key] = new WidgetShortcutRegistration(WidgetShortcutStatus.Conflict, error.Message);
         DashboardLog.Warn($"Unable to register {action.ToString().ToLowerInvariant()} shortcut {gesture.Display} for type {widgetType}: {error.Message}");
     }
@@ -273,7 +301,7 @@ public sealed class WidgetShortcutManager : IDisposable
 
     public void Dispose()
     {
-        _settings.Changed -= Refresh;
+        _settings.Changed -= OnSettingsChanged;
         _host.WidgetOptionsChanged -= OnWidgetOptionsChanged;
         UnregisterAll(clearStatuses: true);
         _source.RemoveHook(WndProc);

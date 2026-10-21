@@ -65,6 +65,7 @@ public sealed class NativeMovementTests
     [STAThread]
     public static int Main(string[] args)
     {
+        if (SettingsPersistenceTests.IsChildProcess(args)) return SettingsPersistenceTests.RunSaveLoop(args[1]);
         if (args.Length != 1) return 2;
         IsChildProcess = true;
         if (!AreDpiAwarenessContextsEqual(GetThreadDpiAwarenessContext(), new IntPtr(-4)))

@@ -52,6 +52,12 @@ public partial class SettingsWindow : Window
             _settings.Changed -= OnSettingsChanged;
             _host.WidgetOptionsChanged -= OnWidgetOptionsChanged;
             _shortcuts.StatusChanged -= OnShortcutStatusChanged;
+            // Apply a pending slider or text edit now rather than after the window has gone.
+            if (_settingsCommit.IsEnabled)
+            {
+                _settingsCommit.Stop();
+                _settings.NotifyChanged();
+            }
             _shortcuts.Resume();
         };
         _loading = false;
@@ -92,6 +98,13 @@ public partial class SettingsWindow : Window
         if (_loading) return;
         _settings.BackgroundOpacity = Math.Round(args.NewValue, 2);
         UpdateOpacityLabel();
+        ScheduleCommit();
+    }
+
+    // Saves and applies once typing or dragging pauses. The value itself is set at once,
+    // and quitting saves it, so a pending commit is never lost.
+    private void ScheduleCommit()
+    {
         _settingsCommit.Stop();
         _settingsCommit.Start();
     }
@@ -154,14 +167,14 @@ public partial class SettingsWindow : Window
     {
         if (_loading) return;
         _settings.LinkShortenerPublicApiKey = ApiKeyBox.Password;
-        _settings.NotifyChanged();
+        ScheduleCommit();
     }
 
     private void DomainBox_TextChanged(object sender, TextChangedEventArgs args)
     {
         if (_loading) return;
         _settings.LinkShortenerDomain = DomainBox.Text;
-        _settings.NotifyChanged();
+        ScheduleCommit();
     }
 
     private void SelectProvider(string provider)

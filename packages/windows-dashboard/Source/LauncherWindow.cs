@@ -122,7 +122,8 @@ public sealed class LauncherWindow
                 ["surface"] = "widget-launcher"
             }));
         }
-        catch (Exception error) when (error is WebView2RuntimeNotFoundException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        // Any failure must clear _initializing, or the launcher never retries until restart.
+        catch (Exception error) when (error is not OutOfMemoryException)
         {
             DashboardLog.Error($"Unable to open widget launcher: {error.Message}");
             _initializing = false;
