@@ -80,9 +80,12 @@ public sealed class DisplayCaptureSession : IDisposable
     public void Start()
     {
         if (_disposed) return;
-        _failed = false;
-        _consecutiveFailures = 0;
-        _timer.Start();
+        if (!_timer.IsEnabled)
+        {
+            _failed = false;
+            _consecutiveFailures = 0;
+            _timer.Start();
+        }
         CaptureFrame();
     }
 
@@ -142,9 +145,8 @@ public sealed class DisplayCaptureSession : IDisposable
                 DashboardLog.Warn($"Display capture frame failed ({_consecutiveFailures} in a row), retrying: {error.Message}");
                 return;
             }
-            _failed = true;
-            _timer.Stop();
-            Failed?.Invoke(error);
+            DashboardLog.Error($"Display capture stopped after {_consecutiveFailures} failed frames: {error}");
+            Fail(error);
         }
         finally
         {
@@ -153,8 +155,24 @@ public sealed class DisplayCaptureSession : IDisposable
         }
         if (!presented) return;
         _consecutiveFailures = 0;
-        // Outside the try: a handler's exception is the handler's bug, not a capture failure.
-        FrameReady?.Invoke();
+        // Outside the try: a handler's exception is not a capture failure to retry. It stops
+        // the session, so the preview never claims to be live while frozen.
+        try
+        {
+            FrameReady?.Invoke();
+        }
+        catch (Exception error) when (error is not OutOfMemoryException)
+        {
+            DashboardLog.Error($"Display capture stopped by a frame handler: {error}");
+            Fail(error);
+        }
+    }
+
+    private void Fail(Exception error)
+    {
+        _failed = true;
+        _timer.Stop();
+        Failed?.Invoke(error);
     }
 
     /// <summary>The size to capture this frame at, or null to skip the frame.</summary>

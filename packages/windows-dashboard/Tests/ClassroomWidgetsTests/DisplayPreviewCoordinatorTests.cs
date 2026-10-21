@@ -206,7 +206,7 @@ public sealed class DisplayPreviewCoordinatorTests
                     ClickPower(window);
                     WpfTestHost.PumpUntil(
                         () => window.PreviewImage.Source is System.Windows.Media.Imaging.BitmapSource { PixelWidth: var w, PixelHeight: var h }
-                            && Math.Abs(w - expectedWidth) <= 1.5 && Math.Abs(h - expectedHeight) <= 1.5,
+                            && FitsPreview(w, h, expectedWidth, expectedHeight, sourceBounds.Size),
                         Timeout, $"a frame of about {expectedWidth:0}x{expectedHeight:0} (preview area {area})");
                     var image = (System.Windows.Media.Imaging.BitmapSource)window.PreviewImage.Source!;
                     var (width, height) = (image.PixelWidth, image.PixelHeight);
@@ -228,6 +228,16 @@ public sealed class DisplayPreviewCoordinatorTests
             if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
         }
     }
+
+    /// <summary>
+    /// Whether a frame has the source's aspect ratio and fills the preview on its limiting side.
+    /// WPF layout rounding can move the image area by a pixel when the 42 DIP bar is a half
+    /// pixel (125%, 175%), so each check allows 1.5 px.
+    /// </summary>
+    private static bool FitsPreview(int width, int height, double expectedWidth, double expectedHeight, Size source)
+        => Math.Abs(height - width * source.Height / source.Width) <= 1.5
+            && Math.Min(Math.Abs(width - expectedWidth), Math.Abs(height - expectedHeight)) <= 1.5
+            && width <= expectedWidth + 1.5 && height <= expectedHeight + 1.5;
 
     /// <summary>The primary monitor's scale factor, read from a throwaway window placed on it.</summary>
     private static double PrimaryScale()

@@ -208,6 +208,76 @@ public sealed class DisplayCaptureSessionTests
         return window;
     }
 
+    // Retrying failed frames (#211) can go wrong by: a brief failure (a display mode change)
+    // stopping the preview for good; a persistent failure being retried forever without ever
+    // reaching Failed; and a FrameReady handler's exception being treated as a capture
+    // failure and retried, or leaving the session claiming to be live while frozen.
+    [Fact]
+    public void BriefCaptureFailuresAreRetriedAndPersistentOnesReported()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var region = new Rect(0, 0, 400, 300);
+            var throwsLeft = 2;
+            using (var brief = new DisplayCaptureSession(region, targetPixelSize: () =>
+                   {
+                       if (throwsLeft > 0)
+                       {
+                           throwsLeft--;
+                           throw new InvalidOperationException("simulated mode change");
+                       }
+                       return new Size(200, 150);
+                   }))
+            {
+                Exception? failure = null;
+                var frames = 0;
+                brief.Failed += error => failure = error;
+                brief.FrameReady += () => frames++;
+                brief.Start();
+                WpfTestHost.PumpUntil(() => frames >= 2 || failure is not null, Timeout, "frames after two failed ones");
+                Assert.Null(failure);
+                Assert.Equal(0, throwsLeft);
+            }
+
+            var attempts = 0;
+            using (var broken = new DisplayCaptureSession(region, targetPixelSize: () =>
+                   {
+                       attempts++;
+                       throw new InvalidOperationException("simulated persistent failure");
+                   }))
+            {
+                var failures = new List<Exception>();
+                var frames = 0;
+                broken.Failed += failures.Add;
+                broken.FrameReady += () => frames++;
+                broken.Start();
+                WpfTestHost.PumpUntil(() => failures.Count > 0, Timeout, "Failed after repeated failures");
+                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(400));
+                Assert.Single(failures);
+                Assert.Equal("simulated persistent failure", failures[0].Message);
+                Assert.Equal(3, attempts);
+                Assert.Equal(0, frames);
+            }
+
+            using (var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(200, 150)))
+            {
+                var failures = new List<Exception>();
+                var calls = 0;
+                session.Failed += failures.Add;
+                session.FrameReady += () =>
+                {
+                    calls++;
+                    throw new InvalidOperationException("handler bug");
+                };
+                session.Start();
+                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(400));
+                Assert.Equal(1, calls);
+                Assert.Single(failures);
+                Assert.Equal("handler bug", failures[0].Message);
+            }
+        });
+    }
+
     [Fact]
     public void CaptureReleasesGdiObjectsAcrossResizesAndDispose()
     {
