@@ -8,15 +8,22 @@ namespace ClassroomWidgets;
 
 /// <summary>
 /// Copies a source display into a WPF bitmap about 15 times a second on the UI thread.
-/// The memory DC and DIB section are kept until the output size changes, and a source
-/// larger than the preview is scaled down by GDI (HALFTONE) as it is copied, so the work
-/// per frame follows the preview's size rather than the source monitor's.
+/// The memory DC and DIB section are kept until the output size changes. When the preview
+/// is at most half the source size, GDI scales the frame down (HALFTONE) as it copies, so
+/// the bitmap the UI thread copies and WPF uploads is preview-sized. GDI still reads the
+/// whole source rectangle either way.
 /// </summary>
 public sealed class DisplayCaptureSession : IDisposable
 {
     private const uint Srccopy = 0x00CC0020;
     private const uint Captureblt = 0x40000000;
     private const int Halftone = 4;
+    private const int StretchMode = Halftone;
+    // Above this scale, HALFTONE over the whole source costs more than copying it unscaled.
+    private const double MaxStretchScale = 0.5;
+    // While the preview is being resized, keep the current surface until the new size has
+    // held for this many frames; Stretch=Uniform covers the difference meanwhile.
+    private const int ResizeSettleFrames = 3;
     private readonly Rect _sourceBounds;
     private readonly Func<bool>? _canCapture;
     private readonly Func<Size>? _targetPixelSize;
@@ -29,6 +36,8 @@ public sealed class DisplayCaptureSession : IDisposable
     private IntPtr _bits;
     private int _width;
     private int _height;
+    private (int Width, int Height) _pendingSize;
+    private int _pendingFrames;
     private bool _failed;
     private bool _disposed;
 
@@ -39,8 +48,8 @@ public sealed class DisplayCaptureSession : IDisposable
     /// <param name="sourceBounds">The source display, in physical pixels.</param>
     /// <param name="canCapture">Skips a frame when it returns false.</param>
     /// <param name="targetPixelSize">
-    /// The preview's size in physical pixels, read every frame. Without it, or while it is
-    /// empty, frames are captured at the source size.
+    /// The preview's image area in physical pixels, read every frame. Without it, frames are
+    /// captured at the source size. While it returns an empty size, frames are skipped.
     /// </param>
     public DisplayCaptureSession(Rect sourceBounds, Func<bool>? canCapture = null, Func<Size>? targetPixelSize = null)
     {
@@ -65,15 +74,15 @@ public sealed class DisplayCaptureSession : IDisposable
 
     private void CaptureFrame()
     {
-        if (_disposed || _failed || (_canCapture is not null && !_canCapture())) return;
-        var sourceWidth = Math.Max(1, (int)Math.Round(_sourceBounds.Width));
-        var sourceHeight = Math.Max(1, (int)Math.Round(_sourceBounds.Height));
-        var (width, height) = DisplayGeometry.CaptureSize(
-            new Size(sourceWidth, sourceHeight),
-            _targetPixelSize?.Invoke() ?? Size.Empty);
+        if (_disposed || _failed) return;
         var screenDc = IntPtr.Zero;
         try
         {
+            if (_canCapture is not null && !_canCapture()) return;
+            var sourceWidth = Math.Max(1, (int)Math.Round(_sourceBounds.Width));
+            var sourceHeight = Math.Max(1, (int)Math.Round(_sourceBounds.Height));
+            if (OutputSize(sourceWidth, sourceHeight) is not { } size) return;
+            var (width, height) = size;
             EnsureSurface(width, height);
             screenDc = NativeMethods.GetDC(IntPtr.Zero);
             if (screenDc == IntPtr.Zero) throw new InvalidOperationException("Unable to acquire the screen device context.");
@@ -82,7 +91,10 @@ public sealed class DisplayCaptureSession : IDisposable
             var copied = width == sourceWidth && height == sourceHeight
                 ? NativeMethods.BitBlt(_memoryDc, 0, 0, width, height, screenDc, sourceX, sourceY, Srccopy | Captureblt)
                 : NativeMethods.StretchBlt(_memoryDc, 0, 0, width, height, screenDc, sourceX, sourceY, sourceWidth, sourceHeight, Srccopy | Captureblt);
-            if (!copied) throw new InvalidOperationException("Unable to copy the source display.");
+            if (!copied)
+            {
+                throw new InvalidOperationException($"Unable to copy the source display (error {Marshal.GetLastWin32Error()}).");
+            }
             // The DIB's bits are read directly below, so GDI must have finished drawing.
             NativeMethods.GdiFlush();
 
@@ -100,6 +112,39 @@ public sealed class DisplayCaptureSession : IDisposable
         {
             if (screenDc != IntPtr.Zero) NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
         }
+    }
+
+    /// <summary>The size to capture this frame at, or null to skip the frame.</summary>
+    private (int Width, int Height)? OutputSize(int sourceWidth, int sourceHeight)
+    {
+        var desired = (sourceWidth, sourceHeight);
+        if (_targetPixelSize is not null)
+        {
+            var target = _targetPixelSize();
+            if (target.IsEmpty || !(target.Width >= 1) || !(target.Height >= 1)) return null;
+            var fitted = DisplayGeometry.CaptureSize(new Size(sourceWidth, sourceHeight), target);
+            if (fitted.Width <= sourceWidth * MaxStretchScale && fitted.Height <= sourceHeight * MaxStretchScale)
+            {
+                desired = fitted;
+            }
+        }
+        if (_memoryDc == IntPtr.Zero || desired == (_width, _height))
+        {
+            _pendingFrames = 0;
+            return desired;
+        }
+        if (desired == _pendingSize)
+        {
+            _pendingFrames++;
+        }
+        else
+        {
+            _pendingSize = desired;
+            _pendingFrames = 1;
+        }
+        if (_pendingFrames < ResizeSettleFrames) return (_width, _height);
+        _pendingFrames = 0;
+        return desired;
     }
 
     /// <summary>Keeps one memory DC and a top-down 32-bit DIB section of the output size.</summary>
@@ -129,9 +174,14 @@ public sealed class DisplayCaptureSession : IDisposable
             throw new InvalidOperationException("Unable to create the capture bitmap.");
         }
         _defaultBitmap = NativeMethods.SelectObject(_memoryDc, _dib);
+        if (_defaultBitmap == IntPtr.Zero)
+        {
+            ReleaseSurface();
+            throw new InvalidOperationException("Unable to select the capture bitmap.");
+        }
         // HALFTONE averages the source pixels each output pixel covers, so text stays legible;
         // it needs the brush origin reset after the mode is set.
-        NativeMethods.SetStretchBltMode(_memoryDc, Halftone);
+        NativeMethods.SetStretchBltMode(_memoryDc, StretchMode);
         NativeMethods.SetBrushOrgEx(_memoryDc, 0, 0, IntPtr.Zero);
         _width = width;
         _height = height;
@@ -239,11 +289,11 @@ public sealed class DisplayCaptureSession : IDisposable
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool DeleteDC(IntPtr hDc);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool BitBlt(IntPtr destination, int x, int y, int width, int height, IntPtr source, int sourceX, int sourceY, uint rasterOperation);
 
-        [DllImport("gdi32.dll")]
+        [DllImport("gdi32.dll", SetLastError = true)]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool StretchBlt(IntPtr destination, int x, int y, int width, int height, IntPtr source, int sourceX, int sourceY, int sourceWidth, int sourceHeight, uint rasterOperation);
 

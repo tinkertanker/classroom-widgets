@@ -1,4 +1,3 @@
-using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -83,6 +82,8 @@ public sealed class DisplayCaptureSessionTests
     // Capturing at preview size (#211) can go wrong by: drawing the scaled frame with the
     // wrong channel order or upside down; keeping a stale buffer or bitmap after the preview
     // is resized (wrong size, stride mismatch or an exception); upscaling past the source;
+    // capturing a full-size frame, or failing, while the preview has no size yet; scaling
+    // with GDI's default stretch mode, which ANDs pixels together and wipes out thin text;
     // and leaking the reused memory DC or DIB section on resize or dispose.
     [Fact]
     public void ScaledCaptureFollowsPreviewSizeAndKeepsColoursAndOrientation()
@@ -104,11 +105,57 @@ public sealed class DisplayCaptureSessionTests
                 AssertScaledFrame(session, () => failure, 200, 150, "scaled-200");
                 target = new Size(120, 120);
                 AssertScaledFrame(session, () => failure, 120, 90, "scaled-120");
+
+                // No preview size yet (before layout): skip frames, keep the last one, no failure.
+                target = Size.Empty;
+                var skipped = 0;
+                void CountSkipped() => skipped++;
+                session.FrameReady += CountSkipped;
+                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(400));
+                session.FrameReady -= CountSkipped;
+                Assert.Null(failure);
+                Assert.Equal(0, skipped);
+                var kept = Assert.IsType<WriteableBitmap>(session.Image);
+                Assert.Equal((120, 90), (kept.PixelWidth, kept.PixelHeight));
+
                 // Larger than the source: capture at source size, never upscale.
                 target = new Size(1000, 1000);
                 AssertScaledFrame(session, () => failure, 400, 300, "unscaled");
-                target = new Size(0, 0);
-                AssertScaledFrame(session, () => failure, 400, 300, "unlaid-out");
+            }
+            finally
+            {
+                source.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void ScaledCaptureAveragesFineDetailInsteadOfDroppingIt()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var region = new Rect(0, 0, 200, 100);
+            var source = StripeWindow(region);
+            source.Show();
+            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
+            try
+            {
+                using var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(100, 50));
+                Exception? failure = null;
+                session.Failed += error => failure = error;
+                session.Start();
+                AssertFrameSize(session, () => failure, 100, 50);
+                var rendered = WpfTestHost.RenderOverBlack(session.Image!, 100, 50);
+                WpfTestHost.SaveEvidence("211-stripes-100x50.png", rendered, 100, 50);
+                // One-pixel black and white columns at 2:1 must average to grey. The default
+                // stretch mode gives black, and dropping pixels gives black or white.
+                for (var x = 10; x < 90; x += 10)
+                {
+                    var (r, g, b, _) = WpfTestHost.PixelAt(rendered, 100, x, 25);
+                    Assert.InRange(r, 80, 175);
+                    Assert.InRange(g, 80, 175);
+                    Assert.InRange(b, 80, 175);
+                }
             }
             finally
             {
@@ -123,56 +170,101 @@ public sealed class DisplayCaptureSessionTests
         WpfTestHost.Run(() =>
         {
             var region = new Rect(0, 0, 400, 300);
-            void RunSession(int frames)
+            Size[] sizes = { new(200, 150), new(120, 90), new(180, 135) };
+            void RunSession()
             {
-                var target = new Size(200, 150);
+                var target = sizes[0];
                 using var session = new DisplayCaptureSession(region, targetPixelSize: () => target);
                 Exception? failure = null;
-                var seen = 0;
-                session.FrameReady += () => seen++;
                 session.Failed += error => failure = error;
                 session.Start();
-                for (var frame = 1; frame <= frames; frame++)
+                foreach (var size in sizes)
                 {
-                    target = frame % 2 == 0 ? new Size(200, 150) : new Size(160 + frame, 120);
-                    WpfTestHost.PumpUntil(() => seen > frame || failure is not null, Timeout, $"frame {frame}");
-                    Assert.Null(failure);
+                    target = size;
+                    AssertFrameSize(session, () => failure, (int)size.Width, (int)size.Height);
                 }
             }
 
-            RunSession(2);
+            RunSession();
             var baseline = GdiObjects();
-            for (var cycle = 0; cycle < 20; cycle++) RunSession(4);
+            for (var cycle = 0; cycle < 15; cycle++) RunSession();
             var after = GdiObjects();
-            File.AppendAllText(EvidencePath("gdi-objects.txt"), $"baseline={baseline} after20sessions={after}{Environment.NewLine}");
-            // A leak of the DC plus DIB per session or per resize would add 40 to 100 objects.
+            WpfTestHost.SaveEvidenceText("211-gdi-objects.txt", $"baseline={baseline} after15sessions={after} (3 sizes each){Environment.NewLine}");
+            // Leaking the DC and DIB per session or per resize would add 30 to 90 objects.
             Assert.InRange(after, 0, baseline + 4);
         });
     }
 
-    private static void AssertScaledFrame(DisplayCaptureSession session, Func<Exception?> failure, int width, int height, string name)
+    private static void AssertFrameSize(DisplayCaptureSession session, Func<Exception?> failure, int width, int height)
     {
         WpfTestHost.PumpUntil(
             () => failure() is not null || session.Image is WriteableBitmap { PixelWidth: var w, PixelHeight: var h } && w == width && h == height,
             Timeout, $"a {width}x{height} frame");
         Assert.Null(failure());
-        // Let one more frame land at this size so the pixels are not from the resize tick only.
+        // Let one more frame land at this size so the pixels are not from the resize frame only.
         var frames = 0;
         void Count() => frames++;
         session.FrameReady += Count;
         WpfTestHost.PumpUntil(() => frames >= 1 || failure() is not null, Timeout, "a second frame");
         session.FrameReady -= Count;
         Assert.Null(failure());
-
         var image = Assert.IsType<WriteableBitmap>(session.Image);
-        Assert.Equal(width, image.PixelWidth);
-        Assert.Equal(height, image.PixelHeight);
-        var rendered = WpfTestHost.RenderOverBlack(image, width, height);
+        Assert.Equal((width, height), (image.PixelWidth, image.PixelHeight));
+    }
+
+    private static void AssertScaledFrame(DisplayCaptureSession session, Func<Exception?> failure, int width, int height, string name)
+    {
+        AssertFrameSize(session, failure, width, height);
+        var rendered = WpfTestHost.RenderOverBlack(session.Image!, width, height);
         WpfTestHost.SaveEvidence($"211-{name}-{width}x{height}.png", rendered, width, height);
         AssertColour(SyntheticSourceWindow.TopLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height / 4));
         AssertColour(SyntheticSourceWindow.TopRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height / 4));
         AssertColour(SyntheticSourceWindow.BottomLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height * 3 / 4));
         AssertColour(SyntheticSourceWindow.BottomRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height * 3 / 4));
+    }
+
+    /// <summary>A topmost window of one-pixel black and white columns at <paramref name="bounds"/> (physical pixels).</summary>
+    private static Window StripeWindow(Rect bounds)
+    {
+        var image = new System.Windows.Controls.Image { Stretch = Stretch.None, SnapsToDevicePixels = true };
+        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor);
+        var window = new Window
+        {
+            WindowStyle = WindowStyle.None,
+            ResizeMode = ResizeMode.NoResize,
+            ShowInTaskbar = false,
+            Topmost = true,
+            ShowActivated = false,
+            UseLayoutRounding = true,
+            Background = Brushes.Black,
+            Content = image,
+        };
+        window.SourceInitialized += (_, _) =>
+        {
+            var fromDevice = PresentationSource.FromVisual(window)!.CompositionTarget!.TransformFromDevice;
+            var origin = fromDevice.Transform(bounds.TopLeft);
+            var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
+            window.Left = origin.X;
+            window.Top = origin.Y;
+            window.Width = size.X;
+            window.Height = size.Y;
+            // A bitmap at the monitor's DPI draws one bitmap pixel per screen pixel.
+            var dpi = 96 / fromDevice.M11;
+            var width = (int)bounds.Width;
+            var height = (int)bounds.Height;
+            var pixels = new byte[width * height * 4];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var value = (byte)(x % 2 == 0 ? 0 : 255);
+                    var offset = (y * width + x) * 4;
+                    pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = value;
+                }
+            }
+            image.Source = BitmapSource.Create(width, height, dpi, dpi, PixelFormats.Bgr32, null, pixels, width * 4);
+        };
+        return window;
     }
 
     private static int GdiObjects()
@@ -183,15 +275,6 @@ public sealed class DisplayCaptureSessionTests
         GC.WaitForPendingFinalizers();
         using var process = System.Diagnostics.Process.GetCurrentProcess();
         return (int)GetGuiResources(process.Handle, 0);
-    }
-
-    private static string EvidencePath(string name)
-    {
-        var directory = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR") is { Length: > 0 } dir
-            ? dir
-            : Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests");
-        Directory.CreateDirectory(directory);
-        return Path.Combine(directory, name);
     }
 
     [System.Runtime.InteropServices.DllImport("user32.dll")]

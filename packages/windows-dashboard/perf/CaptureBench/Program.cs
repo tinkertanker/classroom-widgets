@@ -4,10 +4,17 @@
 //       [--label NAME] [--source X,Y,W,H] [--preview W,H] [--seconds 20] [--captures 200]
 //       [--cycles 50] [--out DIR]
 //
-// --source is the captured region in physical pixels (default: the primary display).
+// --source is the captured region in physical pixels (default: the primary display). With
+// only one display the live phase captures its own window; use another monitor if you can.
 // --preview is the preview image area in physical pixels (default 720,540: the default
-// 480x360 DIP preview at 150% scaling). Builds without the target-size constructor (before
-// #211) ignore it and capture at source size; summary.json records which constructor ran.
+// 480x360 DIP preview at 150% scaling). The live phase sizes its window to it and then
+// targets the image area it actually got, as the app does.
+//
+// To measure a baseline, keep this folder and the csproj and swap in the old capture code:
+//   git checkout <base> -- packages/windows-dashboard/Source
+// Builds without the target-size constructor ignore --preview and capture at source size;
+// summary.json records which constructor ran. "sync" times only the UI-thread work; WPF's
+// render-thread copy and GPU upload show up in the live phase's CPU and input latency.
 //
 // Phases, all on one STA dispatcher like the app:
 //   1. idle:      dispatcher latency with no capture, for a baseline.
@@ -101,10 +108,12 @@ internal static class Program
     {
         var dpi = 1.0;
         var image = new Image { Stretch = Stretch.Uniform };
+        var surface = new Grid { Background = Brushes.Black, Children = { image } };
         var window = new Window
         {
             Title = "Capture bench preview",
-            Content = new Grid { Background = Brushes.Black, Children = { image } },
+            Content = surface,
+            UseLayoutRounding = true,
             WindowStyle = WindowStyle.ToolWindow,
             ShowActivated = false,
             Left = 0,
@@ -123,7 +132,8 @@ internal static class Program
         window.Top = Math.Max(0, area.Bottom - window.Height);
         Pump(TimeSpan.FromMilliseconds(500));
 
-        using var session = Create(options, () => options.Preview);
+        Size ImagePixels() => new(Math.Round(surface.ActualWidth * dpi), Math.Round(surface.ActualHeight * dpi));
+        using var session = Create(options, () => surface.ActualWidth > 0 ? ImagePixels() : options.Preview);
         var frames = 0;
         Exception? failure = null;
         var gdiMax = 0u;
@@ -156,6 +166,7 @@ internal static class Program
             fps = frames / wall.Elapsed.TotalSeconds,
             frameWidth = shown?.PixelWidth,
             frameHeight = shown?.PixelHeight,
+            imageAreaPixels = ImagePixels().ToString(),
             cpuPercentOfOneCore = 100 * cpu.TotalMilliseconds / wall.Elapsed.TotalMilliseconds,
             gdiObjectsMax = gdiMax,
             inputLatencyMs = latency,

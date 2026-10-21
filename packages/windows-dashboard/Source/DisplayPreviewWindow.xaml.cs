@@ -26,7 +26,7 @@ public partial class DisplayPreviewWindow : Window
         {
             if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return Size.Empty;
             var size = target.TransformToDevice.Transform(new Vector(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight));
-            return new Size(Math.Max(0, Math.Ceiling(size.X)), Math.Max(0, Math.Ceiling(size.Y)));
+            return new Size(Math.Max(0, Math.Round(size.X)), Math.Max(0, Math.Round(size.Y)));
         }
     }
 

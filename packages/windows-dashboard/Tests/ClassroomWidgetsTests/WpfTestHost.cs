@@ -107,6 +107,13 @@ internal static class WpfTestHost
         encoder.Save(stream);
     }
 
+    public static void SaveEvidenceText(string name, string text)
+    {
+        if (string.IsNullOrEmpty(EvidenceDirectory)) return;
+        Directory.CreateDirectory(EvidenceDirectory);
+        File.WriteAllText(Path.Combine(EvidenceDirectory, name), text);
+    }
+
     public static void SaveEvidence(string name, byte[] bgra, int width, int height)
         => SaveEvidence(name, BitmapSource.Create(width, height, 96, 96, PixelFormats.Pbgra32, null, bgra, width * 4));
 }
