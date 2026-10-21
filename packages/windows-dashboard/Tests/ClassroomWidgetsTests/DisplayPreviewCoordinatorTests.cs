@@ -186,10 +186,10 @@ public sealed class DisplayPreviewCoordinatorTests
                 var frame = new PanelFrame { Left = 680, Top = 400, Width = 320, Height = 282 };
                 var settings = new DashboardSettings { DisplayPreviewSourceId = SourceId, DisplayPreviewFrame = frame };
                 var content = new SyntheticSourceWindow(sourceBounds);
-                content.ShowAndWaitUntilOnScreen();
                 using var coordinator = new DisplayPreviewCoordinator(settings, catalog);
                 try
                 {
+                    content.ShowAndWaitUntilOnScreen();
                     coordinator.Open();
                     var window = coordinator.Window!;
                     WpfTestHost.PumpUntil(() => window.IsVisible && window.StatusText.Text == "Click to see display", Timeout, "the preview to open");
@@ -232,7 +232,7 @@ public sealed class DisplayPreviewCoordinatorTests
     /// <summary>
     /// Whether a frame has the source's aspect ratio and fills the preview on its limiting side.
     /// WPF layout rounding can move the image area by a pixel when the 42 DIP bar is a half
-    /// pixel (125%, 175%), which the aspect ratio can grow to about 1.9 px on the other side.
+    /// pixel (125%, 175%), which the aspect ratio can turn into about 1.9 px on the other side.
     /// </summary>
     private static bool FitsPreview(int width, int height, double expectedWidth, double expectedHeight, Size source)
         => Math.Abs(height - width * source.Height / source.Width) <= 1.5

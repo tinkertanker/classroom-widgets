@@ -5,8 +5,6 @@ namespace ClassroomWidgets;
 
 public static class DashboardLog
 {
-    // Read on each write, so tests that redirect the data directory also redirect the log.
-    private static string LogPath => Path.Combine(DashboardSettings.DataDirectory, "classroom-widgets.log");
     private static readonly object Gate = new();
 
     public static void Info(string message) => Write("INFO", message);
@@ -21,8 +19,10 @@ public static class DashboardLog
         {
             lock (Gate)
             {
-                Directory.CreateDirectory(DashboardSettings.DataDirectory);
-                File.AppendAllText(LogPath, line + Environment.NewLine);
+                // Read on each write, so tests that redirect the data directory also redirect the log.
+                var directory = DashboardSettings.DataDirectory;
+                Directory.CreateDirectory(directory);
+                File.AppendAllText(Path.Combine(directory, "classroom-widgets.log"), line + Environment.NewLine);
             }
         }
         catch (IOException)

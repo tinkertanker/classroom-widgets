@@ -136,10 +136,10 @@ public sealed class DisplayCaptureSessionTests
         {
             var region = new Rect(0, 0, 200, 100);
             var source = StripeWindow(region);
-            source.Show();
-            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
             try
             {
+                source.Show();
+                WaitForStripesOnScreen();
                 using var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(100, 50));
                 Exception? failure = null;
                 session.Failed += error => failure = error;
@@ -162,6 +162,35 @@ public sealed class DisplayCaptureSessionTests
             }
         });
     }
+
+    /// <summary>Waits until the screen itself (GetPixel, not the capture code) shows the stripes.</summary>
+    private static void WaitForStripesOnScreen()
+    {
+        static bool Near(uint colorRef, int r, int b)
+            => Math.Abs((int)(colorRef & 0xFF) - r) <= 3 && ((colorRef >> 8) & 0xFF) <= 3 && Math.Abs((int)((colorRef >> 16) & 0xFF) - b) <= 3;
+        WpfTestHost.PumpUntil(() =>
+        {
+            var screen = GetDC(IntPtr.Zero);
+            try
+            {
+                return Near(GetPixel(screen, 20, 50), 255, 0) && Near(GetPixel(screen, 21, 50), 0, 255)
+                    && Near(GetPixel(screen, 180, 50), 255, 0) && Near(GetPixel(screen, 181, 50), 0, 255);
+            }
+            finally
+            {
+                ReleaseDC(IntPtr.Zero, screen);
+            }
+        }, TimeSpan.FromSeconds(5), "the stripe fixture on screen");
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr window);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr window, IntPtr dc);
+
+    [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+    private static extern uint GetPixel(IntPtr dc, int x, int y);
 
     /// <summary>A topmost window of one-pixel red and blue columns at <paramref name="bounds"/> (physical pixels).</summary>
     private static Window StripeWindow(Rect bounds)
@@ -232,69 +261,67 @@ public sealed class DisplayCaptureSessionTests
 
     private static void RetryScenarios()
     {
+        var region = new Rect(0, 0, 400, 300);
+        // Two failures, a good frame, then two more: a good frame resets the count.
+        var throwsLeft = 2;
+        using (var brief = new DisplayCaptureSession(region, targetPixelSize: () =>
+               {
+                   if (throwsLeft > 0)
+                   {
+                       throwsLeft--;
+                       throw new InvalidOperationException("simulated mode change");
+                   }
+                   return new Size(200, 150);
+               }))
         {
-            var region = new Rect(0, 0, 400, 300);
-            // Two failures, a good frame, then two more: a good frame resets the count.
-            var throwsLeft = 2;
-            using (var brief = new DisplayCaptureSession(region, targetPixelSize: () =>
-                   {
-                       if (throwsLeft > 0)
-                       {
-                           throwsLeft--;
-                           throw new InvalidOperationException("simulated mode change");
-                       }
-                       return new Size(200, 150);
-                   }))
-            {
-                Exception? failure = null;
-                var frames = 0;
-                brief.Failed += error => failure = error;
-                brief.FrameReady += () => frames++;
-                brief.Start();
-                WpfTestHost.PumpUntil(() => frames >= 1 || failure is not null, Timeout, "a frame after two failed ones");
-                throwsLeft = 2;
-                var before = frames;
-                WpfTestHost.PumpUntil(() => frames > before || failure is not null, Timeout, "a frame after two more failed ones");
-                Assert.Null(failure);
-                Assert.Equal(0, throwsLeft);
-            }
+            Exception? failure = null;
+            var frames = 0;
+            brief.Failed += error => failure = error;
+            brief.FrameReady += () => frames++;
+            brief.Start();
+            WpfTestHost.PumpUntil(() => frames >= 1 || failure is not null, Timeout, "a frame after two failed ones");
+            throwsLeft = 2;
+            var before = frames;
+            WpfTestHost.PumpUntil(() => frames > before || failure is not null, Timeout, "a frame after two more failed ones");
+            Assert.Null(failure);
+            Assert.Equal(0, throwsLeft);
+        }
 
-            var attempts = 0;
-            using (var broken = new DisplayCaptureSession(region, targetPixelSize: () =>
-                   {
-                       attempts++;
-                       throw new InvalidOperationException("simulated persistent failure");
-                   }))
-            {
-                var failures = new List<Exception>();
-                var frames = 0;
-                broken.Failed += failures.Add;
-                broken.FrameReady += () => frames++;
-                broken.Start();
-                WpfTestHost.PumpUntil(() => failures.Count > 0, Timeout, "Failed after repeated failures");
-                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(400));
-                Assert.Single(failures);
-                Assert.Equal("simulated persistent failure", failures[0].Message);
-                Assert.Equal(3, attempts);
-                Assert.Equal(0, frames);
-            }
+        var attempts = 0;
+        using (var broken = new DisplayCaptureSession(region, targetPixelSize: () =>
+               {
+                   attempts++;
+                   throw new InvalidOperationException("simulated persistent failure");
+               }))
+        {
+            var failures = new List<Exception>();
+            var frames = 0;
+            broken.Failed += failures.Add;
+            broken.FrameReady += () => frames++;
+            broken.Start();
+            WpfTestHost.PumpUntil(() => failures.Count > 0, Timeout, "Failed after repeated failures");
+            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(400));
+            Assert.Single(failures);
+            Assert.Equal("simulated persistent failure", failures[0].Message);
+            Assert.Equal(3, attempts);
+            Assert.Equal(0, frames);
+        }
 
-            using (var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(200, 150)))
+        using (var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(200, 150)))
+        {
+            var failures = new List<Exception>();
+            var calls = 0;
+            session.Failed += failures.Add;
+            session.FrameReady += () =>
             {
-                var failures = new List<Exception>();
-                var calls = 0;
-                session.Failed += failures.Add;
-                session.FrameReady += () =>
-                {
-                    calls++;
-                    throw new InvalidOperationException("handler bug");
-                };
-                session.Start();
-                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(400));
-                Assert.Equal(1, calls);
-                Assert.Single(failures);
-                Assert.Equal("handler bug", failures[0].Message);
-            }
+                calls++;
+                throw new InvalidOperationException("handler bug");
+            };
+            session.Start();
+            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(400));
+            Assert.Equal(1, calls);
+            Assert.Single(failures);
+            Assert.Equal("handler bug", failures[0].Message);
         }
     }
 
