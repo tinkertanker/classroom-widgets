@@ -136,7 +136,8 @@ public sealed class DashboardSettings
         return settings;
     }
 
-    // A scanner or backup tool can hold the file briefly at startup.
+    // A scanner or backup tool can hold the file briefly at startup. This runs before any
+    // window opens, so wait up to about two seconds rather than lose saves for the session.
     private static string ReadWithRetry()
     {
         for (var attempt = 1; ; attempt++)
@@ -145,7 +146,7 @@ public sealed class DashboardSettings
             {
                 return File.ReadAllText(SettingsPath);
             }
-            catch (IOException error) when (attempt < 5 && IsSharingViolation(error))
+            catch (IOException error) when (attempt < 20 && IsSharingViolation(error))
             {
                 Thread.Sleep(100);
             }
@@ -202,6 +203,10 @@ public sealed class DashboardSettings
         {
             File.Move(SettingsPath, aside);
             DashboardLog.Warn($"Settings file was unreadable ({reason}); moved it to {aside} and started from defaults");
+            return null;
+        }
+        catch (Exception gone) when (gone is FileNotFoundException or DirectoryNotFoundException)
+        {
             return null;
         }
         catch (Exception moveError) when (moveError is IOException or UnauthorizedAccessException)

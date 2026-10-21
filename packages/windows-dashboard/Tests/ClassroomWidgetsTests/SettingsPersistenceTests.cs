@@ -20,6 +20,11 @@ namespace ClassroomWidgetsTests;
 //    re-registers every global hotkey: TypingShortioFieldsSavesAndAppliesOnceAfterAPause.
 // 4. Debouncing loses the last edit when Settings closes before the pause:
 //    ClosingSettingsBeforeThePauseStillSavesAndAppliesTheEdit. (Quitting already calls Save.)
+// 5. A file that exists but cannot be read (locked) is replaced by defaults on the next save:
+//    SettingsThatCouldNotBeReadAreNeverOverwrittenWithDefaults.
+// 6. Skipping re-registration on unrelated changes either keeps re-registering everything
+//    while another app holds a shortcut, or never picks the shortcut up once it is free:
+//    AShortcutHeldByAnotherAppIsRetriedOnlyOnceItIsFree.
 public sealed class SettingsPersistenceTests
 {
     private const string ChildMode = "settings-save-loop";
@@ -218,10 +223,11 @@ public sealed class SettingsPersistenceTests
             // A longer pause window than the 40 ms between keystrokes leaves room for a slow
             // runner without letting a commit-per-keystroke regression pass.
             var commitDelay = SettingsWindow.CommitDelay;
-            SettingsWindow.CommitDelay = TimeSpan.FromSeconds(1);
-            var window = new SettingsWindow(settings, host, shortcuts);
+            SettingsWindow? window = null;
             try
             {
+                SettingsWindow.CommitDelay = TimeSpan.FromSeconds(1);
+                window = new SettingsWindow(settings, host, shortcuts);
                 window.Show();
                 WpfTestHost.DoEvents();
                 SelectShortio(window);
@@ -256,7 +262,7 @@ public sealed class SettingsPersistenceTests
             }
             finally
             {
-                window.Close();
+                window?.Close();
                 SettingsWindow.CommitDelay = commitDelay;
             }
         }));
