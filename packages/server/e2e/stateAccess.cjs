@@ -14,12 +14,15 @@
 // - The read budget is so tight that a join plus a reconnect, or reading
 //   every room at once, is refused; or one room's burst starves another.
 // - A submit from a non-member tells an unknown code apart from a real one,
-//   so submits work as a code-guessing oracle; or such guesses do not draw
-//   on the per-IP join-miss budget.
+//   so submits work as a code-guessing oracle; or submits to a dead code
+//   (taps buffered across a restart) spend the per-IP join budget a school
+//   shares.
 // - A joined student's submit is refused after the guard is added, or a
 //   student's submit names another session than the one it joined.
 // - Reconnect-and-resubmit churn grows an activity room's responses without
-//   limit; or the cap drops responses already stored.
+//   limit; or the cap drops a present student's answer, or locks out new
+//   students while departed students' answers fill it.
+// - A host cycling through rooms grows the read budgets without limit.
 // - A long whitespace-flexible answer typed with extra indentation is cut
 //   before whitespace is collapsed and graded wrong; or an exact-mode answer
 //   escapes the length cap.
@@ -156,7 +159,7 @@ async function join(code, name) {
 
     await check('a socket that never joined gets no state from any of the six rooms', async () => {
       for (const [, id, request, reply] of READS) {
-        const got = maybe(waitFor(outsider, reply, d => d.widgetId === id, 600));
+        const got = maybe(waitFor(outsider, reply, d => d.widgetId === id, 1000));
         outsider.emit(request, { sessionCode: code, widgetId: id });
         assert.equal(await got, null, `${request} answered a socket that never joined`);
       }
@@ -164,7 +167,7 @@ async function join(code, name) {
 
     await check('a student of another session gets no state from this session', async () => {
       for (const [, id, request, reply] of READS) {
-        const got = maybe(waitFor(mallory, reply, d => d.widgetId === id, 600));
+        const got = maybe(waitFor(mallory, reply, d => d.widgetId === id, 1000));
         mallory.emit(request, { sessionCode: code, widgetId: id });
         assert.equal(await got, null, `${request} answered a student of another session`);
       }
@@ -191,10 +194,11 @@ async function join(code, name) {
       }
     });
 
-    await check('a join, a reconnect and a second rejoin each read every room without refusal', async () => {
-      // The student app reads each card on mount and again after each
-      // session:joined; recovery can rejoin twice. Six rounds within a
-      // second must all be answered.
+    await check('six back-to-back reads of every room from one socket are all answered', async () => {
+      // The student app sends at most three reads of a card per connection
+      // (mount, then one after each of the two rejoins on a reconnect), and
+      // a reconnect is a new socket with a fresh budget. Six rounds within
+      // a second leave twice that headroom.
       const student = await join(code, 'Reconnecting student');
       for (let round = 0; round < 6; round++) {
         for (const [, id, request] of READS) student.emit(request, { sessionCode: code, widgetId: id });
@@ -218,10 +222,30 @@ async function join(code, name) {
       await other;
     });
 
-    await check('the host can still read after a burst', async () => {
+    await check('the host is budgeted like everyone else but still answered', async () => {
+      await delay(5100); // let the earlier host reads' window close
+      const before = received(teacher, 'poll:stateUpdate', 'poll-1');
       for (let i = 0; i < 50; i++) teacher.emit('poll:requestState', { sessionCode: code, widgetId: 'poll-1' });
       await delay(300);
-      assert.ok(received(teacher, 'poll:stateUpdate', 'poll-1') >= 6);
+      assert.equal(received(teacher, 'poll:stateUpdate', 'poll-1') - before, 10);
+    });
+
+    await check('read budgets cannot grow by creating and closing rooms', async () => {
+      // Each budget lives on its socket and at most 2 x MAX_ROOMS_PER_SESSION
+      // are kept, however many rooms a host cycles through.
+      const cycler = await host();
+      for (let i = 0; i < 60; i++) {
+        const widgetId = `cycle-${i}`;
+        await cycler.timeout(3000).emitWithAck('session:createRoom', { sessionCode: cycler.code, roomType: 'handout', widgetId });
+        const got = waitFor(cycler, 'handout:stateUpdate', d => d.widgetId === widgetId, 1500);
+        cycler.emit('handout:requestState', { sessionCode: cycler.code, widgetId });
+        await got;
+        cycler.emit('session:closeRoom', { sessionCode: cycler.code, roomType: 'handout', widgetId });
+      }
+      const serverSocket = app.io.sockets.sockets.get(cycler.id);
+      const { LIMITS } = require('../src/config/constants');
+      step(`  read budgets held by a host after 60 room cycles: ${serverSocket.data.stateReads.size}`);
+      assert.ok(serverSocket.data.stateReads.size <= 2 * LIMITS.MAX_ROOMS_PER_SESSION);
     });
 
     const SUBMITS = [
@@ -286,37 +310,58 @@ async function join(code, name) {
       assert.ok(stored.answers.textInputs.t2.length <= longAnswer.length, `t2 stored ${stored.answers.textInputs.t2.length}`);
     });
 
-    await check('reconnect-and-resubmit churn stops at the response cap and keeps stored responses', async () => {
-      const activity = sessionManager.getSession(code).getRoom('activity', 'act-1');
+    await check('at the response cap, a departed student\'s answer makes room; stored answers of present students stay', async () => {
+      const session = sessionManager.getSession(code);
+      const activity = session.getRoom('activity', 'act-1');
       const { LIMITS } = require('../src/config/constants');
       const cap = LIMITS.MAX_SUBMISSIONS_PER_ROOM;
-      // Fill the room to the cap directly; the transport path is exercised below.
-      const kept = new Set(activity.responses.keys());
+      const kept = [...activity.responses.keys()].filter(id => session.getParticipant(id));
+      assert.ok(kept.length > 0);
+      // Fill to the cap with answers of students who have left (reconnect churn)
       for (let i = 0; activity.responses.size < cap; i++) {
-        activity.responses.set(`filler-${i}`, { answers: { placements: [], textInputs: {} }, results: {}, submittedAt: Date.now() });
+        activity.responses.set(`departed-${i}`, { answers: { placements: [], textInputs: {} }, results: {}, submittedAt: Date.now() });
       }
       const late = await join(code, 'Late student');
       const result = await ackReply(late, 'session:activity:submit', { sessionCode: code, widgetId: 'act-1', answers: { textInputs: { t2: 'exact answer' } } });
-      assert.equal(result.success, false);
-      assert.match(errorOf(result), /full/i);
+      assert.equal(result.success, true, errorOf(result));
       assert.equal(activity.responses.size, cap);
-      for (const id of kept) assert.ok(activity.responses.has(id), 'a stored response was dropped');
+      assert.ok(activity.responses.has(late.id));
+      for (const id of kept) assert.ok(activity.responses.has(id), 'a present student\'s answer was dropped');
     });
 
-    await check('non-member submit guesses draw on the per-IP join-miss budget', async () => {
-      // Runs last: it spends this IP's budget.
+    await check('when every stored answer belongs to a present student, the cap refuses with a clear error', async () => {
+      const session = sessionManager.getSession(code);
+      const activity = session.getRoom('activity', 'act-1');
+      const { LIMITS } = require('../src/config/constants');
+      // Only possible past the session's participant cap, which is the same
+      // number, so join first and then mark every filler as still present.
+      const late = await join(code, 'Later student');
+      const fakes = [...activity.responses.keys()].filter(id => !session.getParticipant(id));
+      for (const id of fakes) session.participants.set(id, { name: 'Present', studentId: id, joinedAt: Date.now(), socketId: id });
+      try {
+        const result = await ackReply(late, 'session:activity:submit', { sessionCode: code, widgetId: 'act-1', answers: { textInputs: { t2: 'exact answer' } } });
+        assert.equal(result.success, false);
+        assert.match(errorOf(result), /full/i);
+        assert.equal(activity.responses.size, LIMITS.MAX_SUBMISSIONS_PER_ROOM);
+      } finally {
+        for (const id of fakes) session.participants.delete(id);
+      }
+    });
+
+    await check('submits naming a dead session do not stop a class behind one address from joining', async () => {
+      // After a restart, taps buffered while offline reach the server before
+      // each student's rejoin. They must not spend the per-IP join budget.
       const guesser = await connect();
-      for (let i = 0; i < 70; i++) {
-        guesser.emit('session:rtfeedback:submit', { sessionCode: `GUESS${String(i).padStart(2, '0')}`.slice(0, 6), widgetId: 'fb-1', value: 3 });
+      for (let i = 0; i < 75; i++) {
+        guesser.emit('session:rtfeedback:submit', { sessionCode: `GS${String(i).padStart(4, '0')}`, widgetId: 'fb-1', value: 3 });
         if (i % 4 === 3) await delay(510);
       }
       await delay(300);
       const joiner = await connect();
       const joined = waitFor(joiner, 'session:joined');
-      joiner.emit('session:join', { code, name: 'After guessing' });
+      joiner.emit('session:join', { code, name: 'After the restart' });
       const data = await joined;
-      assert.equal(data.success, false, 'join still allowed after 70 submit guesses');
-      assert.match(data.error, /Too many/);
+      assert.equal(data.success, true, `join refused: ${data.error}`);
     });
   } catch (error) {
     failures.push('setup');

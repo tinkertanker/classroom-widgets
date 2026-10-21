@@ -83,8 +83,12 @@ class ActivityRoom extends Room {
 
   /**
    * Record a student's submission and evaluate it
+   * @param {string} socketId
+   * @param {*} answers - client-supplied
+   * @param {(socketId: string) => boolean} [isPresent] - whether a stored
+   *   response's student is still in the session
    */
-  submitAnswer(socketId, answers) {
+  submitAnswer(socketId, answers, isPresent = () => true) {
     if (!this.isActive || !this.activity) {
       return { success: false, error: 'Activity not active' };
     }
@@ -96,10 +100,15 @@ class ActivityRoom extends Room {
     }
 
     // Responses outlive their sockets, so reconnecting and resubmitting adds
-    // one each time; stop at the room cap rather than grow without limit
-    // (#229). Stored responses are kept; a reset or retry frees room.
+    // one each time. At the room cap, make room by dropping the oldest
+    // response of a student who has left, and only refuse when every stored
+    // response belongs to someone still here (#229).
     if (this.responses.size >= LIMITS.MAX_SUBMISSIONS_PER_ROOM) {
-      return { success: false, error: 'This activity is full and cannot take more answers' };
+      const departed = [...this.responses.keys()].find(id => !isPresent(id));
+      if (departed === undefined) {
+        return { success: false, error: 'This activity is full and cannot take more answers' };
+      }
+      this.responses.delete(departed);
     }
 
     // Keep only the fields grading reads, capped to this activity's targets,

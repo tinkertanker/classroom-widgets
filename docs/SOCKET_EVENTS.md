@@ -90,17 +90,15 @@ All widgets support a state request pattern for synchronizing late-joining stude
 Only the session's host and students whose socket joined that session are
 answered; any other read gets no reply and does not keep the room from idle
 expiry. Reads are budgeted per socket and per room (10 per 5 seconds), and
-over-budget reads get no reply. The student app reads each card on mount and
-again after every successful `session:joined`, not on the bare reconnect, so
-its reads always follow the rejoin.
+over-budget reads get no reply. The student app reads a card's state when it
+needs it on mount and again after every successful `session:joined`, not on
+the bare reconnect, so its reconnect reads always follow the rejoin.
 
 Student submits (`session:poll:vote`, `session:linkShare:submit`,
 `session:rtfeedback:submit`, `session:questions:submit`,
 `session:activity:submit`, `session:activity:retry`) are refused with
 `NOT_PARTICIPANT` unless the socket joined the named session, whether or not
-the session exists, so a submit cannot be used to test session codes. A submit
-naming a code with no session also counts against the per-IP failed-join
-budget.
+the session exists, so a submit cannot be used to test session codes.
 
 **Note**: All events now use `sessionCode` (not `code`) for consistency.
 

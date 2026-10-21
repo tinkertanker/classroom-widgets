@@ -9,8 +9,12 @@
 // Evidence: $CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR/state-access-ui.txt and
 // screenshots 1-joined.png, 2-after-drop.png, 3-after-reload.png.
 // Failure modes:
-// - a card is left with stale or missing state after a Wi-Fi drop, because
-//   its state request went out before the socket rejoined and was refused;
+// - a card is left with stale or missing state after a Wi-Fi drop, for
+//   example because its state request was refused as coming from a socket
+//   that had not rejoined yet. (The app now reads after each successful
+//   session:joined. The older read-on-connect also passes here, because the
+//   app's rejoin is sent first on the same socket; this run guards the
+//   outcome, not that ordering.);
 // - a reloaded page's cards do not load;
 // - the student app sends more reads per card than the server budget allows;
 // - a socket that never joined is answered, or a burst is answered in full.

@@ -19,7 +19,8 @@
  * the resolved room - the order they checked in before this helper existed.
  */
 
-const { eventRateLimiter, JOIN_MISS_EVENT, STATE_READ_EVENT } = require('../../middleware/socketAuth');
+const { LIMITS } = require('../../config/constants');
+const { STATE_READ_LIMIT } = require('../../middleware/socketAuth');
 
 /**
  * Reasons a room could not be resolved.
@@ -134,12 +135,11 @@ function isParticipant(session, socket) {
  * it (finding 9).
  *
  * Every refusal looks the same to the client, so a submit cannot be used to
- * tell a live session code from an unknown one. A submit naming a code with no
- * session draws on the same per-IP budget as a failed session:join, so code
- * guessing through submits also runs out. Submits to a live session from a
- * socket that is not (yet) in it are not counted: a reconnecting student's
- * buffered submit can arrive before its rejoin, and every student behind a
- * school's single address shares that budget.
+ * tell a live session code from an unknown one. Refusals are deliberately not
+ * counted against the per-IP failed-join budget: with no oracle left there is
+ * nothing to throttle, and after a server restart the taps a class buffered
+ * while offline reach the server before each student's rejoin, which would
+ * spend the budget a whole school shares and block joining the new session.
  *
  * @param {Object} sessionManager
  * @param {Object} socket
@@ -150,9 +150,37 @@ function isParticipant(session, socket) {
 function resolveParticipantSession(sessionManager, socket, requestedCode, getCurrentSessionCode) {
   const code = requestedCode || getCurrentSessionCode();
   const session = typeof code === 'string' ? sessionManager.getSession(code) : undefined;
-  if (isParticipant(session, socket)) return session;
-  if (!session) eventRateLimiter(socket, JOIN_MISS_EVENT);
-  return null;
+  return isParticipant(session, socket) ? session : null;
+}
+
+/**
+ * Spend one read of a room from this socket's budget (STATE_READ_LIMIT per
+ * room). The windows live on the socket, so they go when it disconnects, and
+ * at most twice the session room limit are kept: a host that keeps creating
+ * and closing rooms cannot grow them.
+ *
+ * @param {{data: Object}} socket
+ * @param {string} roomKey
+ * @returns {boolean} whether the read may be answered
+ */
+function spendReadBudget(socket, roomKey) {
+  const { windowMs, max } = STATE_READ_LIMIT;
+  const now = Date.now();
+  const windows = socket.data.stateReads || (socket.data.stateReads = new Map());
+  let window = windows.get(roomKey);
+  if (!window || now - window.start >= windowMs) {
+    if (!window && windows.size >= 2 * LIMITS.MAX_ROOMS_PER_SESSION) {
+      for (const [key, entry] of windows) {
+        if (now - entry.start >= windowMs) windows.delete(key);
+      }
+      // Still full of live windows: drop the oldest
+      if (windows.size >= 2 * LIMITS.MAX_ROOMS_PER_SESSION) windows.delete(windows.keys().next().value);
+    }
+    window = { start: now, count: 0 };
+    windows.set(roomKey, window);
+  }
+  window.count += 1;
+  return window.count <= max;
 }
 
 /**
@@ -161,8 +189,7 @@ function resolveParticipantSession(sessionManager, socket, requestedCode, getCur
  * Only the session's host and its joined students may read. Everyone else is
  * refused before the room is touched, so an outsider's read never refreshes
  * the room's idle timer. Reads are then budgeted per socket and per room
- * (STATE_READ_EVENT): the budget is only spent on rooms that exist, so a
- * reader cannot grow the limiter with made-up widget IDs.
+ * (spendReadBudget), and only for rooms that exist.
  *
  * @param {Object} sessionManager
  * @param {Object} socket
@@ -183,8 +210,7 @@ function resolveReadableRoom(sessionManager, socket, sessionCode, roomType, Room
   if (!session.getRoom(roomType, widgetId)) {
     return reject(GUARD_ERRORS.NO_ROOM);
   }
-  const budget = eventRateLimiter(socket, STATE_READ_EVENT, { subKey: session._roomKey(roomType, widgetId) });
-  if (!budget.allowed) {
+  if (!spendReadBudget(socket, session._roomKey(roomType, widgetId))) {
     return reject(GUARD_ERRORS.RATE_LIMITED);
   }
   return resolveRoom(session, roomType, RoomClass, widgetId);

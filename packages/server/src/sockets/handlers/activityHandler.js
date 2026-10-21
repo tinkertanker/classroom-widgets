@@ -249,7 +249,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
     const participant = session.getParticipant(socket.id);
 
     // Submit the answer
-    const result = room.submitAnswer(socket.id, answers);
+    const result = room.submitAnswer(socket.id, answers, id => Boolean(session.getParticipant(id)));
 
     if (result.success) {
       logger.debug('activity:submit', 'Submission recorded', {
