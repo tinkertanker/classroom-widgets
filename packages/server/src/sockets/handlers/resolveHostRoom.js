@@ -157,7 +157,8 @@ function resolveParticipantSession(sessionManager, socket, requestedCode, getCur
  * Spend one read of a room from this socket's budget (STATE_READ_LIMIT per
  * room). The windows live on the socket, so they go when it disconnects, and
  * at most twice the session room limit are kept: a host that keeps creating
- * and closing rooms cannot grow them.
+ * and closing rooms cannot grow them, and reads of further rooms are refused
+ * until a window expires.
  *
  * @param {{data: Object}} socket
  * @param {string} roomKey
@@ -173,8 +174,9 @@ function spendReadBudget(socket, roomKey) {
       for (const [key, entry] of windows) {
         if (now - entry.start >= windowMs) windows.delete(key);
       }
-      // Still full of live windows: drop the oldest
-      if (windows.size >= 2 * LIMITS.MAX_ROOMS_PER_SESSION) windows.delete(windows.keys().next().value);
+      // Still full of live windows: no real client reads this many rooms in
+      // one window, and evicting one would reset its budget, so refuse.
+      if (windows.size >= 2 * LIMITS.MAX_ROOMS_PER_SESSION) return false;
     }
     window = { start: now, count: 0 };
     windows.set(roomKey, window);
@@ -210,7 +212,7 @@ function resolveReadableRoom(sessionManager, socket, sessionCode, roomType, Room
   if (!session.getRoom(roomType, widgetId)) {
     return reject(GUARD_ERRORS.NO_ROOM);
   }
-  if (!spendReadBudget(socket, session._roomKey(roomType, widgetId))) {
+  if (!spendReadBudget(socket, `${session.code}:${session._roomKey(roomType, widgetId)}`)) {
     return reject(GUARD_ERRORS.RATE_LIMITED);
   }
   return resolveRoom(session, roomType, RoomClass, widgetId);

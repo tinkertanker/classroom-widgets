@@ -918,7 +918,9 @@ Per-event rate limits prevent abuse:
 | `session:questions:submit` | 2/3 seconds |
 | `[widgetType]:requestState` | 10/5 seconds per socket and room |
 
-Implementation in `server/src/middleware/socketAuth.js`.
+Implementation in `server/src/middleware/socketAuth.js`; the state-read budget
+is kept per socket by `spendReadBudget` in
+`server/src/sockets/handlers/resolveHostRoom.js`.
 
 ### REST API Security
 

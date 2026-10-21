@@ -102,7 +102,10 @@ class ActivityRoom extends Room {
     // Responses outlive their sockets, so reconnecting and resubmitting adds
     // one each time. At the room cap, make room by dropping the oldest
     // response of a student who has left, and only refuse when every stored
-    // response belongs to someone still here (#229).
+    // response belongs to someone still here (#229). While
+    // MAX_PARTICIPANTS_PER_SESSION <= MAX_SUBMISSIONS_PER_ROOM a present
+    // student never reaches the refusal: they have no stored answer yet, so
+    // at the cap at least one stored answer is a departed student's.
     if (this.responses.size >= LIMITS.MAX_SUBMISSIONS_PER_ROOM) {
       const departed = [...this.responses.keys()].find(id => !isPresent(id));
       if (departed === undefined) {

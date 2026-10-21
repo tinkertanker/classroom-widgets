@@ -203,7 +203,9 @@ async function join(code, name) {
       for (let round = 0; round < 6; round++) {
         for (const [, id, request] of READS) student.emit(request, { sessionCode: code, widgetId: id });
       }
-      await delay(500);
+      const allIn = () => READS.every(([, id, , reply]) => received(student, reply, id) >= 6);
+      for (let i = 0; i < 50 && !allIn(); i++) await delay(100);
+      await delay(200);
       for (const [, id, , reply] of READS) {
         assert.equal(received(student, reply, id), 6, `${reply} answered ${received(student, reply, id)} of 6`);
       }
@@ -226,26 +228,33 @@ async function join(code, name) {
       await delay(5100); // let the earlier host reads' window close
       const before = received(teacher, 'poll:stateUpdate', 'poll-1');
       for (let i = 0; i < 50; i++) teacher.emit('poll:requestState', { sessionCode: code, widgetId: 'poll-1' });
+      for (let i = 0; i < 50 && received(teacher, 'poll:stateUpdate', 'poll-1') - before < 10; i++) await delay(100);
       await delay(300);
       assert.equal(received(teacher, 'poll:stateUpdate', 'poll-1') - before, 10);
     });
 
     await check('read budgets cannot grow by creating and closing rooms', async () => {
       // Each budget lives on its socket and at most 2 x MAX_ROOMS_PER_SESSION
-      // are kept, however many rooms a host cycles through.
+      // are kept, however many rooms a host cycles through. 60 cycles take
+      // longer than one 5 s window only on a very slow machine.
       const cycler = await host();
+      let answered = 0;
+      const started = Date.now();
       for (let i = 0; i < 60; i++) {
         const widgetId = `cycle-${i}`;
         await cycler.timeout(3000).emitWithAck('session:createRoom', { sessionCode: cycler.code, roomType: 'handout', widgetId });
-        const got = waitFor(cycler, 'handout:stateUpdate', d => d.widgetId === widgetId, 1500);
+        const got = maybe(waitFor(cycler, 'handout:stateUpdate', d => d.widgetId === widgetId, 300));
         cycler.emit('handout:requestState', { sessionCode: cycler.code, widgetId });
-        await got;
+        if (await got) answered++;
         cycler.emit('session:closeRoom', { sessionCode: cycler.code, roomType: 'handout', widgetId });
       }
       const serverSocket = app.io.sockets.sockets.get(cycler.id);
       const { LIMITS } = require('../src/config/constants');
-      step(`  read budgets held by a host after 60 room cycles: ${serverSocket.data.stateReads.size}`);
+      step(`  host cycling 60 rooms in ${Date.now() - started} ms: ${answered} reads answered, ${serverSocket.data.stateReads.size} budgets held`);
       assert.ok(serverSocket.data.stateReads.size <= 2 * LIMITS.MAX_ROOMS_PER_SESSION);
+      // Reads of further rooms are refused while the 20 windows are live,
+      // not answered by evicting (and so resetting) another room's budget
+      assert.ok(answered >= 2 * LIMITS.MAX_ROOMS_PER_SESSION && answered < 60, `answered ${answered}`);
     });
 
     const SUBMITS = [
