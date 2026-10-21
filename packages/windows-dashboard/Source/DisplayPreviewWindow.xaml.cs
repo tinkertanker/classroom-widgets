@@ -19,6 +19,17 @@ public partial class DisplayPreviewWindow : Window
 
     public Size PreviewSizeDip => new(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight);
 
+    /// <summary>The preview area in physical pixels, or empty before the window has a monitor.</summary>
+    public Size PreviewSizePixels
+    {
+        get
+        {
+            if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return Size.Empty;
+            var size = target.TransformToDevice.Transform(new Vector(PreviewSurface.ActualWidth, PreviewSurface.ActualHeight));
+            return new Size(Math.Max(0, Math.Ceiling(size.X)), Math.Max(0, Math.Ceiling(size.Y)));
+        }
+    }
+
     public DisplayPreviewWindow(Rect initialBounds)
     {
         InitializeComponent();

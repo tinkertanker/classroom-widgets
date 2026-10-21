@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -78,6 +79,123 @@ public sealed class DisplayCaptureSessionTests
             }
         });
     }
+
+    // Capturing at preview size (#211) can go wrong by: drawing the scaled frame with the
+    // wrong channel order or upside down; keeping a stale buffer or bitmap after the preview
+    // is resized (wrong size, stride mismatch or an exception); upscaling past the source;
+    // and leaking the reused memory DC or DIB section on resize or dispose.
+    [Fact]
+    public void ScaledCaptureFollowsPreviewSizeAndKeepsColoursAndOrientation()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var region = new Rect(0, 0, 400, 300);
+            var source = new SyntheticSourceWindow(region);
+            source.Show();
+            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
+            try
+            {
+                var target = new Size(200, 200);
+                using var session = new DisplayCaptureSession(region, targetPixelSize: () => target);
+                Exception? failure = null;
+                session.Failed += error => failure = error;
+                session.Start();
+
+                AssertScaledFrame(session, () => failure, 200, 150, "scaled-200");
+                target = new Size(120, 120);
+                AssertScaledFrame(session, () => failure, 120, 90, "scaled-120");
+                // Larger than the source: capture at source size, never upscale.
+                target = new Size(1000, 1000);
+                AssertScaledFrame(session, () => failure, 400, 300, "unscaled");
+                target = new Size(0, 0);
+                AssertScaledFrame(session, () => failure, 400, 300, "unlaid-out");
+            }
+            finally
+            {
+                source.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void CaptureReleasesGdiObjectsAcrossResizesAndDispose()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var region = new Rect(0, 0, 400, 300);
+            void RunSession(int frames)
+            {
+                var target = new Size(200, 150);
+                using var session = new DisplayCaptureSession(region, targetPixelSize: () => target);
+                Exception? failure = null;
+                var seen = 0;
+                session.FrameReady += () => seen++;
+                session.Failed += error => failure = error;
+                session.Start();
+                for (var frame = 1; frame <= frames; frame++)
+                {
+                    target = frame % 2 == 0 ? new Size(200, 150) : new Size(160 + frame, 120);
+                    WpfTestHost.PumpUntil(() => seen > frame || failure is not null, Timeout, $"frame {frame}");
+                    Assert.Null(failure);
+                }
+            }
+
+            RunSession(2);
+            var baseline = GdiObjects();
+            for (var cycle = 0; cycle < 20; cycle++) RunSession(4);
+            var after = GdiObjects();
+            File.AppendAllText(EvidencePath("gdi-objects.txt"), $"baseline={baseline} after20sessions={after}{Environment.NewLine}");
+            // A leak of the DC plus DIB per session or per resize would add 40 to 100 objects.
+            Assert.InRange(after, 0, baseline + 4);
+        });
+    }
+
+    private static void AssertScaledFrame(DisplayCaptureSession session, Func<Exception?> failure, int width, int height, string name)
+    {
+        WpfTestHost.PumpUntil(
+            () => failure() is not null || session.Image is WriteableBitmap { PixelWidth: var w, PixelHeight: var h } && w == width && h == height,
+            Timeout, $"a {width}x{height} frame");
+        Assert.Null(failure());
+        // Let one more frame land at this size so the pixels are not from the resize tick only.
+        var frames = 0;
+        void Count() => frames++;
+        session.FrameReady += Count;
+        WpfTestHost.PumpUntil(() => frames >= 1 || failure() is not null, Timeout, "a second frame");
+        session.FrameReady -= Count;
+        Assert.Null(failure());
+
+        var image = Assert.IsType<WriteableBitmap>(session.Image);
+        Assert.Equal(width, image.PixelWidth);
+        Assert.Equal(height, image.PixelHeight);
+        var rendered = WpfTestHost.RenderOverBlack(image, width, height);
+        WpfTestHost.SaveEvidence($"211-{name}-{width}x{height}.png", rendered, width, height);
+        AssertColour(SyntheticSourceWindow.TopLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height / 4));
+        AssertColour(SyntheticSourceWindow.TopRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height / 4));
+        AssertColour(SyntheticSourceWindow.BottomLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height * 3 / 4));
+        AssertColour(SyntheticSourceWindow.BottomRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height * 3 / 4));
+    }
+
+    private static int GdiObjects()
+    {
+        // Let WPF finish releasing anything it holds before counting.
+        WpfTestHost.DoEvents();
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        using var process = System.Diagnostics.Process.GetCurrentProcess();
+        return (int)GetGuiResources(process.Handle, 0);
+    }
+
+    private static string EvidencePath(string name)
+    {
+        var directory = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR") is { Length: > 0 } dir
+            ? dir
+            : Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests");
+        Directory.CreateDirectory(directory);
+        return Path.Combine(directory, name);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern uint GetGuiResources(IntPtr process, uint flags);
 
     private static void AssertColour(Color expected, (byte R, byte G, byte B, byte A) actual)
     {

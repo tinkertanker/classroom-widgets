@@ -179,7 +179,8 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         _suspendedForOverlap = false;
         StopCapture();
         var capture = new DisplayCaptureSession(_selected.Bounds,
-            () => _window is { IsVisible: true, WindowState: not WindowState.Minimized });
+            () => _window is { IsVisible: true, WindowState: not WindowState.Minimized },
+            () => _window?.PreviewSizePixels ?? Size.Empty);
         _capture = capture;
         capture.FrameReady += CaptureFrameReady;
         capture.Failed += CaptureFailed;
