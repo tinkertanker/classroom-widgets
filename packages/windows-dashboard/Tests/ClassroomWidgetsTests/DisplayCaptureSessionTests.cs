@@ -93,10 +93,9 @@ public sealed class DisplayCaptureSessionTests
         {
             var region = new Rect(0, 0, 400, 300);
             var source = new SyntheticSourceWindow(region);
-            source.Show();
-            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
             try
             {
+                source.ShowAndWaitUntilOnScreen();
                 var target = new Size(200, 200);
                 using var session = new DisplayCaptureSession(region, targetPixelSize: () => target);
                 Exception? failure = null;

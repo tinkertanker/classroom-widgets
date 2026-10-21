@@ -186,7 +186,7 @@ public sealed class DisplayPreviewCoordinatorTests
                 var frame = new PanelFrame { Left = 680, Top = 400, Width = 320, Height = 282 };
                 var settings = new DashboardSettings { DisplayPreviewSourceId = SourceId, DisplayPreviewFrame = frame };
                 var content = new SyntheticSourceWindow(sourceBounds);
-                content.Show();
+                content.ShowAndWaitUntilOnScreen();
                 using var coordinator = new DisplayPreviewCoordinator(settings, catalog);
                 try
                 {
