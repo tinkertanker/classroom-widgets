@@ -52,13 +52,15 @@ public partial class SettingsWindow : Window
             _settings.Changed -= OnSettingsChanged;
             _host.WidgetOptionsChanged -= OnWidgetOptionsChanged;
             _shortcuts.StatusChanged -= OnShortcutStatusChanged;
+            _shortcuts.Resume();
             // Apply a pending slider or text edit now rather than after the window has gone.
+            // While quitting, the host is already torn down and quit has saved, so only save.
             if (_settingsCommit.IsEnabled)
             {
                 _settingsCommit.Stop();
-                _settings.NotifyChanged();
+                if (App.IsShuttingDown) _settings.Save();
+                else _settings.NotifyChanged();
             }
-            _shortcuts.Resume();
         };
         _loading = false;
     }

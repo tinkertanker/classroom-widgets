@@ -38,18 +38,26 @@ public sealed class SettingsPersistenceTests
                     StartInfo = new ProcessStartInfo(Path.ChangeExtension(typeof(SettingsPersistenceTests).Assembly.Location, ".exe"))
                     {
                         UseShellExecute = false,
+                        RedirectStandardInput = true,
                         RedirectStandardOutput = true
                     }
                 };
                 child.StartInfo.ArgumentList.Add(ChildMode);
                 child.StartInfo.ArgumentList.Add(directory);
                 child.Start();
-                var ready = await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(30));
-                Assert.True(ready == "saving", $"run {run}: the child did not start saving");
                 var delay = random.Next(5, 60);
-                Thread.Sleep(delay);
-                child.Kill();
-                Assert.True(child.WaitForExit(10_000), $"run {run}: the child did not exit after being killed");
+                try
+                {
+                    var ready = await child.StandardOutput.ReadLineAsync().WaitAsync(TimeSpan.FromSeconds(30));
+                    Assert.True(ready == "saving", $"run {run}: the child did not start saving");
+                    Thread.Sleep(delay);
+                }
+                finally
+                {
+                    if (!child.HasExited) child.Kill(entireProcessTree: true);
+                    child.WaitForExit(10_000);
+                }
+                Assert.True(child.HasExited, $"run {run}: the child did not exit after being killed");
 
                 var path = Path.Combine(directory, "settings.json");
                 var length = new FileInfo(path).Length;
@@ -63,13 +71,19 @@ public sealed class SettingsPersistenceTests
         finally
         {
             SaveEvidence("214-kill-while-saving.txt", log.ToString());
-            Directory.Delete(directory, recursive: true);
+            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
         }
     }
 
     /// <summary>Child process for the kill test: saves a large settings file in a loop until killed.</summary>
     internal static int RunSaveLoop(string directory)
     {
+        // Stop if the test process goes away without killing this one.
+        new Thread(() =>
+        {
+            Console.In.ReadToEnd();
+            Environment.Exit(3);
+        }) { IsBackground = true }.Start();
         DashboardSettings.UseDataDirectory(directory);
         var settings = new DashboardSettings();
         for (var index = 0; index < PanelFrameCount; index++)
@@ -97,7 +111,7 @@ public sealed class SettingsPersistenceTests
             File.WriteAllText(path, """{"LinkShortenerDomain":"go.school.edu","PanelFrames":{"timer":{"Left":1""");
             var truncated = File.ReadAllBytes(path);
 
-            var loaded = DashboardSettings.Load();
+            var loaded = DashboardSettings.ReadSettings();
 
             Assert.Equal("", loaded.LinkShortenerDomain);
             var aside = Assert.Single(Directory.GetFiles(directory, "settings.corrupt-*.json"));
@@ -109,8 +123,8 @@ public sealed class SettingsPersistenceTests
             Assert.Equal("go.new.edu", DashboardSettings.DeserializeSettings(File.ReadAllText(path))!.LinkShortenerDomain);
 
             // A second bad file in the same second must not replace the first copy.
-            File.WriteAllText(path, "");
-            DashboardSettings.Load();
+            File.WriteAllText(path, "null");
+            DashboardSettings.ReadSettings();
             Assert.Equal(2, Directory.GetFiles(directory, "settings.corrupt-*.json").Length);
             Assert.Equal(truncated, File.ReadAllBytes(aside));
             Assert.Empty(Directory.GetFiles(directory, "*.tmp"));
@@ -123,7 +137,7 @@ public sealed class SettingsPersistenceTests
     {
         WithDirectory(_ => WpfTestHost.Run(() =>
         {
-            var settings = new DashboardSettings();
+            var settings = WithoutShortcuts();
             var host = new WidgetHostController(settings);
             using var shortcuts = new WidgetShortcutManager(settings, host, _ => { });
             var window = new SettingsWindow(settings, host, shortcuts);
@@ -139,11 +153,11 @@ public sealed class SettingsPersistenceTests
                 settings.Changed += () => changes++;
                 shortcuts.StatusChanged += () => registrations++;
 
-                // One value change per keystroke, with no pause between them.
+                // One value change per keystroke, pumping the dispatcher between them as real typing does.
                 const string domain = "go.myschool.edu";
                 const string key = "pk_live_abcdefghijklmnop";
-                Type(new TextBoxAutomationPeer(window.DomainBox), domain);
-                Type(new PasswordBoxAutomationPeer(window.ApiKeyBox), key);
+                Type(new TextBoxAutomationPeer(window.DomainBox), domain, pause: true);
+                Type(new PasswordBoxAutomationPeer(window.ApiKeyBox), key, pause: true);
 
                 Assert.Equal(domain, settings.LinkShortenerDomain);
                 Assert.Equal(key, settings.LinkShortenerPublicApiKey);
@@ -185,10 +199,13 @@ public sealed class SettingsPersistenceTests
             Type(new TextBoxAutomationPeer(window.DomainBox), "go.closed.edu");
             window.Close();
 
-            Assert.Equal(1, changes);
             var path = Path.Combine(DashboardSettings.DataDirectory, "settings.json");
-            Assert.Equal("go.closed.edu", DashboardSettings.DeserializeSettings(File.ReadAllText(path))!.LinkShortenerDomain);
+            var saved = DashboardSettings.DeserializeSettings(File.ReadAllText(path))!.LinkShortenerDomain;
+            var changesAtClose = changes;
             WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
+            SaveEvidence("214-close-before-pause.txt", $"saves and applies at close={changesAtClose}, after 500 ms={changes}, saved domain={saved}");
+            Assert.Equal(1, changesAtClose);
+            Assert.Equal("go.closed.edu", saved);
             Assert.Equal(1, changes);
         }));
     }
@@ -200,11 +217,25 @@ public sealed class SettingsPersistenceTests
         WpfTestHost.DoEvents();
     }
 
-    private static void Type(AutomationPeer peer, string text)
+    private static void Type(AutomationPeer peer, string text, bool pause = false)
     {
         var value = (IValueProvider)peer.GetPattern(PatternInterface.Value);
-        for (var length = 1; length <= text.Length; length++) value.SetValue(text[..length]);
+        for (var length = 1; length <= text.Length; length++)
+        {
+            value.SetValue(text[..length]);
+            if (pause) WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(40));
+        }
     }
+
+    // No global hotkeys, so the count of re-registrations cannot depend on what else
+    // on the machine holds a shortcut.
+    private static DashboardSettings WithoutShortcuts() => new()
+    {
+        WidgetShortcutsInitialized = true,
+        WidgetShortcutMenuOrderMigrated = true,
+        DisplayPreviewShortcutsInitialized = true,
+        MoveWidgetShortcutsInitialized = true
+    };
 
     private static string NewDirectory()
         => Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));

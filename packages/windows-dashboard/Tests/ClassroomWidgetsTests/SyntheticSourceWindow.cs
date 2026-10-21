@@ -61,27 +61,29 @@ internal sealed class SyntheticSourceWindow : Window
 
     /// <summary>
     /// Shows the fixture and pumps the calling STA dispatcher until Windows reports the fixture
-    /// as the window under the centre of each of its four colour cells, then waits for one more
-    /// composition. A fixed delay was not enough on cold CI runners (#237): the capture then saw
-    /// the desktop instead. On timeout this throws with what is at each point instead.
+    /// at its expected physical bounds, as the window under the centre of each colour cell, and
+    /// the screen shows each cell's colour there (read with GetPixel, not the capture code under
+    /// test). A fixed delay was not enough on cold CI runners (#237): the capture then saw the
+    /// desktop instead. On timeout this throws with what is at each point instead.
     /// </summary>
     public void ShowAndWaitUntilOnScreen(TimeSpan? timeout = null)
     {
         Show();
         var handle = new WindowInteropHelper(this).Handle;
         var points = SamplePoints();
-        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(5));
+        var started = DateTime.UtcNow;
+        var deadline = started + (timeout ?? TimeSpan.FromSeconds(5));
         while (true)
         {
             WpfTestHost.DoEvents();
             if (_contentRendered)
             {
                 DwmFlush();
-                if (points.All(point => RootAt(point) == handle))
+                if (HasExpectedBounds(handle)
+                    && points.All(point => RootAt(point) == handle)
+                    && points.Select((point, index) => ColourMatches(ScreenColourAt(point), Expected[index])).All(match => match))
                 {
-                    // WindowFromPoint follows window state, not pixels: let DWM present
-                    // the fixture's latest frame before anything captures the screen.
-                    DwmFlush();
+                    Console.WriteLine($"Synthetic source on screen after {(DateTime.UtcNow - started).TotalMilliseconds:F0} ms at {_physicalBounds}.");
                     return;
                 }
             }
@@ -89,6 +91,32 @@ internal sealed class SyntheticSourceWindow : Window
             Thread.Sleep(15);
         }
     }
+
+    private static readonly Color[] Expected = [TopLeft, TopRight, BottomLeft, BottomRight];
+
+    private bool HasExpectedBounds(IntPtr handle)
+    {
+        if (!GetWindowRect(handle, out var rect)) return false;
+        return Math.Abs(rect.Left - _physicalBounds.Left) <= 1 && Math.Abs(rect.Top - _physicalBounds.Top) <= 1
+            && Math.Abs(rect.Right - _physicalBounds.Right) <= 1 && Math.Abs(rect.Bottom - _physicalBounds.Bottom) <= 1;
+    }
+
+    private static Color ScreenColourAt(POINT point)
+    {
+        var screen = GetDC(IntPtr.Zero);
+        try
+        {
+            var value = GetPixel(screen, point.X, point.Y);
+            return Color.FromRgb((byte)(value & 0xFF), (byte)((value >> 8) & 0xFF), (byte)((value >> 16) & 0xFF));
+        }
+        finally
+        {
+            ReleaseDC(IntPtr.Zero, screen);
+        }
+    }
+
+    private static bool ColourMatches(Color actual, Color expected)
+        => Math.Abs(actual.R - expected.R) <= 3 && Math.Abs(actual.G - expected.G) <= 3 && Math.Abs(actual.B - expected.B) <= 3;
 
     private POINT[] SamplePoints()
     {
@@ -117,9 +145,10 @@ internal sealed class SyntheticSourceWindow : Window
         GetWindowRect(handle, out var rect);
         report.AppendLine($"Synthetic source window was not on screen in time (#237). ContentRendered={_contentRendered}.");
         report.AppendLine($"Fixture: {Describe(handle)}, visible={IsWindowVisible(handle)}, rect=({rect.Left},{rect.Top})-({rect.Right},{rect.Bottom}), expected physical bounds={_physicalBounds}.");
-        foreach (var point in points)
+        for (var index = 0; index < points.Length; index++)
         {
-            report.AppendLine($"At ({point.X},{point.Y}): {Describe(RootAt(point))}");
+            var point = points[index];
+            report.AppendLine($"At ({point.X},{point.Y}): screen colour {ScreenColourAt(point)} (expected {Expected[index]}), {Describe(RootAt(point))}");
         }
         return report.ToString();
     }
@@ -134,8 +163,8 @@ internal sealed class SyntheticSourceWindow : Window
         GetWindowThreadProcessId(window, out var processId);
         string processName;
         try { processName = Process.GetProcessById((int)processId).ProcessName; }
-        catch (ArgumentException) { processName = "exited"; }
-        var topmost = (GetWindowLongPtr(window, -20 /* GWL_EXSTYLE */).ToInt64() & 0x8) != 0;
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException) { processName = "exited"; }
+        var topmost = (GetWindowLong(window, -20 /* GWL_EXSTYLE */) & 0x8) != 0;
         DwmGetWindowAttribute(window, 14 /* DWMWA_CLOAKED */, out var cloaked, sizeof(int));
         return $"HWND=0x{window.ToInt64():X}, class=\"{className}\", title=\"{title}\", process={processName} ({processId}), topmost={topmost}, cloaked={cloaked}";
     }
@@ -172,14 +201,23 @@ internal sealed class SyntheticSourceWindow : Window
     [DllImport("user32.dll")]
     private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
 
-    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
-    private static extern IntPtr GetWindowLongPtr(IntPtr window, int index);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+    private static extern int GetWindowLong(IntPtr window, int index);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmGetWindowAttribute(IntPtr window, int attribute, out int value, int size);
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmFlush();
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetDC(IntPtr window);
+
+    [DllImport("user32.dll")]
+    private static extern int ReleaseDC(IntPtr window, IntPtr deviceContext);
+
+    [DllImport("gdi32.dll")]
+    private static extern uint GetPixel(IntPtr deviceContext, int x, int y);
 
     private static Border Cell(Color color, int row, int column)
     {

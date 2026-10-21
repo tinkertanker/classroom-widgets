@@ -40,7 +40,15 @@ public sealed class DashboardSettings
     // them (the teacher registry order), which is how they were numbered 1–9.
     private static readonly int[] LegacyWidgetShortcutOrder = { 0, 1, 2, 3, 4, 6, 7, 12, 9 };
 
-    internal static void UseDataDirectory(string directory) => DataDirectory = directory;
+    internal static void UseDataDirectory(string directory)
+    {
+        DataDirectory = directory;
+        _keepUnreadableFile = null;
+    }
+
+    // Set when settings.json exists but could not be read or moved aside. Saving would
+    // replace the user's settings with defaults, so saves are skipped until the next launch.
+    private static string? _keepUnreadableFile;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -84,19 +92,30 @@ public sealed class DashboardSettings
 
     public static DashboardSettings Load()
     {
+        var settings = ReadSettings();
+        MigrateLaunchAtLoginCommand();
+        return settings;
+    }
+
+    /// <summary>Reads settings.json without touching the launch-at-login registry value.</summary>
+    internal static DashboardSettings ReadSettings()
+    {
         var settings = new DashboardSettings();
+        _keepUnreadableFile = null;
         try
         {
             if (File.Exists(SettingsPath))
             {
                 DashboardSettings? loaded;
+                var json = ReadWithRetry();
                 try
                 {
-                    loaded = DeserializeSettings(File.ReadAllText(SettingsPath));
+                    loaded = DeserializeSettings(json);
+                    if (loaded is null) MoveCorruptSettingsAside("the file holds no settings object");
                 }
-                catch (JsonException error)
+                catch (Exception error) when (error is JsonException or NotSupportedException or InvalidOperationException)
                 {
-                    MoveCorruptSettingsAside(error);
+                    MoveCorruptSettingsAside(error.Message);
                     loaded = null;
                 }
                 if (loaded is not null)
@@ -112,10 +131,26 @@ public sealed class DashboardSettings
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
-            DashboardLog.Warn($"Unable to read settings: {error.Message}");
+            _keepUnreadableFile = error.Message;
+            DashboardLog.Warn($"Unable to read settings, so changes will not be saved this session: {error.Message}");
         }
-        MigrateLaunchAtLoginCommand();
         return settings;
+    }
+
+    // A scanner or backup tool can hold the file briefly at startup.
+    private static string ReadWithRetry()
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                return File.ReadAllText(SettingsPath);
+            }
+            catch (IOException) when (attempt < 5)
+            {
+                Thread.Sleep(100);
+            }
+        }
     }
 
     internal static DashboardSettings? DeserializeSettings(string json)
@@ -155,21 +190,33 @@ public sealed class DashboardSettings
     /// Keeps an unreadable settings file for inspection instead of letting the next save
     /// replace it with defaults, and says so in the log.
     /// </summary>
-    private static void MoveCorruptSettingsAside(JsonException error)
+    private static void MoveCorruptSettingsAside(string reason)
     {
-        var aside = Path.Combine(DataDirectory, $"settings.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}.json");
+        var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var aside = Path.Combine(DataDirectory, $"settings.corrupt-{stamp}.json");
         for (var suffix = 2; File.Exists(aside); suffix++)
         {
-            aside = Path.Combine(DataDirectory, $"settings.corrupt-{DateTime.Now:yyyyMMdd-HHmmss}-{suffix}.json");
+            aside = Path.Combine(DataDirectory, $"settings.corrupt-{stamp}-{suffix}.json");
         }
         try
         {
             File.Move(SettingsPath, aside);
-            DashboardLog.Warn($"Settings file was unreadable ({error.Message}); moved it to {aside} and started from defaults");
+            DashboardLog.Warn($"Settings file was unreadable ({reason}); moved it to {aside} and started from defaults");
+            return;
         }
         catch (Exception moveError) when (moveError is IOException or UnauthorizedAccessException)
         {
-            DashboardLog.Warn($"Settings file was unreadable ({error.Message}) and could not be moved aside: {moveError.Message}");
+            DashboardLog.Warn($"Settings file was unreadable ({reason}) and could not be moved aside: {moveError.Message}");
+        }
+        try
+        {
+            File.Copy(SettingsPath, aside);
+            DashboardLog.Warn($"Copied the unreadable settings file to {aside} instead");
+        }
+        catch (Exception copyError) when (copyError is IOException or UnauthorizedAccessException)
+        {
+            _keepUnreadableFile = copyError.Message;
+            DashboardLog.Warn($"Unable to copy the unreadable settings file either, so changes will not be saved this session: {copyError.Message}");
         }
     }
 
@@ -181,6 +228,7 @@ public sealed class DashboardSettings
     {
         lock (SaveLock)
         {
+            if (_keepUnreadableFile is not null) return;
             var temporary = SettingsPath + ".tmp";
             try
             {
@@ -213,9 +261,9 @@ public sealed class DashboardSettings
                 File.Move(temporary, SettingsPath, overwrite: true);
                 return;
             }
-            catch (Exception error) when (attempt < 5 && error is IOException or UnauthorizedAccessException)
+            catch (Exception error) when (attempt < 8 && error is IOException or UnauthorizedAccessException)
             {
-                Thread.Sleep(20);
+                Thread.Sleep(25 * attempt);
             }
         }
     }

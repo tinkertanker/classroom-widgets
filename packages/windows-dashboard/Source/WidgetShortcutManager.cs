@@ -95,7 +95,9 @@ public sealed class WidgetShortcutManager : IDisposable
     // What the registered hotkeys were built from, so unrelated settings changes
     // (opacity, Short.io fields, frames) do not unregister and re-register them all.
     private string? _registeredBindings;
-    private bool _registrationFailed;
+    private readonly List<WidgetShortcutGesture> _failedGestures = new();
+    // Windows reserves 0xC000 and above for shared atoms; the app's own ids count up from 1.
+    private const int ProbeId = 0xBFFF;
 
     public event Action? StatusChanged;
 
@@ -169,9 +171,20 @@ public sealed class WidgetShortcutManager : IDisposable
 
     private void OnSettingsChanged()
     {
-        // A shortcut another app held may be free now, so failed registrations still retry.
-        if (!_registrationFailed && _registeredBindings == CurrentBindings()) return;
-        Refresh();
+        if (_registeredBindings != CurrentBindings() || FailedShortcutIsFreeNow()) Refresh();
+    }
+
+    // A shortcut another app held may be free now. Probe only those, so a lasting
+    // conflict does not make every settings change re-register every hotkey.
+    private bool FailedShortcutIsFreeNow()
+    {
+        foreach (var gesture in _failedGestures)
+        {
+            if (!RegisterHotKey(_source.Handle, ProbeId, gesture.Modifiers | NoRepeat, gesture.VirtualKey)) continue;
+            UnregisterHotKey(_source.Handle, ProbeId);
+            return true;
+        }
+        return false;
     }
 
     private string CurrentBindings()
@@ -193,7 +206,7 @@ public sealed class WidgetShortcutManager : IDisposable
         if (_suspended) return;
         UnregisterAll(clearStatuses: true);
         _registeredBindings = CurrentBindings();
-        _registrationFailed = false;
+        _failedGestures.Clear();
         var optionTypes = _host.WidgetOptions.Select(option => option.WidgetType).ToHashSet();
         var id = 1;
         var seen = new HashSet<WidgetShortcutGesture>();
@@ -253,7 +266,7 @@ public sealed class WidgetShortcutManager : IDisposable
             return;
         }
         var error = new Win32Exception(Marshal.GetLastWin32Error());
-        _registrationFailed = true;
+        _failedGestures.Add(gesture);
         _statuses[key] = new WidgetShortcutRegistration(WidgetShortcutStatus.Conflict, error.Message);
         DashboardLog.Warn($"Unable to register {action.ToString().ToLowerInvariant()} shortcut {gesture.Display} for type {widgetType}: {error.Message}");
     }
