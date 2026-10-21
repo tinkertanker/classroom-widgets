@@ -232,12 +232,12 @@ public sealed class DisplayPreviewCoordinatorTests
     /// <summary>
     /// Whether a frame has the source's aspect ratio and fills the preview on its limiting side.
     /// WPF layout rounding can move the image area by a pixel when the 42 DIP bar is a half
-    /// pixel (125%, 175%), so each check allows 1.5 px.
+    /// pixel (125%, 175%), which the aspect ratio can grow to about 1.9 px on the other side.
     /// </summary>
     private static bool FitsPreview(int width, int height, double expectedWidth, double expectedHeight, Size source)
         => Math.Abs(height - width * source.Height / source.Width) <= 1.5
             && Math.Min(Math.Abs(width - expectedWidth), Math.Abs(height - expectedHeight)) <= 1.5
-            && width <= expectedWidth + 1.5 && height <= expectedHeight + 1.5;
+            && width <= expectedWidth + 2 && height <= expectedHeight + 2;
 
     /// <summary>The primary monitor's scale factor, read from a throwaway window placed on it.</summary>
     private static double PrimaryScale()

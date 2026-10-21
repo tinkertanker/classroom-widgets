@@ -145,8 +145,8 @@ public sealed class DisplayCaptureSession : IDisposable
                 DashboardLog.Warn($"Display capture frame failed ({_consecutiveFailures} in a row), retrying: {error.Message}");
                 return;
             }
-            DashboardLog.Error($"Display capture stopped after {_consecutiveFailures} failed frames: {error}");
             Fail(error);
+            DashboardLog.Error($"Display capture stopped after {MaxConsecutiveFailures} failed frames: {error}");
         }
         finally
         {
@@ -161,10 +161,10 @@ public sealed class DisplayCaptureSession : IDisposable
         {
             FrameReady?.Invoke();
         }
-        catch (Exception error) when (error is not OutOfMemoryException)
+        catch (Exception error)
         {
-            DashboardLog.Error($"Display capture stopped by a frame handler: {error}");
             Fail(error);
+            DashboardLog.Error($"Display capture stopped by a frame handler: {error}");
         }
     }
 

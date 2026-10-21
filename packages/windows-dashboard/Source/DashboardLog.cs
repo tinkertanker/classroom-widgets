@@ -5,7 +5,8 @@ namespace ClassroomWidgets;
 
 public static class DashboardLog
 {
-    private static readonly string LogPath = Path.Combine(DashboardSettings.DataDirectory, "classroom-widgets.log");
+    // Read on each write, so tests that redirect the data directory also redirect the log.
+    private static string LogPath => Path.Combine(DashboardSettings.DataDirectory, "classroom-widgets.log");
     private static readonly object Gate = new();
 
     public static void Info(string message) => Write("INFO", message);

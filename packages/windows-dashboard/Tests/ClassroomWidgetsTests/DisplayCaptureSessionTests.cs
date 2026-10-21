@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -215,9 +216,26 @@ public sealed class DisplayCaptureSessionTests
     [Fact]
     public void BriefCaptureFailuresAreRetriedAndPersistentOnesReported()
     {
-        WpfTestHost.Run(() =>
+        // Failures are logged; keep them out of the developer's real log.
+        var realDataDirectory = DashboardSettings.DataDirectory;
+        var testDataDirectory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
+        DashboardSettings.UseDataDirectory(testDataDirectory);
+        try
+        {
+            WpfTestHost.Run(RetryScenarios);
+        }
+        finally
+        {
+            DashboardSettings.UseDataDirectory(realDataDirectory);
+            if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
+        }
+    }
+
+    private static void RetryScenarios()
+    {
         {
             var region = new Rect(0, 0, 400, 300);
+            // Two failures, a good frame, then two more: a good frame resets the count.
             var throwsLeft = 2;
             using (var brief = new DisplayCaptureSession(region, targetPixelSize: () =>
                    {
@@ -234,7 +252,10 @@ public sealed class DisplayCaptureSessionTests
                 brief.Failed += error => failure = error;
                 brief.FrameReady += () => frames++;
                 brief.Start();
-                WpfTestHost.PumpUntil(() => frames >= 2 || failure is not null, Timeout, "frames after two failed ones");
+                WpfTestHost.PumpUntil(() => frames >= 1 || failure is not null, Timeout, "a frame after two failed ones");
+                throwsLeft = 2;
+                var before = frames;
+                WpfTestHost.PumpUntil(() => frames > before || failure is not null, Timeout, "a frame after two more failed ones");
                 Assert.Null(failure);
                 Assert.Equal(0, throwsLeft);
             }
@@ -275,7 +296,7 @@ public sealed class DisplayCaptureSessionTests
                 Assert.Single(failures);
                 Assert.Equal("handler bug", failures[0].Message);
             }
-        });
+        }
     }
 
     [Fact]
