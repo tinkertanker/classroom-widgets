@@ -40,7 +40,8 @@ part of the app workspace.
 - **One instance.** Sessions live in the Node process's memory, so every request
   goes to the Durable Object named `main` (location hint `apac-se`). That object
   runs one container, with `max_instances: 1`.
-- **Container settings.** The instance type is `standard-1` (1/2 vCPU, 4 GiB).
+- **Container settings.** The instance type is `basic` (1/4 vCPU, 1 GiB);
+  peak observed memory is about 160 MiB.
   `sleepAfter` is `12h`, the same as `MAX_ROOM_AGE`. Socket.IO pings every 25s
   and each ping counts as activity, so the container never sleeps while anyone
   is connected.
@@ -308,8 +309,9 @@ Re-enable the workflow only after moving back to Cloudflare.
   redeployed waits for the container to boot, typically a few seconds.
 - **Location.** The `apac-se` hint applies only when the `main` object is first
   created. To move it, rename `INSTANCE_NAME`.
-- **Cost.** `standard-1` stays up for whole school days. `basic` (1/4 vCPU,
-  1 GiB) also fits the Node process if cost matters more than CPU headroom.
+- **Cost.** The container stays up for whole school days. If CPU becomes the
+  bottleneck, `standard-1` (1/2 vCPU, 4 GiB) doubles the CPU but allocates
+  four times the billable memory.
 - **Local `wrangler dev`.** Containers need Docker with buildx. The
   `cloudflare/proxy-everything` egress sidecar needs the kernel's iptables
   `socket` and `TPROXY` modules; without them the container fails to start

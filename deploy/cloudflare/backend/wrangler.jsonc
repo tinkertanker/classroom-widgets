@@ -16,9 +16,9 @@
       // as in docker-compose.prod.yml.
       "image": "../../../packages/server/Dockerfile.prod",
       "image_build_context": "../../..",
-      // 1/2 vCPU, 4 GiB. "basic" (1/4 vCPU, 1 GiB) also fits the Node
-      // process; standard-1 leaves CPU headroom for many concurrent classes.
-      "instance_type": "standard-1",
+      // 1/4 vCPU, 1 GiB. Peak observed memory is about 160 MiB; use
+      // standard-1 (1/2 vCPU, 4 GiB) if CPU becomes the bottleneck.
+      "instance_type": "basic",
       // In-memory sessions: exactly one container, ever.
       "max_instances": 1,
       // Classrooms are in Southeast Asia; without this the container was
