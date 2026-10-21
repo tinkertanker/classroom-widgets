@@ -3,7 +3,7 @@ import { isAllowed, ORIGIN } from './appProtocol';
 import { log } from './log';
 
 const configuredSessions = new WeakSet<Electron.Session>();
-const mediaCaptureContents = new WeakSet<WebContents>();
+const mediaCapturePages = new WeakMap<WebContents, (url: string) => boolean>();
 
 function openExternally(url: string): void {
   let parsed: URL;
@@ -22,19 +22,26 @@ function configureSession(contents: WebContents): void {
   const session = contents.session;
   if (configuredSessions.has(session)) return;
   configuredSessions.add(session);
-  session.setPermissionRequestHandler((webContents, permission, callback) => {
+  session.setPermissionRequestHandler((webContents, permission, callback, details) => {
     const url = webContents.getURL();
     const ours = url.startsWith(`${ORIGIN}/`) || url === ORIGIN;
+    // A media grant follows the page that asks, not the window: if the
+    // window were ever navigated elsewhere, that page gets no capture.
+    const requestingUrl = details.requestingUrl || url;
+    const capturePage = mediaCapturePages.get(webContents);
     const allowed = (ours && (permission === 'media' || permission === 'clipboard-read' || permission === 'fullscreen'))
-      || (permission === 'media' && mediaCaptureContents.has(webContents));
+      || (permission === 'media' && !!capturePage && capturePage(url) && capturePage(requestingUrl));
     callback(allowed);
   });
 }
 
-/** Lets a local (non app://) renderer request screen capture through getUserMedia. */
-export function allowMediaCapture(contents: WebContents): void {
+/**
+ * Lets a local (non app://) renderer request screen capture through
+ * getUserMedia, only while it shows a page `isCapturePage` accepts.
+ */
+export function allowMediaCapture(contents: WebContents, isCapturePage: (url: string) => boolean): void {
   configureSession(contents);
-  mediaCaptureContents.add(contents);
+  mediaCapturePages.set(contents, isCapturePage);
 }
 
 /**

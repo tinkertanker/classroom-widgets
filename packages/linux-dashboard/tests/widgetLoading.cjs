@@ -42,12 +42,18 @@ async function until(description, check) {
 }
 async function checkLoads(view, label, expected) {
   await delay(3000); // Exceed the old idle preload deadline.
-  const files = [...(requests.get(view.id) ?? [])];
+  // A reloaded page can take files from Chromium's memory cache without a
+  // network request, so also count the page's own resource timing entries.
+  const timed = await view.executeJavaScript(
+    "performance.getEntriesByType('resource').map(entry => new URL(entry.name).pathname.slice(1))");
+  // Chromium keeps 250 resource entries by default and drops the rest.
+  assert.ok(timed.length < 250, `${label}: resource timing buffer is full (${timed.length} entries)`);
+  const files = [...new Set([...(requests.get(view.id) ?? []), ...timed])];
   const loaded = widgetEntries.filter(([, entry]) => files.includes(entry.file))
     .map(([source]) => source.slice('src/features/widgets/'.length, -'/index.tsx'.length)).sort();
-  const bytes = [...new Set(files)].filter(file => file.startsWith('assets/') && file.endsWith('.js'))
+  const bytes = files.filter(file => file.startsWith('assets/') && file.endsWith('.js'))
     .reduce((total, file) => total + readFileSync(join(build, file)).length, 0);
-  record(`${label}: widget entries=${JSON.stringify(loaded)}, JavaScript bytes requested=${bytes}`);
+  record(`${label}: widget entries=${JSON.stringify(loaded)}, JavaScript bytes loaded=${bytes}`);
   if (JSON.stringify(loaded) !== JSON.stringify(expected)) violations.push({ label, expected, loaded });
 }
 const panel = () => BrowserWindow.getAllWindows()
@@ -88,7 +94,14 @@ app.whenReady().then(async () => {
   await until('paused Timer', () => hasButton(view, 'Resume'));
   await checkLoads(view, 'First Timer panel, started and paused', ['timer']);
 
+  // reloadWidgets() also resolves when preparation fails and the old panels
+  // are restored, so require a genuinely new host page before checking them.
+  const previousHostInstance = host.panelCoordinator.lastInventory.hostInstanceId;
+  requests.delete(hostView.id);
   await host.reloadWidgets();
+  await until('new host instance after reload', () => host.panelCoordinator.lastInventory?.hostInstanceId !== previousHostInstance);
+  record(`Host instance changed on reload: ${previousHostInstance} -> ${host.panelCoordinator.lastInventory.hostInstanceId}`);
+  await checkLoads(hostView, 'Reloaded hidden host', []);
   view = await until('reloaded Timer panel', panel);
   await until('restored paused Timer', () => hasButton(view, 'Resume'));
   assert.ok(await view.executeJavaScript(`!!document.querySelector('[aria-label="Unmute timer sound"]')`));

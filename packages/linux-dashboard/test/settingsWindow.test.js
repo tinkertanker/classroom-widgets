@@ -23,9 +23,15 @@ function harness() {
   const settings = new EventEmitter();
   settings.outputVolume = 1;
   settings.notifyChanged = changedSetting => settings.emit('changed', changedSetting);
+  settings.flushPendingChange = () => {};
   let window;
   class BrowserWindow extends EventEmitter {
-    constructor() { super(); window = this; this.sent = []; this.webContents = { send: (...args) => this.sent.push(args) }; }
+    constructor() {
+      super();
+      window = this;
+      this.sent = [];
+      this.webContents = { send: (...args) => this.sent.push(args), mainFrame: { url: 'file:///settings.html' } };
+    }
     isDestroyed() { return false; }
     loadFile() {}
   }
@@ -34,29 +40,33 @@ function harness() {
     exports, process,
     require(name) {
       if (name === 'electron') return { BrowserWindow, ipcMain, app: { getAppPath: () => '.' } };
-      if (name === './paths') return { preloadPath: () => '.', rendererPath: () => '.' };
+      if (name === './paths') return { preloadPath: () => '.', rendererPath: () => '.', isLocalRendererFrame: () => true };
+      if (name === './webContentsSetup') return { configureWebContents() {} };
+      if (name === './log') return { log: { warn() {} } };
       if (name.startsWith('./')) return require('../out/main/' + name.slice(2));
       return require(name);
     },
   });
   exports.openSettingsWindow(settings, shortcuts, 'test');
-  return { handlers, ipcMain, settings, shortcuts, display, calls, window };
+  // Settings IPC is only accepted from the Settings window's main frame.
+  const event = { sender: window.webContents, senderFrame: window.webContents.mainFrame };
+  return { handlers, ipcMain, settings, shortcuts, display, calls, window, event };
 }
 
 test('Display settings IPC validates action and nullable accelerator; reset/recording restore registration', () => {
   const h = harness();
   const set = h.handlers.get('settings:set-display-shortcut');
   assert.equal(typeof set, 'function');
-  assert.equal(set({}, 'dismiss', null).ok, true);
+  assert.equal(set(h.event, 'dismiss', null).ok, true);
   assert.deepEqual(h.calls.shift(), [null, 'dismiss']);
-  assert.equal(set({}, 'show', 'Ctrl+Alt+S').ok, true);
+  assert.equal(set(h.event, 'show', 'Ctrl+Alt+S').ok, true);
   assert.deepEqual(h.calls.shift(), ['Ctrl+Alt+S', 'show']);
-  for (const [action, value] of [['toggle', null], ['show', undefined], ['dismiss', 7]]) assert.equal(set({}, action, value).ok, false);
+  for (const [action, value] of [['toggle', null], ['show', undefined], ['dismiss', 7]]) assert.equal(set(h.event, action, value).ok, false);
   assert.equal(h.calls.length, 0);
-  h.ipcMain.emit('settings:capturing', {}, true);
+  h.ipcMain.emit('settings:capturing', h.event, true);
+  h.ipcMain.emit('settings:reset-shortcuts', h.event);
   h.window.emit('closed');
-  h.ipcMain.emit('settings:reset-shortcuts');
-  assert.deepEqual(h.calls, [['capturing', true], ['capturing', false], ['reset']]);
+  assert.deepEqual(h.calls, [['capturing', true], ['reset'], ['capturing', false]]);
 });
 
 test('open settings window receives native volume changes', () => {

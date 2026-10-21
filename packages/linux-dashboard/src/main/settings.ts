@@ -1,6 +1,6 @@
 import { app } from 'electron';
 import { EventEmitter } from 'node:events';
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { closeSync, existsSync, fchmodSync, mkdirSync, openSync, readFileSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { log } from './log';
@@ -80,6 +80,9 @@ export class DashboardSettings extends EventEmitter {
   displayPreviewDismissShortcut?: string | null;
   moveWidgetPreviousShortcut?: string | null;
   moveWidgetNextShortcut?: string | null;
+  private pendingChange: ReturnType<typeof setTimeout> | null = null;
+  /** Set when settings.json exists but could not be read and is still in place: saving would destroy it. */
+  private keepUnreadableFile = false;
 
   get settingsPath(): string {
     return join(app.getPath('userData'), 'settings.json');
@@ -88,8 +91,8 @@ export class DashboardSettings extends EventEmitter {
   static load(): DashboardSettings {
     const settings = new DashboardSettings();
     try {
-      if (existsSync(settings.settingsPath)) {
-        const raw = JSON.parse(readFileSync(settings.settingsPath, 'utf8')) as Partial<DashboardSettingsData>;
+      const raw = settings.readDocument();
+      if (raw) {
         if (typeof raw.backgroundOpacity === 'number' && Number.isFinite(raw.backgroundOpacity)) {
           settings.backgroundOpacity = Math.min(1, Math.max(0, raw.backgroundOpacity));
         }
@@ -126,6 +129,52 @@ export class DashboardSettings extends EventEmitter {
     return settings;
   }
 
+  /**
+   * Reads settings.json. A file that cannot be parsed is moved aside, so the
+   * next save cannot overwrite what the teacher may still want to recover.
+   */
+  private readDocument(): Partial<DashboardSettingsData> | null {
+    let text: string;
+    try {
+      text = readFileSync(this.settingsPath, 'utf8');
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT') return null;
+      if (code === 'EACCES' || code === 'EPERM' || code === 'EISDIR') {
+        // Never readable by us (for example owned by root): keep a copy
+        // rather than letting the first save replace it.
+        this.moveAside(error);
+      } else {
+        // Possibly temporary (a network home still mounting): leave it where
+        // it is and do not save over it, so the next launch can read it.
+        this.keepUnreadableFile = true;
+        log.warn(`Unable to read settings, so changes will not be saved this session: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      return null;
+    }
+    try {
+      const raw: unknown = JSON.parse(text);
+      if (raw && typeof raw === 'object' && !Array.isArray(raw)) return raw as Partial<DashboardSettingsData>;
+      throw new Error('settings.json is not a JSON object');
+    } catch (error) {
+      this.moveAside(error);
+      return null;
+    }
+  }
+
+  private moveAside(reason: unknown): void {
+    const aside = `${this.settingsPath}.corrupt-${new Date().toISOString().replace(/[:.]/g, '-')}`;
+    const detail = reason instanceof Error ? reason.message : String(reason);
+    try {
+      renameSync(this.settingsPath, aside);
+      log.warn(`Unreadable settings moved to ${aside}; using defaults: ${detail}`);
+    } catch (renameError) {
+      // It could not be kept elsewhere, so never write over it this session.
+      this.keepUnreadableFile = true;
+      log.warn(`Unreadable settings could not be moved aside, so changes will not be saved this session (${detail}): ${renameError instanceof Error ? renameError.message : String(renameError)}`);
+    }
+  }
+
   private migrateLaunchAtLoginEntry(): void {
     if (!existsSync(this.autostartPath)) return;
     try {
@@ -138,6 +187,7 @@ export class DashboardSettings extends EventEmitter {
   }
 
   save(): void {
+    if (this.keepUnreadableFile) return;
     try {
       mkdirSync(dirname(this.settingsPath), { recursive: true });
       const data: DashboardSettingsData = {
@@ -158,15 +208,37 @@ export class DashboardSettings extends EventEmitter {
         moveWidgetPreviousShortcut: this.moveWidgetPreviousShortcut,
         moveWidgetNextShortcut: this.moveWidgetNextShortcut,
       };
-      writeFileSync(this.settingsPath, JSON.stringify(data, null, 2));
+      writeFileAtomically(this.settingsPath, JSON.stringify(data, null, 2));
     } catch (error) {
       log.warn(`Unable to write settings: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
   notifyChanged(changedSetting?: 'outputVolume' | 'launchAtLogin'): void {
+    this.cancelPendingChange();
     this.save();
     this.emit('changed', changedSetting);
+  }
+
+  /** Saves and emits `changed` once no further call arrives for `delayMs`. */
+  notifyChangedSoon(delayMs: number): void {
+    this.cancelPendingChange();
+    this.pendingChange = setTimeout(() => {
+      this.pendingChange = null;
+      this.notifyChanged();
+    }, delayMs);
+  }
+
+  /** Runs a change scheduled by notifyChangedSoon now, if there is one. */
+  flushPendingChange(): void {
+    if (this.pendingChange) this.notifyChanged();
+  }
+
+  /** Drops a change scheduled by notifyChangedSoon; its values stay in memory for the next save. */
+  cancelPendingChange(): void {
+    if (!this.pendingChange) return;
+    clearTimeout(this.pendingChange);
+    this.pendingChange = null;
   }
 
   getDisplayPreviewFrame(): PanelFrame | undefined {
@@ -226,6 +298,40 @@ export class DashboardSettings extends EventEmitter {
     } catch (error) {
       log.warn(`Unable to write autostart entry: ${error instanceof Error ? error.message : String(error)}`);
     }
+  }
+}
+
+/**
+ * Writes a sibling temporary file and renames it over `path`, so a crash or
+ * kill mid-write leaves either the old or the new document, never a partial
+ * one, which is what a killed or crashed app needs. There is no fsync, because
+ * saves run on the main thread and Display drags save often; ext4 flushes a
+ * file replaced by rename, but on other filesystems a power cut just after a
+ * save can still leave an empty file, which the next launch moves aside. The file is private to the user: it can hold a Short.io API key.
+ */
+function writeFileAtomically(path: string, contents: string): void {
+  const temporary = `${path}.tmp`;
+  try {
+    const fd = openSync(temporary, 'w', 0o600);
+    try {
+      try {
+        // The mode above only applies when the file is created.
+        fchmodSync(fd, 0o600);
+      } catch {
+        // Some filesystems (vfat, some network homes) refuse chmod; still save.
+      }
+      writeFileSync(fd, contents);
+    } finally {
+      closeSync(fd);
+    }
+    renameSync(temporary, path);
+  } catch (error) {
+    try {
+      rmSync(temporary, { force: true });
+    } catch {
+      // Report the write failure, not the cleanup.
+    }
+    throw error;
   }
 }
 

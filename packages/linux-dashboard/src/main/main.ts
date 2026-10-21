@@ -99,6 +99,10 @@ function bootstrap(): void {
   const requestQuit = async (): Promise<void> => {
     if (shuttingDown) return;
     shuttingDown = true;
+    // Write Short.io typing that is still waiting now, without updating panels
+    // that are about to close, in case the host checkpoint below throws.
+    settings?.cancelPendingChange();
+    settings?.save();
     displayPreview?.shutdown();
     host?.markShuttingDown();
     if (host && !terminationPrepared) {

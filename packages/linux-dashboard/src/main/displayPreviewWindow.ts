@@ -1,9 +1,9 @@
-import { BrowserWindow, ipcMain, Menu, MenuItemConstructorOptions } from 'electron';
+import { BrowserWindow, ipcMain, IpcMainEvent, Menu, MenuItemConstructorOptions } from 'electron';
 import { EventEmitter } from 'node:events';
 import { Rect, Size } from './displayGeometry';
 import { log } from './log';
-import { preloadPath, rendererPath } from './paths';
-import { allowMediaCapture } from './webContentsSetup';
+import { isLocalRendererFrame, preloadPath, rendererPath } from './paths';
+import { allowMediaCapture, configureWebContents } from './webContentsSetup';
 
 export interface DisplayPreviewState {
   statusMessage: string;
@@ -13,23 +13,31 @@ export interface DisplayPreviewState {
 }
 
 const CHROME_HEIGHT = 42;
+const PAGE = 'display-preview.html';
 const windows = new Map<number, DisplayPreviewWindow>();
 let ipcRegistered = false;
+
+/** The preview window that sent `event`, if it came from that window's own page. */
+function senderWindow(event: IpcMainEvent): DisplayPreviewWindow | undefined {
+  const frame = event.senderFrame;
+  if (!frame || frame !== event.sender.mainFrame || !isLocalRendererFrame(frame.url, PAGE)) return undefined;
+  return windows.get(event.sender.id);
+}
 
 function registerIpcHandlers(): void {
   if (ipcRegistered || !ipcMain) return;
   ipcRegistered = true;
   ipcMain.on('display-preview:action', (event, message: unknown) => {
-    windows.get(event.sender.id)?.handleAction(message);
+    senderWindow(event)?.handleAction(message);
   });
   ipcMain.on('display-preview:click', (event, message: unknown) => {
-    windows.get(event.sender.id)?.handleClick(message);
+    senderWindow(event)?.handleClick(message);
   });
   ipcMain.on('display-preview:stream-live', (event, message: unknown) => {
-    windows.get(event.sender.id)?.handleStreamLive(message);
+    senderWindow(event)?.handleStreamLive(message);
   });
   ipcMain.on('display-preview:stream-error', (event, message: unknown) => {
-    windows.get(event.sender.id)?.handleStreamError(message);
+    senderWindow(event)?.handleStreamError(message);
   });
 }
 
@@ -59,13 +67,14 @@ export class DisplayPreviewWindow extends EventEmitter {
       webPreferences: {
         preload: preloadPath('displayPreview'),
         contextIsolation: true,
-        sandbox: false,
+        sandbox: true,
         nodeIntegration: false,
       },
     });
     const contentsId = this.win.webContents.id;
     windows.set(contentsId, this);
-    allowMediaCapture(this.win.webContents);
+    configureWebContents(this.win.webContents);
+    allowMediaCapture(this.win.webContents, (url) => isLocalRendererFrame(url, PAGE));
     this.win.webContents.once('destroyed', () => windows.delete(contentsId));
     this.win.on('move', () => this.emit('moved'));
     this.win.on('resize', () => this.emit('resized'));
@@ -82,7 +91,7 @@ export class DisplayPreviewWindow extends EventEmitter {
       this.pendingStart = null;
       this.pendingStop = false;
     });
-    void this.win.loadFile(rendererPath('display-preview.html'));
+    void this.win.loadFile(rendererPath(PAGE));
   }
 
   handleAction(message: unknown): void {

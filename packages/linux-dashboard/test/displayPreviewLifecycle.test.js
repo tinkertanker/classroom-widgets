@@ -148,9 +148,9 @@ function previewWindow() {
     exports,
     require(name) {
       if (name === 'electron') return { BrowserWindow, ipcMain: new EventEmitter(), app: { getAppPath: () => '.' } };
-      if (name === './webContentsSetup') return { allowMediaCapture() {} };
+      if (name === './webContentsSetup') return { allowMediaCapture() {}, configureWebContents() {} };
       if (name === './log') return { log: { warn() {} } };
-      if (name === './paths') return { preloadPath: () => '.', rendererPath: () => '.' };
+      if (name === './paths') return { preloadPath: () => '.', rendererPath: () => '.', isLocalRendererFrame: () => true };
       return require(name);
     },
   });

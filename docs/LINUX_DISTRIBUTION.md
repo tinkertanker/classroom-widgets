@@ -118,8 +118,13 @@ xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --d
 
 This uses disposable preferences and real Electron panels to check native
 settings, persistence, live updates, reloads, and the widget's settings gear.
-It makes no shortening requests. Set `SCREENSHOT_DIR` to an existing directory
-to capture the default and Short.io Settings screens.
+It also checks that Settings and Display are sandboxed and ignore IPC from any
+other window, frame or page, that typing a Short.io key is saved once typing
+pauses (and on close), and that an unreadable `settings.json` is moved aside as
+`settings.json.corrupt-<time>` rather than overwritten. It makes no shortening
+requests. The log goes to `shortener.txt` in `CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR`.
+Set `SCREENSHOT_DIR` to an existing directory to capture the default and
+Short.io Settings screens.
 
 The tray menu check runs the real app the same way:
 
