@@ -901,13 +901,10 @@ if (!session || session.hostSocketId !== socket.id) {
 
 #### Participant Verification
 
-Students must be registered participants to perform actions:
-
-```javascript
-if (!session.participants.has(socket.id)) {
-  // Reject - not a participant
-}
-```
+Students must have joined the session on this socket to submit, and only the
+host or a joined student may read a widget's state. The shared guards in
+`server/src/sockets/handlers/resolveHostRoom.js` (`resolveParticipantSession`,
+`resolveReadableRoom`) do this for every widget handler.
 
 ### Rate Limiting
 
@@ -919,6 +916,7 @@ Per-event rate limits prevent abuse:
 | `session:linkShare:submit` | 3/5 seconds |
 | `session:rtfeedback:submit` | 5/500ms |
 | `session:questions:submit` | 2/3 seconds |
+| `[widgetType]:requestState` | 10/5 seconds per socket and room |
 
 Implementation in `server/src/middleware/socketAuth.js`.
 

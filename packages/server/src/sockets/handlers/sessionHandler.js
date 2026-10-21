@@ -3,14 +3,13 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { clearHostDisconnectTimeout } = require('../hostDisconnectTimeouts');
 const { closeRoomAndNotify } = require('../closeRoom');
-const { eventRateLimiter } = require('../../middleware/socketAuth');
+const { eventRateLimiter, JOIN_MISS_EVENT } = require('../../middleware/socketAuth');
 const serverConfig = require('../../config/server.config');
 const { usageLog } = require('../../services/usageLog');
 const PollRoom = require('../../models/PollRoom');
 const { resolveHostRoom } = require('./resolveHostRoom');
 
 const SESSION_DEBUG = process.env.SESSION_DEBUG === 'true';
-const JOIN_MISS_EVENT = 'session:join:miss';
 
 /**
  * Get the server origin from socket handshake or use default

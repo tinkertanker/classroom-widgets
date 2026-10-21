@@ -2,7 +2,7 @@ const { EVENTS } = require('../../config/constants');
 const HandoutRoom = require('../../models/HandoutRoom');
 const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
-const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
+const { resolveHostRoom, isHostRejection, resolveReadableRoom } = require('./resolveHostRoom');
 
 /**
  * Handle handout related socket events
@@ -110,9 +110,7 @@ module.exports = function handoutHandler(io, socket, sessionManager, getCurrentS
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode);
-
-    const { ok, room } = resolveRoom(session, 'handout', HandoutRoom, widgetId);
+    const { ok, room } = resolveReadableRoom(sessionManager, socket, sessionCode, 'handout', HandoutRoom, widgetId);
     if (ok) {
       socket.emit(EVENTS.HANDOUT.STATE_UPDATE, {
         items: room.getItems(),

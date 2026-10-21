@@ -31,6 +31,9 @@ const socketAuth = (sessionManager) => {
  * client cannot escape the limit by reconnecting; the default scope is the
  * individual socket connection.
  */
+const JOIN_MISS_EVENT = 'session:join:miss';
+const STATE_READ_EVENT = 'widget:requestState';
+
 const EVENT_RATE_LIMITS = {
   // Session creation / host reclaim - 30 per minute per IP. Legitimate hosts
   // create one session (plus the odd reconnect); this stops a single client
@@ -42,7 +45,8 @@ const EVENT_RATE_LIMITS = {
 
   // Failed joins (unknown code) - 60 per minute per IP, so reconnecting does
   // not reset the guessing budget. Successful joins never consume it.
-  'session:join:miss': { windowMs: 60_000, max: 60, scope: 'ip' },
+  // Also counts submits naming a session that does not exist (finding 9).
+  [JOIN_MISS_EVENT]: { windowMs: 60_000, max: 60, scope: 'ip' },
 
   // Poll voting - 2 requests per second (prevent rapid vote changes)
   'session:poll:vote': { windowMs: 1000, max: 2 },
@@ -62,8 +66,11 @@ const EVENT_RATE_LIMITS = {
   // Activity retry - 2 per 2 seconds
   'session:activity:retry': { windowMs: 2000, max: 2 },
 
-  // Activity state refresh - 5 per second
-  'activity:requestState': { windowMs: 1000, max: 5 },
+  // Widget state reads (every <roomType>:requestState), counted per socket
+  // and per room. The student app reads each card on mount and again after
+  // each rejoin, so a join plus a reconnect stays well inside this; a burst
+  // from one socket is cut off after 10 reads of a room per 5 seconds.
+  [STATE_READ_EVENT]: { windowMs: 5000, max: 10 },
 
   // Teacher app usage events (app open, widget added) - 300 per minute per IP,
   // so reconnecting cannot reset the budget and pad counts. The budget is
@@ -93,7 +100,9 @@ const createEventRateLimiter = (limits = EVENT_RATE_LIMITS) => {
    * Check if a request should be rate limited
    * @param {Socket} socket - The socket making the request
    * @param {string} eventName - The event name being requested
-   * @param {{ consume?: boolean }} [options] - `consume: false` only inspects the window
+   * @param {{ consume?: boolean, subKey?: string }} [options] - `consume: false` only
+   *   inspects the window; `subKey` keeps a separate window per key (for
+   *   example per room) within the same client
    * @returns {{ allowed: boolean, retryAfter?: number }} - Whether request is allowed
    */
   return (socket, eventName, options) => {
@@ -106,9 +115,10 @@ const createEventRateLimiter = (limits = EVENT_RATE_LIMITS) => {
       return { allowed: false, retryAfter: 1000 };
     }
 
-    const clientKey = limit.scope === 'ip'
+    const baseKey = limit.scope === 'ip'
       ? `ip:${socket.clientIP}`
       : `${socket.clientIP}-${socket.id}`;
+    const clientKey = options?.subKey ? `${baseKey}|${options.subKey}` : baseKey;
 
     return counterFor(eventName, limit)(clientKey, options);
   };
@@ -122,5 +132,7 @@ module.exports = {
   eventRateLimiter,
   createEventRateLimiter,
   EVENT_RATE_LIMITS,
+  JOIN_MISS_EVENT,
+  STATE_READ_EVENT,
   stopRateLimiterCleanup
 };

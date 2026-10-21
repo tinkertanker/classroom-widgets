@@ -84,6 +84,8 @@ describe('Activity Socket Handler Integration', () => {
     io = createMockIO();
     hostSocket = createMockSocket(HOST_SOCKET_ID);
     studentSocket = createMockSocket(STUDENT_SOCKET_ID);
+    // What session:join records for a joined student
+    studentSocket.data = { sessionCode: SESSION_CODE };
 
     session = new Session(SESSION_CODE);
     session.hostSocketId = HOST_SOCKET_ID;
@@ -341,7 +343,7 @@ describe('Activity Socket Handler Integration', () => {
   });
 
   describe('error handling and hostile payloads', () => {
-    it('rejects unknown session code', () => {
+    it('rejects an unknown session code like any session the socket did not join', () => {
       const callback = mockFn();
 
       studentSocket.trigger(EVENTS.ACTIVITY.SUBMIT, {
@@ -352,7 +354,8 @@ describe('Activity Socket Handler Integration', () => {
 
       const response = callback.calls[0][0];
       assert.equal(response.success, false);
-      assert.equal(response.error.code, 'INVALID_SESSION');
+      // The same answer as for a live session, so submits cannot probe codes
+      assert.equal(response.error.code, 'NOT_PARTICIPANT');
     });
 
     it('rejects unknown widget room', () => {

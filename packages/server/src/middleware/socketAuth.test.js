@@ -1,6 +1,6 @@
 const { describe, it, beforeEach } = require('node:test');
 const assert = require('node:assert/strict');
-const { eventRateLimiter, createEventRateLimiter, EVENT_RATE_LIMITS, socketAuth } = require('./socketAuth');
+const { eventRateLimiter, createEventRateLimiter, EVENT_RATE_LIMITS, JOIN_MISS_EVENT, STATE_READ_EVENT, socketAuth } = require('./socketAuth');
 const { stopRateLimiterCleanup } = require('./rateLimit');
 const { EVENTS, LIMITS } = require('../config/constants');
 
@@ -30,7 +30,8 @@ describe('eventRateLimiter', () => {
       EVENTS.SESSION.JOIN,
       EVENTS.ACTIVITY.SUBMIT,
       EVENTS.ACTIVITY.RETRY,
-      EVENTS.ACTIVITY.REQUEST_STATE,
+      STATE_READ_EVENT,
+      JOIN_MISS_EVENT,
       EVENTS.POLL.VOTE,
       EVENTS.LINK_SHARE.SUBMIT,
       EVENTS.RT_FEEDBACK.SUBMIT,

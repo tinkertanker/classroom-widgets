@@ -1,6 +1,11 @@
 const Room = require('./Room');
+const { LIMITS } = require('../config/constants');
 
 const MAX_TEXT_INPUT_LENGTH = 2000;
+
+// Grading for whitespace-flexible targets trims and collapses every run of
+// whitespace to one space, so this is the text the grader actually compares.
+const collapseWhitespace = (text) => text.trim().replace(/\s+/g, ' ');
 
 // Item IDs the UI recipe renders (draggable word-bank items)
 function collectRecipeItemIds(blocks, ids = new Set()) {
@@ -90,6 +95,13 @@ class ActivityRoom extends Room {
       return { success: false, error: 'Already submitted' };
     }
 
+    // Responses outlive their sockets, so reconnecting and resubmitting adds
+    // one each time; stop at the room cap rather than grow without limit
+    // (#229). Stored responses are kept; a reset or retry frees room.
+    if (this.responses.size >= LIMITS.MAX_SUBMISSIONS_PER_ROOM) {
+      return { success: false, error: 'This activity is full and cannot take more answers' };
+    }
+
     // Keep only the fields grading reads, capped to this activity's targets,
     // so a student cannot park megabytes of junk in server memory.
     const normalized = this.normalizeAnswers(answers);
@@ -142,9 +154,19 @@ class ActivityRoom extends Room {
 
     const textInputs = {};
     const rawInputs = source.textInputs && typeof source.textInputs === 'object' ? source.textInputs : {};
+    const targetById = new Map(targets.filter(target => target && typeof target.id === 'string').map(target => [target.id, target]));
     for (const id of targetIds) {
       if (Object.prototype.hasOwnProperty.call(rawInputs, id) && typeof rawInputs[id] === 'string') {
-        textInputs[id] = rawInputs[id].slice(0, maxText);
+        let text = rawInputs[id];
+        // Whitespace grading ignores must not push a right answer past the
+        // cap, so drop it before cutting (#229): every mode trims, and
+        // whitespace-flexible also collapses inner runs.
+        if (text.length > maxText) {
+          text = this.textEvaluationMode(targetById.get(id)) === 'whitespace-flexible'
+            ? collapseWhitespace(text)
+            : text.trim();
+        }
+        textInputs[id] = text.slice(0, maxText);
       }
     }
 
@@ -196,7 +218,6 @@ class ActivityRoom extends Room {
     const items = Array.isArray(this.activity.items) ? this.activity.items : [];
     const correct = [];
     const incorrect = [];
-    const isCodeActivity = this.activity.type === 'code-fill-blank';
 
     // Index once so each target is a constant-time lookup; first match wins.
     const placementByTarget = new Map();
@@ -232,8 +253,7 @@ class ActivityRoom extends Room {
         const userInput = textInput;
         const correctItems = accepts.map(itemId => itemById.get(itemId)?.content || '');
 
-        // Use evaluation mode if specified, otherwise default based on activity type
-        const evalMode = target.evaluationMode || (isCodeActivity ? 'whitespace-flexible' : 'exact');
+        const evalMode = this.textEvaluationMode(target);
         const isCorrect = this.evaluateTextInput(userInput, correctItems, evalMode);
 
         if (isCorrect) {
@@ -254,6 +274,15 @@ class ActivityRoom extends Room {
       incorrect,
       submitted: true
     };
+  }
+
+  /**
+   * How a target's typed answer is graded: its own evaluation mode, otherwise
+   * whitespace-flexible for code activities and exact for the rest.
+   */
+  textEvaluationMode(target) {
+    if (target && target.evaluationMode) return target.evaluationMode;
+    return this.activity && this.activity.type === 'code-fill-blank' ? 'whitespace-flexible' : 'exact';
   }
 
   /**

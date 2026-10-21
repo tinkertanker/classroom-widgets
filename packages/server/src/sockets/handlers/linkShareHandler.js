@@ -4,7 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
-const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
+const { resolveRoom, resolveHostRoom, isHostRejection, resolveParticipantSession, resolveReadableRoom } = require('./resolveHostRoom');
 
 /**
  * Handle link share related socket events
@@ -20,9 +20,10 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
+    // Only a student who joined this session may submit (finding 9)
+    const session = resolveParticipantSession(sessionManager, socket, data.sessionCode, getCurrentSessionCode);
     if (!session) {
-      socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('INVALID_SESSION'));
+      socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('NOT_PARTICIPANT'));
       return;
     }
 
@@ -40,11 +41,7 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
     }
     const { room } = guard;
 
-    const participant = session.participants.get(socket.id);
-    if (!participant) {
-      socket.emit(EVENTS.LINK_SHARE.SUBMITTED, createErrorResponse('NOT_PARTICIPANT'));
-      return;
-    }
+    const participant = session.getParticipant(socket.id);
 
     // Check if submissions are active
     if (!room.isActive) {
@@ -178,9 +175,7 @@ module.exports = function linkShareHandler(io, socket, sessionManager, getCurren
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode);
-
-    const { ok, room } = resolveRoom(session, 'linkShare', LinkShareRoom, widgetId);
+    const { ok, room } = resolveReadableRoom(sessionManager, socket, sessionCode, 'linkShare', LinkShareRoom, widgetId);
     if (ok) {
       socket.emit(EVENTS.LINK_SHARE.STATE_UPDATE, {
         isActive: room.isActive,

@@ -46,7 +46,10 @@ function run(file, args, env) {
   const server = spawn(process.execPath, ['src/server.js'], { cwd: serverRoot, stdio: ['ignore', 'ignore', 'inherit'], env });
   try {
     await waitForHealth(url, server);
-    process.exitCode = await run('e2e/sessionIdentity.cjs', [url], env);
+    const identity = await run('e2e/sessionIdentity.cjs', [url], env);
+    // stateAccess starts its own in-process server so it can read room state.
+    const stateAccess = await run('e2e/stateAccess.cjs', [], env);
+    process.exitCode = identity || stateAccess;
   } catch (error) {
     console.error(`E2E run failed: ${error.message}`);
     process.exitCode = 1;

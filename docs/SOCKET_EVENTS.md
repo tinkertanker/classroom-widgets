@@ -87,6 +87,21 @@ All widgets support a state request pattern for synchronizing late-joining stude
 *   `Student → Server`: `[widgetType]:requestState` with `{ sessionCode, widgetId }`
 *   `Server → Student`: Widget-specific response (varies by widget type)
 
+Only the session's host and students whose socket joined that session are
+answered; any other read gets no reply and does not keep the room from idle
+expiry. Reads are budgeted per socket and per room (10 per 5 seconds), and
+over-budget reads get no reply. The student app reads each card on mount and
+again after every successful `session:joined`, not on the bare reconnect, so
+its reads always follow the rejoin.
+
+Student submits (`session:poll:vote`, `session:linkShare:submit`,
+`session:rtfeedback:submit`, `session:questions:submit`,
+`session:activity:submit`, `session:activity:retry`) are refused with
+`NOT_PARTICIPANT` unless the socket joined the named session, whether or not
+the session exists, so a submit cannot be used to test session codes. A submit
+naming a code with no session also counts against the per-IP failed-join
+budget.
+
 **Note**: All events now use `sessionCode` (not `code`) for consistency.
 
 ## Input Validation
@@ -142,6 +157,9 @@ Per-event rate limits prevent abuse. When rate limited, the response includes `r
 | `session:linkShare:submit` | 3 requests per 5 seconds |
 | `session:rtfeedback:submit` | 5 requests per 500ms |
 | `session:questions:submit` | 2 requests per 3 seconds |
+| `session:activity:submit` | 3 requests per 2 seconds |
+| `session:activity:retry` | 2 requests per 2 seconds |
+| `[widgetType]:requestState` | 10 per 5 seconds, per socket and room (no reply when over) |
 
 Rate limit response:
 ```typescript

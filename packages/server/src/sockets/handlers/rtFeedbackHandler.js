@@ -4,7 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
-const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
+const { resolveRoom, resolveHostRoom, isHostRejection, resolveParticipantSession, resolveReadableRoom } = require('./resolveHostRoom');
 
 /**
  * Handle real-time feedback related socket events
@@ -20,9 +20,10 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       return;
     }
 
-    const session = sessionManager.getSession(data.sessionCode || getCurrentSessionCode());
+    // Only a student who joined this session may submit (finding 9)
+    const session = resolveParticipantSession(sessionManager, socket, data.sessionCode, getCurrentSessionCode);
     if (!session) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('INVALID_SESSION'), widgetId: data.widgetId });
+      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('NOT_PARTICIPANT'), widgetId: data.widgetId });
       return;
     }
 
@@ -50,13 +51,6 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
     const valueValidation = validators.feedbackValue(data.value);
     if (!valueValidation.valid) {
       socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('INVALID_INPUT', valueValidation.error), widgetId: data.widgetId });
-      return;
-    }
-
-    // Check if student is a participant
-    const participant = session.participants.get(socket.id);
-    if (!participant) {
-      socket.emit(EVENTS.RT_FEEDBACK.SUBMITTED, { ...createErrorResponse('NOT_PARTICIPANT'), widgetId: data.widgetId });
       return;
     }
 
@@ -106,9 +100,7 @@ module.exports = function rtFeedbackHandler(io, socket, sessionManager, getCurre
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode);
-
-    const { ok, room } = resolveRoom(session, 'rtfeedback', RTFeedbackRoom, widgetId);
+    const { ok, room } = resolveReadableRoom(sessionManager, socket, sessionCode, 'rtfeedback', RTFeedbackRoom, widgetId);
     if (ok) {
       const stateData = {
         isActive: room.isActive,

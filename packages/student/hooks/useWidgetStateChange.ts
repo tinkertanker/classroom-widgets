@@ -43,14 +43,16 @@ export const useWidgetStateChange = <TState extends object = Record<string, neve
     };
 
     // After a reconnect the card keeps its state, but every update the teacher
-    // made while this socket was away was missed: ask for the current state
-    const handleReconnect = () => {
+    // made while this socket was away was missed: ask for the current state.
+    // Ask once the socket has rejoined, as the server only answers members.
+    const handleRejoined = (data: { success?: boolean }) => {
+      if (!data?.success) return;
       socket.emit(`${roomType}:requestState`, { sessionCode: roomCode, widgetId });
     };
 
     socket.on('session:widgetStateChanged', handleWidgetStateChanged);
     socket.on(`${roomType}:stateUpdate`, handleStateUpdate);
-    socket.on('connect', handleReconnect);
+    socket.on('session:joined', handleRejoined);
 
     // Request current state if we don't have initial state
     let timer: NodeJS.Timeout | undefined;
@@ -64,7 +66,7 @@ export const useWidgetStateChange = <TState extends object = Record<string, neve
       if (timer) clearTimeout(timer);
       socket.off('session:widgetStateChanged', handleWidgetStateChanged);
       socket.off(`${roomType}:stateUpdate`, handleStateUpdate);
-      socket.off('connect', handleReconnect);
+      socket.off('session:joined', handleRejoined);
     };
   }, [socket, roomCode, roomType, widgetId, initialIsActive]);
 };

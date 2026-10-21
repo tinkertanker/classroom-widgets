@@ -4,7 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
-const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
+const { resolveRoom, resolveHostRoom, isHostRejection, resolveParticipantSession, resolveReadableRoom } = require('./resolveHostRoom');
 
 
 // Socket payloads are client-controlled; normalize to an object so property
@@ -165,11 +165,6 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
   socket.on(EVENTS.ACTIVITY.REQUEST_STATE, (data) => {
     const { sessionCode, widgetId } = asObject(data);
 
-    if (!eventRateLimiter(socket, EVENTS.ACTIVITY.REQUEST_STATE).allowed) {
-      logger.warn('activity:requestState', 'Rate limited', { socketId: socket.id });
-      return;
-    }
-
     const sessionValidation = validators.sessionCode(sessionCode);
     if (!sessionValidation.valid) {
       logger.warn('activity:requestState', sessionValidation.error);
@@ -182,9 +177,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode);
-
-    const { ok, room } = resolveRoom(session, 'activity', ActivityRoom, widgetId);
+    const { ok, room } = resolveReadableRoom(sessionManager, socket, sessionCode, 'activity', ActivityRoom, widgetId);
     if (ok) {
       const stateData = room.getStateForStudent(socket.id);
       stateData.widgetId = widgetId;
@@ -216,13 +209,12 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
-
+    // Only a student who joined this session may submit (finding 9)
+    const session = resolveParticipantSession(sessionManager, socket, sessionCode, getCurrentSessionCode);
     if (!session) {
-      logger.warn('activity:submit', 'Session not found', { sessionCode });
       if (callback) {
         callback({
-          ...createErrorResponse('INVALID_SESSION'),
+          ...createErrorResponse('NOT_PARTICIPANT'),
           widgetId
         });
       }
@@ -254,18 +246,7 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    // Check if participant exists
     const participant = session.getParticipant(socket.id);
-    if (!participant) {
-      logger.warn('activity:submit', 'Participant not found', { socketId: socket.id });
-      if (callback) {
-        callback({
-          ...createErrorResponse('NOT_PARTICIPANT'),
-          widgetId
-        });
-      }
-      return;
-    }
 
     // Submit the answer
     const result = room.submitAnswer(socket.id, answers);
@@ -337,13 +318,12 @@ module.exports = function activityHandler(io, socket, sessionManager, getCurrent
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
-
+    // Only a student who joined this session may retry (finding 9)
+    const session = resolveParticipantSession(sessionManager, socket, sessionCode, getCurrentSessionCode);
     if (!session) {
-      logger.warn('activity:retry', 'Session not found', { sessionCode });
       if (callback) {
         callback({
-          ...createErrorResponse('INVALID_SESSION'),
+          ...createErrorResponse('NOT_PARTICIPANT'),
           widgetId
         });
       }

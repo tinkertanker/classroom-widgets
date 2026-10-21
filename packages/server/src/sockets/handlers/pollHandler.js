@@ -4,7 +4,7 @@ const { validators } = require('../../utils/validation');
 const { logger } = require('../../utils/logger');
 const { createErrorResponse, createSuccessResponse, createRateLimitResponse } = require('../../utils/errors');
 const { eventRateLimiter } = require('../../middleware/socketAuth');
-const { resolveRoom, resolveHostRoom, isHostRejection } = require('./resolveHostRoom');
+const { resolveRoom, resolveHostRoom, isHostRejection, resolveParticipantSession, resolveReadableRoom } = require('./resolveHostRoom');
 
 /**
  * Handle poll-related socket events
@@ -74,9 +74,7 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode);
-
-    const { ok, room } = resolveRoom(session, 'poll', PollRoom, widgetId);
+    const { ok, room } = resolveReadableRoom(sessionManager, socket, sessionCode, 'poll', PollRoom, widgetId);
     if (ok) {
       const { votes, ...pollDataWithoutVotes } = room.pollData;
 
@@ -112,12 +110,11 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
       return;
     }
 
-    const session = sessionManager.getSession(sessionCode || getCurrentSessionCode());
-
+    // Only a student who joined this session may vote (finding 9)
+    const session = resolveParticipantSession(sessionManager, socket, sessionCode, getCurrentSessionCode);
     if (!session) {
-      logger.warn('poll:vote', 'Session not found', { sessionCode });
       socket.emit(EVENTS.POLL.VOTE_CONFIRMED, {
-        ...createErrorResponse('INVALID_SESSION'),
+        ...createErrorResponse('NOT_PARTICIPANT'),
         widgetId
       });
       return;
@@ -150,17 +147,6 @@ module.exports = function pollHandler(io, socket, sessionManager, getCurrentSess
     if (!optionValidation.valid) {
       socket.emit(EVENTS.POLL.VOTE_CONFIRMED, {
         ...createErrorResponse('INVALID_INPUT', optionValidation.error),
-        widgetId
-      });
-      return;
-    }
-
-    // Check if participant exists
-    const participant = session.getParticipant(socket.id);
-    if (!participant) {
-      logger.warn('poll:vote', 'Participant not found', { socketId: socket.id });
-      socket.emit(EVENTS.POLL.VOTE_CONFIRMED, {
-        ...createErrorResponse('NOT_PARTICIPANT'),
         widgetId
       });
       return;
