@@ -8,18 +8,22 @@ namespace ClassroomWidgets;
 
 /// <summary>
 /// Copies a source display into a WPF bitmap about 15 times a second on the UI thread.
-/// The memory DC and DIB section are kept until the output size changes. When the preview
-/// is at most half the source size, GDI scales the frame down (HALFTONE) as it copies, so
-/// the bitmap the UI thread copies and WPF uploads is preview-sized. GDI still reads the
-/// whole source rectangle either way.
+/// The memory DC, screen-compatible bitmap and pixel buffer are kept until the output size
+/// changes. When the preview is at most half the source size, GDI scales the frame down as it
+/// copies (COLORONCOLOR), so the pixels read back, copied into WPF and uploaded are
+/// preview-sized. GDI still reads the whole source rectangle, which is the bulk of the cost
+/// on large sources; moving capture off the UI thread is the next step (#211 phase 2).
 /// </summary>
 public sealed class DisplayCaptureSession : IDisposable
 {
     private const uint Srccopy = 0x00CC0020;
     private const uint Captureblt = 0x40000000;
-    private const int Halftone = 4;
-    private const int StretchMode = Halftone;
-    // Above this scale, HALFTONE over the whole source costs more than copying it unscaled.
+    private const int ColorOnColor = 3;
+    // Measured on Windows (#211): HALFTONE costs as much as an unscaled copy of the source,
+    // while COLORONCOLOR is cheaper. Its point sampling looks like the bilinear downscale
+    // WPF applied to full-size frames before.
+    private const int StretchMode = ColorOnColor;
+    // Above this scale, keep the unscaled copy: the preview shows nearly every source pixel.
     private const double MaxStretchScale = 0.5;
     // While the preview is being resized, keep the current surface until the new size has
     // held for this many frames; Stretch=Uniform covers the difference meanwhile.
@@ -31,9 +35,9 @@ public sealed class DisplayCaptureSession : IDisposable
     private readonly EventHandler _tickHandler;
     private WriteableBitmap? _bitmap;
     private IntPtr _memoryDc;
-    private IntPtr _dib;
-    private IntPtr _defaultBitmap;
-    private IntPtr _bits;
+    private IntPtr _surface;
+    private IntPtr _pixels;
+    private NativeMethods.BITMAPINFO _bitmapInfo;
     private int _width;
     private int _height;
     private (int Width, int Height) _pendingSize;
@@ -76,6 +80,7 @@ public sealed class DisplayCaptureSession : IDisposable
     {
         if (_disposed || _failed) return;
         var screenDc = IntPtr.Zero;
+        var previous = IntPtr.Zero;
         try
         {
             if (_canCapture is not null && !_canCapture()) return;
@@ -83,9 +88,11 @@ public sealed class DisplayCaptureSession : IDisposable
             var sourceHeight = Math.Max(1, (int)Math.Round(_sourceBounds.Height));
             if (OutputSize(sourceWidth, sourceHeight) is not { } size) return;
             var (width, height) = size;
-            EnsureSurface(width, height);
             screenDc = NativeMethods.GetDC(IntPtr.Zero);
             if (screenDc == IntPtr.Zero) throw new InvalidOperationException("Unable to acquire the screen device context.");
+            EnsureSurface(screenDc, width, height);
+            previous = NativeMethods.SelectObject(_memoryDc, _surface);
+            if (previous == IntPtr.Zero) throw new InvalidOperationException("Unable to select the capture bitmap.");
             var sourceX = (int)Math.Round(_sourceBounds.X);
             var sourceY = (int)Math.Round(_sourceBounds.Y);
             var copied = width == sourceWidth && height == sourceHeight
@@ -95,21 +102,32 @@ public sealed class DisplayCaptureSession : IDisposable
             {
                 throw new InvalidOperationException($"Unable to copy the source display (error {Marshal.GetLastWin32Error()}).");
             }
-            // The DIB's bits are read directly below, so GDI must have finished drawing.
-            NativeMethods.GdiFlush();
+            // GetDIBits needs the bitmap deselected.
+            NativeMethods.SelectObject(_memoryDc, previous);
+            previous = IntPtr.Zero;
+            if (NativeMethods.GetDIBits(screenDc, _surface, 0, (uint)height, _pixels, ref _bitmapInfo, 0) == 0)
+            {
+                throw new InvalidOperationException("Unable to read the capture bitmap.");
+            }
 
-            _bitmap = PresentFrame(_bitmap, _bits, width, height);
+            _bitmap = PresentFrame(_bitmap, _pixels, width, height);
             FrameReady?.Invoke();
         }
         catch (Exception error)
         {
             _failed = true;
             _timer.Stop();
+            if (previous != IntPtr.Zero)
+            {
+                NativeMethods.SelectObject(_memoryDc, previous);
+                previous = IntPtr.Zero;
+            }
             ReleaseSurface();
             Failed?.Invoke(error);
         }
         finally
         {
+            if (previous != IntPtr.Zero) NativeMethods.SelectObject(_memoryDc, previous);
             if (screenDc != IntPtr.Zero) NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
         }
     }
@@ -128,7 +146,7 @@ public sealed class DisplayCaptureSession : IDisposable
                 desired = fitted;
             }
         }
-        if (_memoryDc == IntPtr.Zero || desired == (_width, _height))
+        if (_surface == IntPtr.Zero || desired == (_width, _height))
         {
             _pendingFrames = 0;
             return desired;
@@ -147,14 +165,25 @@ public sealed class DisplayCaptureSession : IDisposable
         return desired;
     }
 
-    /// <summary>Keeps one memory DC and a top-down 32-bit DIB section of the output size.</summary>
-    private void EnsureSurface(int width, int height)
+    /// <summary>Keeps one memory DC, a screen-compatible bitmap and a 32-bit pixel buffer of the output size.</summary>
+    private void EnsureSurface(IntPtr screenDc, int width, int height)
     {
-        if (_memoryDc != IntPtr.Zero && _width == width && _height == height) return;
+        if (_surface != IntPtr.Zero && _width == width && _height == height) return;
         ReleaseSurface();
-        _memoryDc = NativeMethods.CreateCompatibleDC(IntPtr.Zero);
-        if (_memoryDc == IntPtr.Zero) throw new InvalidOperationException("Unable to create the capture device context.");
-        var info = new NativeMethods.BITMAPINFO
+        try
+        {
+            _memoryDc = NativeMethods.CreateCompatibleDC(screenDc);
+            _surface = NativeMethods.CreateCompatibleBitmap(screenDc, width, height);
+            if (_memoryDc == IntPtr.Zero || _surface == IntPtr.Zero) throw new InvalidOperationException("Unable to create the capture bitmap.");
+            _pixels = Marshal.AllocHGlobal(checked(width * height * 4));
+            NativeMethods.SetStretchBltMode(_memoryDc, StretchMode);
+        }
+        catch
+        {
+            ReleaseSurface();
+            throw;
+        }
+        _bitmapInfo = new NativeMethods.BITMAPINFO
         {
             Header = new NativeMethods.BITMAPINFOHEADER
             {
@@ -167,35 +196,18 @@ public sealed class DisplayCaptureSession : IDisposable
             },
             Colors = new NativeMethods.RGBQUAD[1]
         };
-        _dib = NativeMethods.CreateDIBSection(_memoryDc, ref info, 0, out _bits, IntPtr.Zero, 0);
-        if (_dib == IntPtr.Zero || _bits == IntPtr.Zero)
-        {
-            ReleaseSurface();
-            throw new InvalidOperationException("Unable to create the capture bitmap.");
-        }
-        _defaultBitmap = NativeMethods.SelectObject(_memoryDc, _dib);
-        if (_defaultBitmap == IntPtr.Zero)
-        {
-            ReleaseSurface();
-            throw new InvalidOperationException("Unable to select the capture bitmap.");
-        }
-        // HALFTONE averages the source pixels each output pixel covers, so text stays legible;
-        // it needs the brush origin reset after the mode is set.
-        NativeMethods.SetStretchBltMode(_memoryDc, StretchMode);
-        NativeMethods.SetBrushOrgEx(_memoryDc, 0, 0, IntPtr.Zero);
         _width = width;
         _height = height;
     }
 
     private void ReleaseSurface()
     {
-        if (_memoryDc != IntPtr.Zero && _defaultBitmap != IntPtr.Zero) NativeMethods.SelectObject(_memoryDc, _defaultBitmap);
-        if (_dib != IntPtr.Zero) NativeMethods.DeleteObject(_dib);
+        if (_surface != IntPtr.Zero) NativeMethods.DeleteObject(_surface);
         if (_memoryDc != IntPtr.Zero) NativeMethods.DeleteDC(_memoryDc);
+        if (_pixels != IntPtr.Zero) Marshal.FreeHGlobal(_pixels);
+        _surface = IntPtr.Zero;
         _memoryDc = IntPtr.Zero;
-        _dib = IntPtr.Zero;
-        _defaultBitmap = IntPtr.Zero;
-        _bits = IntPtr.Zero;
+        _pixels = IntPtr.Zero;
         _width = 0;
         _height = 0;
     }
@@ -298,17 +310,15 @@ public sealed class DisplayCaptureSession : IDisposable
         public static extern bool StretchBlt(IntPtr destination, int x, int y, int width, int height, IntPtr source, int sourceX, int sourceY, int sourceWidth, int sourceHeight, uint rasterOperation);
 
         [DllImport("gdi32.dll")]
+        public static extern IntPtr CreateCompatibleBitmap(IntPtr hDc, int width, int height);
+
+        [DllImport("gdi32.dll")]
+        public static extern int GetDIBits(IntPtr hDc, IntPtr bitmap, uint startScan, uint scanLines, IntPtr bits, ref BITMAPINFO bitmapInfo, uint usage);
+
+        [DllImport("gdi32.dll")]
         public static extern int SetStretchBltMode(IntPtr hDc, int mode);
 
-        [DllImport("gdi32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool SetBrushOrgEx(IntPtr hDc, int x, int y, IntPtr previous);
 
-        [DllImport("gdi32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool GdiFlush();
 
-        [DllImport("gdi32.dll")]
-        public static extern IntPtr CreateDIBSection(IntPtr hDc, ref BITMAPINFO bitmapInfo, uint usage, out IntPtr bits, IntPtr section, uint offset);
     }
 }

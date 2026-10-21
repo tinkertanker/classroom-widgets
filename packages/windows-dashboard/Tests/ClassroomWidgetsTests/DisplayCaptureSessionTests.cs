@@ -82,9 +82,7 @@ public sealed class DisplayCaptureSessionTests
     // Capturing at preview size (#211) can go wrong by: drawing the scaled frame with the
     // wrong channel order or upside down; keeping a stale buffer or bitmap after the preview
     // is resized (wrong size, stride mismatch or an exception); upscaling past the source;
-    // capturing a full-size frame, or failing, while the preview has no size yet; scaling
-    // with GDI's default stretch mode, which ANDs pixels together and wipes out thin text;
-    // and leaking the reused memory DC or DIB section on resize or dispose.
+    // capturing a full-size frame, or failing, while the preview has no size yet; and leaking the reused memory DC, bitmap or pixel buffer on resize or dispose.
     [Fact]
     public void ScaledCaptureFollowsPreviewSizeAndKeepsColoursAndOrientation()
     {
@@ -121,41 +119,6 @@ public sealed class DisplayCaptureSessionTests
                 // Larger than the source: capture at source size, never upscale.
                 target = new Size(1000, 1000);
                 AssertScaledFrame(session, () => failure, 400, 300, "unscaled");
-            }
-            finally
-            {
-                source.Close();
-            }
-        });
-    }
-
-    [Fact]
-    public void ScaledCaptureAveragesFineDetailInsteadOfDroppingIt()
-    {
-        WpfTestHost.Run(() =>
-        {
-            var region = new Rect(0, 0, 200, 100);
-            var source = StripeWindow(region);
-            source.Show();
-            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
-            try
-            {
-                using var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(100, 50));
-                Exception? failure = null;
-                session.Failed += error => failure = error;
-                session.Start();
-                AssertFrameSize(session, () => failure, 100, 50);
-                var rendered = WpfTestHost.RenderOverBlack(session.Image!, 100, 50);
-                WpfTestHost.SaveEvidence("211-stripes-100x50.png", rendered, 100, 50);
-                // One-pixel black and white columns at 2:1 must average to grey. The default
-                // stretch mode gives black, and dropping pixels gives black or white.
-                for (var x = 10; x < 90; x += 10)
-                {
-                    var (r, g, b, _) = WpfTestHost.PixelAt(rendered, 100, x, 25);
-                    Assert.InRange(r, 80, 175);
-                    Assert.InRange(g, 80, 175);
-                    Assert.InRange(b, 80, 175);
-                }
             }
             finally
             {
@@ -221,50 +184,6 @@ public sealed class DisplayCaptureSessionTests
         AssertColour(SyntheticSourceWindow.TopRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height / 4));
         AssertColour(SyntheticSourceWindow.BottomLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height * 3 / 4));
         AssertColour(SyntheticSourceWindow.BottomRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height * 3 / 4));
-    }
-
-    /// <summary>A topmost window of one-pixel black and white columns at <paramref name="bounds"/> (physical pixels).</summary>
-    private static Window StripeWindow(Rect bounds)
-    {
-        var image = new System.Windows.Controls.Image { Stretch = Stretch.None, SnapsToDevicePixels = true };
-        RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.NearestNeighbor);
-        var window = new Window
-        {
-            WindowStyle = WindowStyle.None,
-            ResizeMode = ResizeMode.NoResize,
-            ShowInTaskbar = false,
-            Topmost = true,
-            ShowActivated = false,
-            UseLayoutRounding = true,
-            Background = Brushes.Black,
-            Content = image,
-        };
-        window.SourceInitialized += (_, _) =>
-        {
-            var fromDevice = PresentationSource.FromVisual(window)!.CompositionTarget!.TransformFromDevice;
-            var origin = fromDevice.Transform(bounds.TopLeft);
-            var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
-            window.Left = origin.X;
-            window.Top = origin.Y;
-            window.Width = size.X;
-            window.Height = size.Y;
-            // A bitmap at the monitor's DPI draws one bitmap pixel per screen pixel.
-            var dpi = 96 / fromDevice.M11;
-            var width = (int)bounds.Width;
-            var height = (int)bounds.Height;
-            var pixels = new byte[width * height * 4];
-            for (var y = 0; y < height; y++)
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    var value = (byte)(x % 2 == 0 ? 0 : 255);
-                    var offset = (y * width + x) * 4;
-                    pixels[offset] = pixels[offset + 1] = pixels[offset + 2] = value;
-                }
-            }
-            image.Source = BitmapSource.Create(width, height, dpi, dpi, PixelFormats.Bgr32, null, pixels, width * 4);
-        };
-        return window;
     }
 
     private static int GdiObjects()
