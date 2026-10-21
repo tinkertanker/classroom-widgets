@@ -161,7 +161,8 @@ export class WidgetPanelWindow extends EventEmitter {
     registerNativeMessages(this.view.webContents, (message) => this.handlePanelMessage(message));
 
     void this.win.loadFile(rendererPath('panel-chrome.html'));
-    this.win.webContents.once('did-finish-load', () => this.pushChromeUpdate());
+    // Also after a reload (View > Reload): inventories no longer resend the chrome.
+    this.win.webContents.on('did-finish-load', () => this.pushChromeUpdate());
     this.view.webContents.on('did-finish-load', () => this.applyWebPresentation());
     this.view.webContents.on('render-process-gone', (_event, details) => {
       if (details.reason !== 'clean-exit') {
@@ -432,10 +433,12 @@ export class WidgetPanelWindow extends EventEmitter {
 
     if (previous?.title !== next.title) this.win.setTitle(next.title);
     if (previous?.limitsKey !== next.limitsKey || previous?.isResizable !== next.isResizable) {
+      // setResizable first: on Linux, Electron's setResizable(true) restores
+      // the limits saved by setResizable(false) and would undo new ones.
+      this.win.setResizable(next.isResizable);
       const limits = sizeLimits(this.descriptor);
       this.win.setMinimumSize(limits.minWidth, limits.minHeight);
       this.win.setMaximumSize(limits.maxWidth ?? 100_000, limits.maxHeight ?? 100_000);
-      this.win.setResizable(next.isResizable);
     }
     if (previous?.aspectRatio !== next.aspectRatio) {
       if (next.aspectRatio > 0) {

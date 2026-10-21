@@ -236,6 +236,8 @@ export class WidgetPanelCoordinator extends EventEmitter {
     if (this.layout !== 'freeform') {
       this.layout = 'freeform';
       this.freeformFrames.clear();
+      // The tray's layout radio no longer follows every inventory.
+      this.emit('changed');
     }
     panel.setFrame(frame);
     this.persist(panel.currentFrame, panel.widgetId);
@@ -381,6 +383,8 @@ export class WidgetPanelCoordinator extends EventEmitter {
       if (this.layout !== 'freeform') {
         this.layout = 'freeform';
         this.freeformFrames.clear();
+        // The tray's layout radio no longer follows every inventory.
+        this.emit('changed');
       }
       this.persist(frame, widgetId);
     });

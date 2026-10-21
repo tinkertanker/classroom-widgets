@@ -121,6 +121,8 @@ app.whenReady().then(async () => {
       if (child && (await texts(child))[0] === 'Row') return child;
     }
   });
+  // The seeding inventory above is every panel's first apply(), which sets
+  // all fields once (the constructor leaves the aspect ratio unset).
   await delay(1000);
 
   // 1. Typing: one inventory per key, nothing presented changes.
@@ -164,7 +166,31 @@ app.whenReady().then(async () => {
   const toggled = summary();
   record(`hide then show Timer: trayMenus after hide=${afterHide}, after show=${toggled.trayMenus} setters=${toggled.setters} chromeUpdates=${toggled.chrome}`);
 
-  // 4. Close every panel: the Arrange item must end up disabled.
+  // 3b. A reloaded chrome strip (View > Reload) gets its title and theme back.
+  const reloaded = panelWindows()[0];
+  const chromeState = () => reloaded.webContents.executeJavaScript(
+    `[document.getElementById('title').textContent, document.getElementById('chrome').classList.contains('dark')]`);
+  const [expectedTitle] = await chromeState();
+  reloaded.webContents.reload();
+  await until('reloaded chrome restored', async () => {
+    const [title, dark] = await chromeState();
+    return title === expectedTitle && title !== '' && dark;
+  });
+  record(`reload a panel chrome: title "${expectedTitle}" and dark theme restored`);
+
+  // 4. Arrange in a row, then drag a panel: the tray's layout radio must
+  // return to Free Placement without waiting for a panel to appear or go.
+  const radio = label => lastMenu.items.find(item => item.label === 'Arrange Widgets').submenu.items
+    .find(item => item.label === label).checked;
+  host.panelCoordinator.arrange('row');
+  await until('Row checked in tray', () => radio('Arrange in a Row'));
+  const dragged = panelWindows()[0];
+  const [x, y] = dragged.getPosition();
+  dragged.setPosition(x + 40, y + 60);
+  await until('Free Placement checked after drag', () => radio('Free Placement'));
+  record('arrange row then drag a panel: tray layout back to Free Placement');
+
+  // 5. Close every panel: the Arrange item must end up disabled.
   resetCounts();
   // Through each panel's own close button, as a teacher would.
   for (const win of panelWindows()) await win.webContents.executeJavaScript(`document.getElementById('close').click()`);
