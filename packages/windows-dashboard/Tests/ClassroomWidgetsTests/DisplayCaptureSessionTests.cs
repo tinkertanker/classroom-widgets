@@ -152,7 +152,7 @@ public sealed class DisplayCaptureSessionTests
                 for (var x = 10; x < 90; x += 10)
                 {
                     var (r, g, b, _) = WpfTestHost.PixelAt(rendered, 100, x, 25);
-                    Assert.InRange(g, 0, 40);
+                    Assert.InRange(g, 0, 10);
                     Assert.InRange(r + b, 200, 310);
                 }
             }

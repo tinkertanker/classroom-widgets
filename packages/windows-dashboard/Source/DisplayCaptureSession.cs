@@ -29,8 +29,9 @@ public sealed class DisplayCaptureSession : IDisposable
     // While the preview is being resized, keep the current surface until the new size has
     // held for this many frames; Stretch=Uniform covers the difference meanwhile.
     private const int ResizeSettleFrames = 3;
-    // A display mode change, sleep or Remote Desktop switch can fail a frame or two; rebuild
-    // the surface and retry, and only give up after this many failures in a row.
+    // A display mode change can fail a frame or two; rebuild the surface and retry, and only
+    // give up after this many failures in a row (about 200 ms). Longer outages, such as the
+    // lock screen, still stop the preview, as before.
     private const int MaxConsecutiveFailures = 3;
     private readonly Rect _sourceBounds;
     private readonly Func<bool>? _canCapture;
@@ -55,10 +56,13 @@ public sealed class DisplayCaptureSession : IDisposable
     public event Action? FrameReady;
 
     /// <param name="sourceBounds">The source display, in physical pixels.</param>
-    /// <param name="canCapture">Skips a frame when it returns false.</param>
+    /// <param name="canCapture">
+    /// Skips a frame when it returns false, and frees the capture surface until it returns true.
+    /// </param>
     /// <param name="targetPixelSize">
     /// The preview's image area in physical pixels, read every frame. Without it, frames are
-    /// captured at the source size. While it returns an empty size, frames are skipped.
+    /// captured at the source size. While it is under one pixel in either direction, or not
+    /// finite, frames are skipped.
     /// </param>
     public DisplayCaptureSession(Rect sourceBounds, Func<bool>? canCapture = null, Func<Size>? targetPixelSize = null)
     {
@@ -87,6 +91,7 @@ public sealed class DisplayCaptureSession : IDisposable
         if (_disposed || _failed) return;
         var screenDc = IntPtr.Zero;
         var previous = IntPtr.Zero;
+        var presented = false;
         try
         {
             if (_canCapture is not null && !_canCapture())
@@ -122,8 +127,7 @@ public sealed class DisplayCaptureSession : IDisposable
             }
 
             _bitmap = PresentFrame(_bitmap, _pixels, width, height);
-            _consecutiveFailures = 0;
-            FrameReady?.Invoke();
+            presented = true;
         }
         catch (Exception error)
         {
@@ -133,7 +137,11 @@ public sealed class DisplayCaptureSession : IDisposable
                 previous = IntPtr.Zero;
             }
             ReleaseSurface();
-            if (++_consecutiveFailures < MaxConsecutiveFailures) return;
+            if (++_consecutiveFailures < MaxConsecutiveFailures)
+            {
+                DashboardLog.Warn($"Display capture frame failed ({_consecutiveFailures} in a row), retrying: {error.Message}");
+                return;
+            }
             _failed = true;
             _timer.Stop();
             Failed?.Invoke(error);
@@ -143,6 +151,10 @@ public sealed class DisplayCaptureSession : IDisposable
             if (previous != IntPtr.Zero) NativeMethods.SelectObject(_memoryDc, previous);
             if (screenDc != IntPtr.Zero) NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
         }
+        if (!presented) return;
+        _consecutiveFailures = 0;
+        // Outside the try: a handler's exception is the handler's bug, not a capture failure.
+        FrameReady?.Invoke();
     }
 
     /// <summary>The size to capture this frame at, or null to skip the frame.</summary>

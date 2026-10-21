@@ -88,16 +88,24 @@ internal static class Program
         // Warm up allocations and GDI's first-use costs.
         for (var i = 0; i < 5; i++) session.Start();
         var samples = new List<double>(options.Captures);
+        var frames = 0;
+        var missed = 0;
+        session.FrameReady += () => frames++;
         for (var i = 0; i < options.Captures && failure is null; i++)
         {
+            var before = frames;
             var started = Stopwatch.GetTimestamp();
             session.Start();
-            samples.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+            var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            // Only time captures that produced a frame; a failed or skipped one is counted.
+            if (frames > before) samples.Add(elapsed);
+            else missed++;
         }
         var image = session.Image as System.Windows.Media.Imaging.BitmapSource;
         return new
         {
             failure = failure?.Message,
+            missed,
             frameWidth = image?.PixelWidth,
             frameHeight = image?.PixelHeight,
             captureMs = Stats(samples),
