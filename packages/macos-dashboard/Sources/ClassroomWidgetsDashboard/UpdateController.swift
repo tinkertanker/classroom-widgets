@@ -13,6 +13,10 @@ final class UpdateController {
     private let openDownloads: @MainActor (URL) -> Void
     private let updateAvailable: @MainActor (String?) -> Void
     private let installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)?
+    private let downloadUpdate: @MainActor (URLRequest) async throws -> (URL, URLResponse)
+    private let stagingRoot: URL
+    private let launchHelper: @MainActor (Process) throws -> Void
+    private let terminate: @MainActor () -> Void
     private var checking = false
 
     init(
@@ -25,7 +29,13 @@ final class UpdateController {
         presentAlert: @escaping @MainActor (NSAlert) -> NSApplication.ModalResponse = { $0.runModal() },
         openDownloads: @escaping @MainActor (URL) -> Void = { NSWorkspace.shared.open($0) },
         updateAvailable: @escaping @MainActor (String?) -> Void = { _ in },
-        installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)? = nil
+        installUpdate: (@MainActor (GitHubAsset, String) async throws -> Void)? = nil,
+        downloadUpdate: @escaping @MainActor (URLRequest) async throws -> (URL, URLResponse) = {
+            try await URLSession.shared.download(for: $0)
+        },
+        stagingRoot: URL = FileManager.default.temporaryDirectory,
+        launchHelper: @escaping @MainActor (Process) throws -> Void = { try $0.run() },
+        terminate: @escaping @MainActor () -> Void = { NSApp.terminate(nil) }
     ) {
         self.prepareForTermination = prepareForTermination
         self.cancelTermination = cancelTermination
@@ -35,6 +45,10 @@ final class UpdateController {
         self.openDownloads = openDownloads
         self.updateAvailable = updateAvailable
         self.installUpdate = installUpdate
+        self.downloadUpdate = downloadUpdate
+        self.stagingRoot = stagingRoot
+        self.launchHelper = launchHelper
+        self.terminate = terminate
     }
 
     func check(manual: Bool = false) async {
@@ -109,21 +123,33 @@ final class UpdateController {
     }
 
     private func downloadAndInstall(asset: GitHubAsset, version: String) async throws {
+        let fileManager = FileManager.default
+        let target = applicationBundle.bundleURL
+        // Fail before downloading when the app cannot replace itself, for
+        // example a standard user without write access to /Applications.
+        guard Self.canReplace(target) else { throw UpdateError.readOnlyApplication }
+        removeStaleStaging()
+
         var request = URLRequest(url: asset.downloadURL)
         request.setValue("ClassroomWidgets/\(currentVersion)", forHTTPHeaderField: "User-Agent")
-        let (download, response) = try await URLSession.shared.download(for: request)
+        let (download, response) = try await downloadUpdate(request)
+        defer { try? fileManager.removeItem(at: download) }
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw UpdateError.invalidResponse }
 
-        let fileManager = FileManager.default
-        let staging = fileManager.temporaryDirectory.appendingPathComponent("classroom-widgets-update-\(UUID().uuidString)", isDirectory: true)
+        let staging = stagingRoot.appendingPathComponent("classroom-widgets-update-\(UUID().uuidString)", isDirectory: true)
         try fileManager.createDirectory(at: staging, withIntermediateDirectories: true)
+        // The staging folder belongs to this method until the helper starts;
+        // after that the helper removes it once the swap is done.
+        var helperOwnsStaging = false
+        defer {
+            if !helperOwnsStaging { try? fileManager.removeItem(at: staging) }
+        }
         let archive = staging.appendingPathComponent(asset.name)
         try fileManager.moveItem(at: download, to: archive)
         guard let expectedDigest = asset.digest, Self.hasUsableDigest(expectedDigest) else {
             throw UpdateError.checksumMismatch
         }
-        let digest = "sha256:" + SHA256.hash(data: try Data(contentsOf: archive)).map { String(format: "%02x", $0) }.joined()
-        guard digest == expectedDigest else { throw UpdateError.checksumMismatch }
+        guard try Self.sha256Digest(of: archive) == expectedDigest else { throw UpdateError.checksumMismatch }
         try run("/usr/bin/ditto", arguments: ["-x", "-k", archive.path, staging.path])
 
         let replacement = staging.appendingPathComponent("Classroom Widgets Dashboard.app", isDirectory: true)
@@ -138,10 +164,8 @@ final class UpdateController {
             throw UpdateError.invalidApplication
         }
 
-        let target = applicationBundle.bundleURL
-        guard target.pathExtension == "app", fileManager.isWritableFile(atPath: target.deletingLastPathComponent().path) else {
-            throw UpdateError.readOnlyApplication
-        }
+        // Checked again: the folder's permissions can change during the download.
+        guard Self.canReplace(target) else { throw UpdateError.readOnlyApplication }
         let script = staging.appendingPathComponent("install-update.sh")
         let backup = target.deletingLastPathComponent().appendingPathComponent(".\(target.lastPathComponent).previous-\(UUID().uuidString)")
         try Self.helperScript.write(to: script, atomically: true, encoding: .utf8)
@@ -151,12 +175,47 @@ final class UpdateController {
         helper.arguments = [script.path, String(ProcessInfo.processInfo.processIdentifier), replacement.path, target.path, staging.path, backup.path]
         guard await prepareForTermination() else { throw UpdateError.unableToQuit }
         do {
-            try helper.run()
+            try launchHelper(helper)
         } catch {
             cancelTermination()
             throw error
         }
-        NSApp.terminate(nil)
+        helperOwnsStaging = true
+        terminate()
+    }
+
+    /// Removes staging folders that an earlier attempt left behind, for
+    /// example when the app was force-quit mid-update or by versions before
+    /// this cleanup existed. Only folders older than a day are touched, so a
+    /// helper that is still installing is never affected.
+    private func removeStaleStaging() {
+        let fileManager = FileManager.default
+        guard let entries = try? fileManager.contentsOfDirectory(
+            at: stagingRoot, includingPropertiesForKeys: [.contentModificationDateKey], options: [.skipsHiddenFiles]
+        ) else { return }
+        let cutoff = Date().addingTimeInterval(-Self.staleStagingAge)
+        for entry in entries where entry.lastPathComponent.hasPrefix("classroom-widgets-update-") {
+            guard let modified = try? entry.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate,
+                  modified < cutoff else { continue }
+            try? fileManager.removeItem(at: entry)
+        }
+    }
+
+    private static let staleStagingAge: TimeInterval = 24 * 60 * 60
+
+    private static func canReplace(_ target: URL) -> Bool {
+        target.pathExtension == "app" && FileManager.default.isWritableFile(atPath: target.deletingLastPathComponent().path)
+    }
+
+    /// Hashes the archive in 1 MB chunks instead of reading it into memory.
+    private static func sha256Digest(of file: URL) throws -> String {
+        let handle = try FileHandle(forReadingFrom: file)
+        defer { try? handle.close() }
+        var hasher = SHA256()
+        while let chunk = try handle.read(upToCount: 1 << 20), !chunk.isEmpty {
+            hasher.update(data: chunk)
+        }
+        return "sha256:" + hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
     private func showReleaseFallback(_ url: URL, detail: String, title: String = "Update available") {

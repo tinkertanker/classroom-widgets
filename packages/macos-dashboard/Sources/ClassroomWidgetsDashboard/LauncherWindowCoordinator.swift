@@ -2,12 +2,16 @@ import AppKit
 import WebKit
 
 @MainActor
-final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, NSWindowDelegate {
     private let scriptMessageHandler = DashboardScriptMessageHandler()
     private let onAddWidget: (Int) -> Void
     private let onOpenDisplayPreview: () -> Void
     private var window: NSWindow?
     private var webView: WKWebView?
+    /// Set when the web content process ended while the launcher was not on
+    /// screen; the page is reloaded when the window next becomes visible.
+    private var reloadWhenVisible = false
+    private var recentTerminations: [TimeInterval] = []
 
     init(onAddWidget: @escaping (Int) -> Void, onOpenDisplayPreview: @escaping () -> Void) {
         self.onAddWidget = onAddWidget
@@ -30,6 +34,7 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
         if let webView, window?.contentView !== webView {
             window?.contentView = webView
         }
+        reloadIfPending()
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         PerfProbe.mark("launcher.visible")
@@ -72,8 +77,12 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
         window.center()
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("WidgetLauncherWindow")
+        window.delegate = self
         self.window = window
+        load(webView)
+    }
 
+    private func load(_ webView: WKWebView) {
         var components = URLComponents()
         components.scheme = dashboardURLScheme
         components.host = "app"
@@ -83,6 +92,55 @@ final class LauncherWindowCoordinator: NSObject, WKNavigationDelegate, WKUIDeleg
             webView.load(URLRequest(url: url))
         }
     }
+
+    private func reloadIfPending() {
+        guard reloadWhenVisible, let webView else { return }
+        reloadWhenVisible = false
+        load(webView)
+    }
+
+    /// Implementing this turns off WebKit's own reload, which makes only one
+    /// attempt per 30 seconds and otherwise leaves the launcher blank until
+    /// the app restarts. Reload now when the launcher is on screen, or the
+    /// next time it is shown. A page that keeps crashing while open waits
+    /// for the next show instead of reloading in a loop.
+    func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        let now = ProcessInfo.processInfo.systemUptime
+        recentTerminations = recentTerminations.filter { now - $0 < Self.crashLoopWindow } + [now]
+        let visible = window?.isVisible == true && window?.isMiniaturized == false
+        let crashLoop = inCrashLoop
+        DashboardLog.web.error(
+            "Launcher web content process terminated (visible: \(visible, privacy: .public), crash loop: \(crashLoop, privacy: .public))"
+        )
+        PerfProbe.mark("launcher.terminated", ["visible": visible, "crashLoop": crashLoop])
+        guard visible, !crashLoop else {
+            reloadWhenVisible = true
+            return
+        }
+        load(webView)
+    }
+
+    /// More than `crashLoopLimit` terminations in the last 30 seconds.
+    private var inCrashLoop: Bool {
+        let now = ProcessInfo.processInfo.systemUptime
+        return recentTerminations.filter { now - $0 < Self.crashLoopWindow }.count > Self.crashLoopLimit
+    }
+
+    // Un-minimising or unhiding brings the window back without `show()`.
+    // These automatic reloads respect the crash-loop guard; `show()` is a
+    // deliberate user action and always reloads.
+    func windowDidChangeOcclusionState(_ notification: Notification) {
+        guard window?.occlusionState.contains(.visible) == true, !inCrashLoop else { return }
+        reloadIfPending()
+    }
+
+    func windowDidDeminiaturize(_ notification: Notification) {
+        guard !inCrashLoop else { return }
+        reloadIfPending()
+    }
+
+    private static let crashLoopWindow: TimeInterval = 30
+    private static let crashLoopLimit = 3
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
         PerfProbe.mark("launcher.nav.start")
