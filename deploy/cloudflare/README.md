@@ -310,7 +310,8 @@ Re-enable the workflow only after moving back to Cloudflare.
 - **Location.** The `apac-se` hint applies only when the `main` object is first
   created. To move it, rename `INSTANCE_NAME`.
 - **Cost.** The container stays up for whole school days. If CPU becomes the
-  bottleneck, `standard-1` (1/2 vCPU, 4 GiB) costs four times as much memory.
+  bottleneck, `standard-1` (1/2 vCPU, 4 GiB) doubles the CPU but allocates
+  four times the billable memory.
 - **Local `wrangler dev`.** Containers need Docker with buildx. The
   `cloudflare/proxy-everything` egress sidecar needs the kernel's iptables
   `socket` and `TPROXY` modules; without them the container fails to start
