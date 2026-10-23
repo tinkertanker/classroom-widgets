@@ -231,6 +231,11 @@ class AppServer {
       // Start listening
       const port = serverConfig.PORT;
       this.server.listen(port, () => {
+        console.log(JSON.stringify({
+          event: 'runtime-startup',
+          node: process.version,
+          brotli: process.versions.brotli
+        }));
         console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
