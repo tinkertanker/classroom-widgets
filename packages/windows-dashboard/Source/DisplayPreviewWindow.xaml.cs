@@ -10,6 +10,7 @@ public partial class DisplayPreviewWindow : Window
 {
     public event Action? PowerToggleRequested;
     public event Action? MenuRequested;
+    public event Action? LayoutMenuRequested;
     public event Action<Point, Rect>? PreviewClicked;
     public event Action? FrameChanged;
 
@@ -67,9 +68,38 @@ public partial class DisplayPreviewWindow : Window
         Height = Math.Max(MinHeight, dipSize.Height);
     }
 
-    public void ShowMenu(ContextMenu menu)
+    /// <summary>Physical pixels per DIP on the window's current monitor.</summary>
+    public double DeviceScale
+        => PresentationSource.FromVisual(this)?.CompositionTarget is { } target ? target.TransformToDevice.M11 : 1;
+
+    /// <summary>
+    /// Moves and resizes in one native call, in physical pixels, so the window never passes
+    /// through an intermediate frame (such as the new origin at the old size) that could
+    /// reach the source display.
+    /// </summary>
+    public bool SetPhysicalBounds(Rect bounds)
     {
-        menu.PlacementTarget = PowerButton;
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero) return false;
+        // Round the edges, not the size, so an edge snapped to the work area stays on it.
+        var left = (int)Math.Round(bounds.Left);
+        var top = (int)Math.Round(bounds.Top);
+        var right = (int)Math.Round(bounds.Right);
+        var bottom = (int)Math.Round(bounds.Bottom);
+        const uint flags = 0x0004 | 0x0010; // SWP_NOZORDER | SWP_NOACTIVATE
+        if (!NativeMethods.SetWindowPos(handle, IntPtr.Zero, left, top, right - left, bottom - top, flags)) return false;
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is { } target)
+        {
+            var position = target.TransformFromDevice.Transform(new Point(left, top));
+            Left = position.X;
+            Top = position.Y;
+        }
+        return true;
+    }
+
+    public void ShowMenu(ContextMenu menu, UIElement? placementTarget = null)
+    {
+        menu.PlacementTarget = placementTarget ?? PowerButton;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
         menu.IsOpen = true;
     }
@@ -77,6 +107,8 @@ public partial class DisplayPreviewWindow : Window
     private void PowerButton_Click(object sender, RoutedEventArgs args) => PowerToggleRequested?.Invoke();
 
     private void MenuButton_Click(object sender, RoutedEventArgs args) => MenuRequested?.Invoke();
+
+    private void LayoutButton_Click(object sender, RoutedEventArgs args) => LayoutMenuRequested?.Invoke();
 
     private void PreviewImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs args)
     {
@@ -108,5 +140,9 @@ public partial class DisplayPreviewWindow : Window
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool GetWindowRect(IntPtr handle, out RECT rect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
     }
 }

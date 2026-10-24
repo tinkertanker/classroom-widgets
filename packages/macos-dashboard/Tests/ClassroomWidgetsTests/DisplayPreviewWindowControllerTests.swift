@@ -676,6 +676,57 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
         }
     }
 
+    func testLayoutMenuSnapsTheRealPanelWithinItsScreenAndKeepsTheSourceShape() async {
+        await MainActor.run {
+            _ = NSApplication.shared
+            let controller = DisplayPreviewWindowController(
+                frame: NSRect(x: 100, y: 100, width: 608, height: 500),
+                backgroundOpacity: 1,
+                keepOnAllSpaces: true
+            )
+            guard let panel = controller.window as? NSPanel else { return XCTFail("Expected panel") }
+            XCTAssertEqual(
+                controller.makeLayoutMenu().items.filter { !$0.isSeparatorItem }.map(\.title),
+                ["Left Half", "Right Half", "Top Half", "Bottom Half",
+                 "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Centre", "Fill Screen"]
+            )
+            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+            var reported: [NSRect] = []
+            controller.onFrameChanged = { reported.append($0) }
+            let screen = panel.screen ?? NSScreen.main
+            let area = (screen?.visibleFrame ?? panel.frame).insetBy(dx: 12, dy: 12)
+            for preset in DisplaySnapPreset.allCases {
+                reported.removeAll()
+                XCTAssertTrue(controller.snap(to: preset, animated: false), preset.rawValue)
+                panel.contentView?.layoutSubtreeIfNeeded()
+                let frame = panel.frame
+                XCTAssertTrue(
+                    frame.minX >= area.minX - 0.5 && frame.maxX <= area.maxX + 0.5
+                        && frame.minY >= area.minY - 0.5 && frame.maxY <= area.maxY + 0.5,
+                    "\(preset.rawValue) \(frame) inside \(area)"
+                )
+                XCTAssertEqual(
+                    controller.previewSize.width / controller.previewSize.height,
+                    16.0 / 9.0,
+                    accuracy: 0.01,
+                    "\(preset.rawValue) keeps the viewport aspect after AppKit settles the frame"
+                )
+                if preset != .centre { XCTAssertFalse(reported.isEmpty, "\(preset.rawValue) reports its frame for persistence") }
+                switch preset {
+                case .leftHalf, .topLeft, .bottomLeft: XCTAssertEqual(frame.minX, area.minX, accuracy: 0.5, preset.rawValue)
+                case .rightHalf, .topRight, .bottomRight: XCTAssertEqual(frame.maxX, area.maxX, accuracy: 0.5, preset.rawValue)
+                default: XCTAssertEqual(frame.midX, area.midX, accuracy: 0.5, preset.rawValue)
+                }
+                switch preset {
+                case .topHalf, .topLeft, .topRight: XCTAssertEqual(frame.maxY, area.maxY, accuracy: 0.5, preset.rawValue)
+                case .bottomHalf, .bottomLeft, .bottomRight: XCTAssertEqual(frame.minY, area.minY, accuracy: 0.5, preset.rawValue)
+                default: XCTAssertEqual(frame.midY, area.midY, accuracy: 0.5, preset.rawValue)
+                }
+            }
+            controller.close()
+        }
+    }
+
     func testSourceSelectionIsAcceptedBeforeAnyAspectResizeCallback() async {
         await MainActor.run {
             _ = NSApplication.shared

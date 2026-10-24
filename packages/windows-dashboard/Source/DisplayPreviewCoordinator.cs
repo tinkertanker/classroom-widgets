@@ -84,6 +84,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         ApplyPresentationSettings();
         _window.PowerToggleRequested += TogglePower;
         _window.MenuRequested += OpenMenu;
+        _window.LayoutMenuRequested += OpenLayoutMenu;
         _window.PreviewClicked += PreviewClicked;
         _window.FrameChanged += WindowFrameChanged;
         _window.Closed += WindowClosed;
@@ -318,6 +319,54 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         menu.Items.Add(new Separator());
         menu.Items.Add(new MenuItem { Header = "Click the preview to move the pointer there.", IsEnabled = false });
         _window.ShowMenu(menu);
+    }
+
+    private void OpenLayoutMenu()
+    {
+        if (_window is null) return;
+        var menu = new ContextMenu();
+        foreach (var group in DisplaySnapGeometry.Groups)
+        {
+            if (menu.Items.Count > 0) menu.Items.Add(new Separator());
+            foreach (var preset in group)
+            {
+                var item = new MenuItem { Header = DisplaySnapGeometry.Title(preset) };
+                item.Click += (_, _) => SnapTo(preset);
+                menu.Items.Add(item);
+            }
+        }
+        _window.ShowMenu(menu, _window.LayoutButton);
+    }
+
+    /// <summary>
+    /// Moves and resizes Display within the work area of the monitor it is on, so it never
+    /// jumps to another monitor (or onto the source display).
+    /// </summary>
+    internal bool SnapTo(DisplaySnapPreset preset)
+    {
+        if (_window is null) return false;
+        if (_window.WindowState != WindowState.Normal) SystemCommands.RestoreWindow(_window);
+        var host = HostDisplay();
+        if (host is null) return false;
+        // Physical pixels throughout: the work area, the window rectangle and the preview.
+        var bounds = _window.GetPhysicalBounds();
+        var preview = _window.PreviewSizePixels;
+        if (preview.IsEmpty) return false;
+        var scale = _window.DeviceScale;
+        var aspect = _selected is { Bounds: { Width: > 0, Height: > 0 } sourceBounds } ? sourceBounds.Width / sourceBounds.Height : (double?)null;
+        var frame = DisplaySnapGeometry.Frame(
+            preset,
+            host.WorkingArea,
+            aspect,
+            new Size(Math.Max(0, bounds.Width - preview.Width), Math.Max(0, bounds.Height - preview.Height)),
+            new Size(_window.MinWidth * scale, _window.MinHeight * scale),
+            bounds,
+            12 * scale);
+        if (frame is null || !_window.SetPhysicalBounds(frame.Value)) return false;
+        // As with TryMoveFocused, do not wait for the frame debounce.
+        NoteFrameChange();
+        RefreshSources();
+        return true;
     }
 
     private string CurrentStatus()

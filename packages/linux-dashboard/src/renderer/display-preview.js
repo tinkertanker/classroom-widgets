@@ -1,6 +1,7 @@
 const video = document.getElementById('video');
 const power = document.getElementById('power');
 const menu = document.getElementById('menu');
+const layout = document.getElementById('layout');
 const status = document.getElementById('status');
 let state = { powerState: 'off', powerEnabled: false };
 let stream = null;
@@ -80,6 +81,7 @@ video.addEventListener('error', () => {
 });
 power.addEventListener('click', () => send('display-preview:action', { action: 'toggle-power' }));
 menu.addEventListener('click', () => send('display-preview:action', { action: 'open-menu' }));
+layout.addEventListener('click', () => send('display-preview:action', { action: 'open-layout-menu' }));
 video.addEventListener('click', (event) => {
   const bounds = video.getBoundingClientRect();
   send('display-preview:click', { streamId, x: event.clientX - bounds.left, y: event.clientY - bounds.top, imageRect: imageRect() });

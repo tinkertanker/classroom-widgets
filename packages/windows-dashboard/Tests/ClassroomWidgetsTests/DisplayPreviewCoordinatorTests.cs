@@ -229,6 +229,81 @@ public sealed class DisplayPreviewCoordinatorTests
         }
     }
 
+    // Layout menu: each preset must land inside the host monitor's work area (never on the
+    // source), keep the source's shape for the preview, line up with its edge, and be saved.
+    // Ways this goes wrong: DIP and pixel units mixed at 125%+ scaling, the title bar or
+    // control bar left out of the fit, or the frame not persisted after a native move.
+    [Fact]
+    public void LayoutPresetsSnapWithinTheHostWorkArea()
+    {
+        var realDataDirectory = DashboardSettings.DataDirectory;
+        var testDataDirectory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
+        DashboardSettings.UseDataDirectory(testDataDirectory);
+        try
+        {
+            WpfTestHost.Run(() =>
+            {
+                var host = HostDescriptor();
+                // A 16:9 source display to the right of the host, as a second monitor would be.
+                var sourceBounds = new Rect(host.Bounds.Right, host.Bounds.Top, 1920, 1080);
+                var catalog = new DisplayCatalog(() => new[]
+                {
+                    host,
+                    new DisplayDescriptor(SourceId, "Test display", sourceBounds, sourceBounds, false)
+                });
+                var settings = new DashboardSettings { DisplayPreviewSourceId = SourceId, DisplayPreviewFrame = PreviewFrame };
+                using var coordinator = new DisplayPreviewCoordinator(settings, catalog);
+                coordinator.Open();
+                var window = coordinator.Window!;
+                WpfTestHost.PumpUntil(() => window.IsVisible && window.StatusText.Text == "Click to see display", Timeout, "the preview to open");
+                var work = host.WorkingArea;
+                var margin = 12 * window.DeviceScale;
+                foreach (var preset in Enum.GetValues<DisplaySnapPreset>())
+                {
+                    Assert.True(coordinator.SnapTo(preset), preset.ToString());
+                    WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(250));
+                    var bounds = window.GetPhysicalBounds();
+                    var preview = window.PreviewSizePixels;
+                    Assert.True(bounds.Left >= work.Left + margin - 1 && bounds.Top >= work.Top + margin - 1
+                        && bounds.Right <= work.Right - margin + 1 && bounds.Bottom <= work.Bottom - margin + 1,
+                        $"{preset}: {bounds} inside {work} less {margin}");
+                    Assert.False(DisplayGeometry.Intersects(bounds, sourceBounds), preset.ToString());
+                    Assert.True(Math.Abs(preview.Width / preview.Height - 16d / 9d) < 0.02, $"{preset}: preview {preview}");
+                    switch (preset)
+                    {
+                        case DisplaySnapPreset.LeftHalf or DisplaySnapPreset.TopLeft or DisplaySnapPreset.BottomLeft:
+                            Assert.InRange(bounds.Left - (work.Left + margin), -1, 1);
+                            break;
+                        case DisplaySnapPreset.RightHalf or DisplaySnapPreset.TopRight or DisplaySnapPreset.BottomRight:
+                            Assert.InRange(work.Right - margin - bounds.Right, -1, 1);
+                            break;
+                    }
+                    switch (preset)
+                    {
+                        case DisplaySnapPreset.TopHalf or DisplaySnapPreset.TopLeft or DisplaySnapPreset.TopRight:
+                            Assert.InRange(bounds.Top - (work.Top + margin), -1, 1);
+                            break;
+                        case DisplaySnapPreset.BottomHalf or DisplaySnapPreset.BottomLeft or DisplaySnapPreset.BottomRight:
+                            Assert.InRange(work.Bottom - margin - bounds.Bottom, -1, 1);
+                            break;
+                    }
+                    var saved = settings.DisplayPreviewFrame!;
+                    Assert.InRange(saved.Left - window.Left, -0.5, 0.5);
+                    Assert.InRange(saved.Width - window.ActualWidth, -0.5, 0.5);
+                    if (preset is DisplaySnapPreset.LeftHalf or DisplaySnapPreset.BottomRight or DisplaySnapPreset.Fill)
+                    {
+                        WpfTestHost.SaveEvidence($"snap-{preset}.png", Snapshot(window));
+                    }
+                }
+            });
+        }
+        finally
+        {
+            DashboardSettings.UseDataDirectory(realDataDirectory);
+            if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
+        }
+    }
+
     /// <summary>
     /// Whether a frame has the source's aspect ratio and fills the preview on its limiting side.
     /// WPF layout rounding can move the image area by a pixel when the 42 DIP bar is a half

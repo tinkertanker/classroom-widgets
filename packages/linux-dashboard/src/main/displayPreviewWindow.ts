@@ -99,6 +99,7 @@ export class DisplayPreviewWindow extends EventEmitter {
     const action = (message as { action?: unknown }).action;
     if (action === 'toggle-power') this.emit('powerToggle');
     if (action === 'open-menu') this.emit('menuRequested');
+    if (action === 'open-layout-menu') this.emit('layoutMenuRequested');
   }
 
   handleClick(message: unknown): void {
@@ -133,6 +134,12 @@ export class DisplayPreviewWindow extends EventEmitter {
 
   setBounds(bounds: Rect): void {
     if (!this.win.isDestroyed()) this.win.setBounds(bounds);
+  }
+
+  restore(): void {
+    if (this.win.isDestroyed()) return;
+    if (this.win.isFullScreen()) this.win.setFullScreen(false);
+    if (this.win.isMaximized()) this.win.unmaximize();
   }
 
   setContentSize(size: Size): void {

@@ -17,7 +17,7 @@ function renderer() {
       dispatch: (name, value) => listeners.get(name)?.(value),
     };
   }
-  const elements = { video: element(), power: element(), menu: element(), status: element() };
+  const elements = { video: element(), power: element(), menu: element(), layout: element(), status: element() };
   Object.assign(elements.video, {
     videoWidth: 800, videoHeight: 600, clientWidth: 400, clientHeight: 300,
     play: async () => {}, getBoundingClientRect: () => ({ left: 0, top: 0 }),

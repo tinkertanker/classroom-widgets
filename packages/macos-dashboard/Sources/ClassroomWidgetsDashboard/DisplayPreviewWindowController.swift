@@ -16,6 +16,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     var onVisibilityChanged: ((Bool) -> Void)?
 
     private let captureButton = NSButton()
+    private let layoutButton = NSButton()
     private let menuButton = NSButton()
     private let statusLabel = NonInteractiveStatusLabel(labelWithString: "Choose a display to preview.")
     private let statusBackdrop = DisplayStatusEffectView()
@@ -366,7 +367,20 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         menuButton.toolTip = "Display controls"
         menuButton.setAccessibilityLabel("Display controls")
 
-        let controls = NSStackView(views: [captureButton, menuButton])
+        layoutButton.image = NSImage(
+            systemSymbolName: "rectangle.split.2x2",
+            accessibilityDescription: "Position and size"
+        )
+        if layoutButton.image == nil { layoutButton.title = "▦" }
+        layoutButton.imagePosition = layoutButton.image == nil ? .noImage : .imageOnly
+        layoutButton.bezelStyle = .texturedRounded
+        layoutButton.controlSize = .small
+        layoutButton.target = self
+        layoutButton.action = #selector(showLayoutMenu(_:))
+        layoutButton.toolTip = "Position and size"
+        layoutButton.setAccessibilityLabel("Position and size")
+
+        let controls = NSStackView(views: [captureButton, layoutButton, menuButton])
         controls.orientation = .horizontal
         controls.alignment = .centerY
         controls.spacing = 6
@@ -392,6 +406,52 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     @objc private func showControlsMenu(_ sender: NSButton) {
         let menu = makeControlsMenu()
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
+    }
+
+    @objc private func showLayoutMenu(_ sender: NSButton) {
+        let menu = makeLayoutMenu()
+        menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
+    }
+
+    /// Exposed for tests so the menu contract is checked without popping it up.
+    func makeLayoutMenu() -> NSMenu {
+        let menu = NSMenu(title: "Position and Size")
+        for (index, group) in DisplaySnapPreset.groups.enumerated() {
+            if index > 0 { menu.addItem(.separator()) }
+            for preset in group {
+                let item = NSMenuItem(title: preset.title, action: #selector(snapToPreset(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = preset.rawValue
+                menu.addItem(item)
+            }
+        }
+        return menu
+    }
+
+    @objc private func snapToPreset(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let preset = DisplaySnapPreset(rawValue: raw) else { return }
+        snap(to: preset, animated: true)
+    }
+
+    /// Moves and resizes Display within the visible frame of the screen it is on,
+    /// so it never jumps to another screen (or onto the source display).
+    @discardableResult
+    func snap(to preset: DisplaySnapPreset, animated: Bool) -> Bool {
+        guard let window,
+              let screen = window.screen ?? Self.screen(containingMostOf: window.frame) ?? NSScreen.main
+        else { return false }
+        let minimumFrame = window.frameRect(forContentRect: NSRect(origin: .zero, size: window.contentMinSize)).size
+        guard let target = DisplaySnapGeometry.frame(
+            for: preset,
+            visibleFrame: screen.visibleFrame,
+            aspect: currentSourceAspect,
+            chrome: NSSize(width: max(window.frame.width - previewSize.width, 0), height: previewChromeHeight),
+            minimumFrame: minimumFrame,
+            currentFrame: window.frame,
+            margin: 12
+        ), !target.isEmpty else { return false }
+        window.setFrame(target, display: true, animate: animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        return true
     }
 
     /// Exposed for tests so the menu contract is checked without popping it up.

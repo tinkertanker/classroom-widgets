@@ -16,6 +16,7 @@ import {
 } from './displayPreviewWindow';
 import { movePointer } from './pointer';
 import { nextDisplayFrame, type MoveDirection } from './moveToNextDisplay';
+import { DISPLAY_SNAP_LABELS, DisplaySnapPreset, snapDisplayFrame } from './displaySnap';
 import { DISPLAY_RECONNECT_DEBOUNCE_MS, DisplayReconnectPolicy, STAND_IN_SWITCH_WINDOW_MS } from './displayReconnect';
 
 interface ScreenLike {
@@ -40,6 +41,8 @@ export interface DisplayPreviewDeps {
 export interface DisplayPreviewWindowLike extends EventEmitter {
   getBounds(): Rect;
   setBounds(bounds: Rect): void;
+  /** Leaves maximised or full-screen state, so explicit bounds apply. */
+  restore?(): void;
   setContentSize(size: { width: number; height: number }): void;
   getContentSize(): { width: number; height: number };
   show(): void;
@@ -179,6 +182,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       else void this.start();
     });
     window.on('menuRequested', () => this.showMenu());
+    window.on('layoutMenuRequested', () => this.showLayoutMenu());
     window.on('previewClick', (value: { x: number; y: number; imageRect: Rect }) => {
       const wasCapturing = this.wantsCapture;
       const source = this.captureSource;
@@ -402,6 +406,48 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       { label: 'Click the preview to move the pointer there.', enabled: false },
     ];
     this.window.popupMenu(template);
+  }
+
+  private showLayoutMenu(): void {
+    if (!this.window) return;
+    const entry = (preset: DisplaySnapPreset): MenuItemConstructorOptions => ({
+      label: DISPLAY_SNAP_LABELS[preset],
+      click: () => this.snapTo(preset),
+    });
+    this.window.popupMenu([
+      entry('left-half'), entry('right-half'), entry('top-half'), entry('bottom-half'),
+      { type: 'separator' },
+      entry('top-left'), entry('top-right'), entry('bottom-left'), entry('bottom-right'),
+      { type: 'separator' },
+      entry('centre'), entry('fill'),
+    ]);
+  }
+
+  /** Moves and resizes Display within the work area of the screen it is on. */
+  snapTo(preset: DisplaySnapPreset): void {
+    if (!this.window) return;
+    this.window.restore?.();
+    const bounds = this.window.getBounds();
+    const host = this.deps.screen.getDisplayMatching(bounds);
+    const content = this.window.getContentSize();
+    const chrome = {
+      width: Math.max(bounds.width - content.width, 0),
+      height: Math.max(bounds.height - content.height, 0) + DISPLAY_PREVIEW_CHROME_HEIGHT,
+    };
+    const source = this.selectedSource;
+    const frame = snapDisplayFrame(preset, host.workArea, {
+      aspect: source && source.bounds.height > 0 ? source.bounds.width / source.bounds.height : null,
+      chrome,
+      // Matches the window's own minimum: a 320x240 preview plus chrome.
+      minimumFrame: { width: 320 + chrome.width, height: 240 + chrome.height },
+      currentFrame: bounds,
+      margin: FRAME_INSET,
+    });
+    if (!frame) return;
+    this.window.setBounds(frame);
+    // As with moveFocused, do not wait for queued native events.
+    this.refreshSources();
+    this.persistFrame();
   }
 
   private selectSource(source: DisplayDescriptor): void {

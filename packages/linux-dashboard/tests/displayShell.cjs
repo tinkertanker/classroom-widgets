@@ -1,7 +1,7 @@
 // Build teacher:desktop and Linux first. Use a decorated 2560x900 X11
 // session (Xvfb + Openbox on headless Linux), with xdotool and ImageMagick:
 // CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=<dir> node_modules/.bin/electron --no-sandbox --disable-gpu tests/displayShell.cjs --background --case=<case>
-// Cases: move, always-on-top, aspect, aspect-limit, pointer-missing, pointer-unavailable, pointer-success.
+// Cases: move, always-on-top, aspect, aspect-limit, snap, pointer-missing, pointer-unavailable, pointer-success.
 // As in arrange.cjs, one X screen is reported as two 1280x800 monitors.
 // For capture only, the real X screen's capture ID is assigned to fixture
 // monitor 2. This checks real window/renderer/IPC/shortcut behavior, not
@@ -15,7 +15,7 @@ const { tmpdir } = require('node:os');
 const { join, resolve } = require('node:path');
 
 const scenario = process.argv.find(arg => arg.startsWith('--case='))?.slice(7);
-assert.ok(['move', 'always-on-top', 'aspect', 'aspect-limit', 'pointer-missing', 'pointer-unavailable', 'pointer-success'].includes(scenario));
+assert.ok(['move', 'always-on-top', 'aspect', 'aspect-limit', 'snap', 'pointer-missing', 'pointer-unavailable', 'pointer-success'].includes(scenario));
 const root = resolve(__dirname, '..');
 const evidence = resolve(process.env.CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR || join(tmpdir(), 'classroom-widgets-test-evidence/linux-display-shell'));
 mkdirSync(evidence, { recursive: true });
@@ -155,6 +155,50 @@ app.whenReady().then(async () => {
   }
   await win.webContents.executeJavaScript("document.getElementById('power').click()");
   await until('real X11 capture live', async () => (await status()).startsWith('Live:'));
+  if (scenario === 'snap') {
+    // Monitor 1 is the host (work area 0,0 1280x800); monitor 2 is the 1280x800 source.
+    const area = { x: 12, y: 12, width: 1256, height: 776 };
+    const viewport = () => win.webContents.executeJavaScript('(() => { const v = document.getElementById("video"); return { width: v.clientWidth, height: v.clientHeight, live: Boolean(v.srcObject?.active) }; })()');
+    const savedFrame = () => JSON.parse(require('node:fs').readFileSync(join(temporary, 'settings.json'), 'utf8')).displayPreviewFrame;
+    const snap = async label => {
+      context = null;
+      await win.webContents.executeJavaScript("document.getElementById('layout').click()");
+      await until('layout menu', () => context);
+      const labels = context.items.filter(entry => entry.type !== 'separator').map(entry => entry.label);
+      assert.deepEqual(labels, ['Left Half', 'Right Half', 'Top Half', 'Bottom Half', 'Top Left', 'Top Right', 'Bottom Left', 'Bottom Right', 'Centre', 'Fill Screen']);
+      context.items.find(entry => entry.label === label).click();
+      await delay(400);
+      const bounds = win.getBounds();
+      const view = await viewport();
+      record(`${label}: bounds=${JSON.stringify(bounds)} viewport=${JSON.stringify(view)} status=${await status()}`);
+      assert.ok(bounds.x >= area.x && bounds.y >= area.y && bounds.x + bounds.width <= area.x + area.width && bounds.y + bounds.height <= area.y + area.height,
+        `${label} stays inside the host work area`);
+      assert.ok(Math.abs(view.width / view.height - 1.6) < 0.02, `${label} keeps the 16:10 source shape`);
+      assert.equal(view.live, true, `${label} keeps the preview live`);
+      await until(`${label} remembered`, () => JSON.stringify(savedFrame()) === JSON.stringify({ left: bounds.x, top: bounds.y, width: bounds.width, height: bounds.height }));
+      return bounds;
+    };
+    const left = await snap('Left Half');
+    assert.equal(left.x, area.x);
+    assert.ok(left.width >= 600 && left.width <= 622, 'Left Half uses the half width');
+    await snapshot('snap-left-half');
+    const right = await snap('Right Half');
+    assert.equal(right.x + right.width, area.x + area.width);
+    assert.ok(right.x >= left.x + left.width, 'halves do not overlap');
+    const corner = await snap('Bottom Right');
+    assert.equal(corner.x + corner.width, area.x + area.width);
+    assert.equal(corner.y + corner.height, area.y + area.height);
+    await snapshot('snap-bottom-right');
+    const topLeft = await snap('Top Left');
+    assert.deepEqual([topLeft.x, topLeft.y], [area.x, area.y]);
+    const fill = await snap('Fill Screen');
+    assert.ok(fill.height === area.height || fill.width === area.width, 'Fill Screen touches two edges');
+    await snapshot('snap-fill');
+    const centred = await snap('Centre');
+    assert.deepEqual([centred.width, centred.height], [fill.width, fill.height], 'Centre keeps the size');
+    record('PASS layout menu snaps within the host work area, keeps the source shape, stays live and is remembered');
+    return;
+  }
   if (scenario === 'move') {
     const timer = BrowserWindow.getAllWindows().find(win => win.getTitle() === 'Timer');
     const beforeTimer = timer.getBounds();

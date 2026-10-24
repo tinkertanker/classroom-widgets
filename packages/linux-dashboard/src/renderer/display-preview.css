@@ -13,4 +13,5 @@ html, body, #preview {
 #status { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: #ddd; }
 button { color: #fff; background: #444; border: 1px solid #666; border-radius: 3px; padding: 4px 8px; }
 button:disabled { opacity: .45; }
+#layout { display: flex; align-items: center; padding: 3px 6px; }
 #menu { font-size: 20px; line-height: 18px; padding: 0 8px 5px; }
