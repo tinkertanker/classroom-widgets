@@ -1,4 +1,4 @@
-import { BrowserWindow } from 'electron';
+import { BrowserWindow, nativeTheme } from 'electron';
 import { buildUrl } from './appProtocol';
 import { registerNativeMessages } from './nativeMessages';
 import { preloadPath } from './paths';
@@ -53,7 +53,7 @@ export class LauncherWindow {
       minHeight: 540,
       title: 'Add Widget — Classroom Widgets',
       autoHideMenuBar: true,
-      backgroundColor: '#F5F3F1',
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#2D2926' : '#F5F3F1',
       webPreferences: {
         preload: preloadPath('bridge'),
         contextIsolation: true,

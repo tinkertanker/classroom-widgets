@@ -10,6 +10,18 @@ const DesktopWidgetLauncher = () => {
     document.title = 'Add Widget — Classroom Widgets';
   }, []);
 
+  // Follow the OS appearance, like the desktop dashboard does.
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const applySystemTheme = () => {
+      document.documentElement.classList.toggle('dark', media.matches);
+    };
+    applySystemTheme();
+    media.addEventListener('change', applySystemTheme);
+    return () => media.removeEventListener('change', applySystemTheme);
+  }, []);
+
   const close = useCallback(() => {
     postNativeMessage('classroomDashboard', {
       type: 'desktop-launcher-close',
