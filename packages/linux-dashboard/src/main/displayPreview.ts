@@ -44,6 +44,7 @@ export interface DisplayPreviewWindowLike extends EventEmitter {
   setBounds(bounds: Rect): void;
   /** Leaves maximised or full-screen state, so explicit bounds apply. True when it had to. */
   restore?(): boolean;
+  cancelRestore?(): void;
   setContentSize(size: { width: number; height: number }): void;
   getContentSize(): { width: number; height: number };
   show(): void;
@@ -173,6 +174,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   private cancelPendingSnap(): void {
     if (this.pendingSnap) clearTimeout(this.pendingSnap.timer);
     this.pendingSnap = null;
+    this.window?.cancelRestore?.();
   }
 
   private applyDisplayAvailability(): void {
@@ -454,6 +456,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
         if (!pending) return;
         clearTimeout(pending.timer);
         window.removeListener('restored', finish);
+        window.cancelRestore?.(); // after a timeout, stop the window waiting too
         this.pendingSnap = null;
         if (this.window === window) this.applySnap(pending.preset);
       };

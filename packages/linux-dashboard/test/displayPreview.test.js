@@ -566,10 +566,14 @@ test('a restore the window manager never reports still applies the preset after 
     maximised = false;
     return true;
   };
+  let cancelled = 0;
+  window.cancelRestore = () => { cancelled += 1; };
   coordinator.snapTo('left-half');
   window.bounds = { x: 100, y: 100, width: 480, height: 402 };
   await new Promise((resolve) => setTimeout(resolve, 1200));
   assert.equal(window.bounds.x, 12);
+  // The window must stop waiting too, or a later F11 round trip would unmaximise it.
+  assert.equal(cancelled, 1);
 });
 
 test('closing Display drops a preset still waiting for a restore', () => {

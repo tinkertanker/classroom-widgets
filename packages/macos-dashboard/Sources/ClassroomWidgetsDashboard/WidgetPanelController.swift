@@ -77,7 +77,7 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
         ) else { return nil }
         // AppKit settles window frames on whole points; round the edges here so the
         // frame that is saved is the one the window ends up with. Halves round up
-        // on both sides of zero, so moving a frame never changes its rounded size.
+        // on both sides of zero, so moving a whole-point frame never changes its size.
         func wholePoint(_ value: CGFloat) -> CGFloat { (value + 0.5).rounded(.down) }
         let minX = wholePoint(frame.minX), minY = wholePoint(frame.minY)
         return NSRect(x: minX, y: minY, width: wholePoint(frame.maxX) - minX, height: wholePoint(frame.maxY) - minY)
