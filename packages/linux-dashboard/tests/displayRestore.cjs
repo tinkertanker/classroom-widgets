@@ -48,6 +48,7 @@ app.whenReady().then(async () => {
       await delay(400);
     };
     const check = async (label, preset) => {
+      assert.ok(win.isMaximized() || win.isFullScreen(), `${label}: the window manager entered that state`);
       const started = Date.now();
       coordinator.snapTo(preset);
       // Well inside the 1 s fallback: the preset must follow the restore itself.
@@ -78,6 +79,7 @@ app.whenReady().then(async () => {
       ['full screen over maximised', async () => { win.maximize(); await delay(700); win.setFullScreen(true); await delay(700); }],
     ]) {
       await enter();
+      assert.ok(win.isMaximized() || win.isFullScreen(), `${label}: the window manager entered that state`);
       coordinator.snapTo('centre');
       await delay(600);
       const b = win.getBounds();

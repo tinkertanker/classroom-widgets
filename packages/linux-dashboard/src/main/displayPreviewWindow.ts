@@ -50,6 +50,9 @@ export class DisplayPreviewWindow extends EventEmitter {
   private pendingStart: { streamId: number; sourceId: string; width: number; height: number } | null = null;
   private pendingStop = false;
   private restoring = false;
+  /** Bumped by each restore() and cancelRestore(), so a stale settle never reports. */
+  private restoreToken = 0;
+  private unmaximiseQueued = false;
   private maximisedUnderFullScreen = false;
   private awaitingMaximise = false;
   private nextStreamId = 0;
@@ -90,7 +93,7 @@ export class DisplayPreviewWindow extends EventEmitter {
       if (!this.restoring || this.win.isDestroyed()) return;
       if (this.win.isFullScreen()) return;
       if (this.win.isMaximized()) {
-        this.win.unmaximize();
+        this.requestUnmaximise();
         return;
       }
       if (this.awaitingMaximise) return;
@@ -102,10 +105,12 @@ export class DisplayPreviewWindow extends EventEmitter {
       }
       // The window manager reports leaving maximised before it sends the restored
       // frame; let that frame arrive first, so Centre keeps the restored size.
+      const token = this.restoreToken;
       const done = (): void => {
         clearTimeout(timer);
         if (this.win.isDestroyed()) return;
         this.win.removeListener('resize', done);
+        if (token !== this.restoreToken || this.win.isMaximized() || this.win.isFullScreen()) return;
         this.emit('restored');
       };
       const timer = setTimeout(done, 200);
@@ -187,10 +192,32 @@ export class DisplayPreviewWindow extends EventEmitter {
     if (this.win.isDestroyed()) return false;
     const restoring = this.win.isFullScreen() || this.win.isMaximized();
     // Set first: on X11, Chromium reports leaving full screen synchronously.
-    if (restoring) this.restoring = true;
+    if (restoring) {
+      this.restoring = true;
+      this.restoreToken += 1;
+    }
     if (this.win.isFullScreen()) this.win.setFullScreen(false);
     if (this.win.isMaximized()) this.win.unmaximize();
     return restoring;
+  }
+
+  /**
+   * Unmaximises a little later rather than from inside a window-state event:
+   * xfwm4 ignores an unmaximise sent from there and answers with a storm of
+   * state events. Re-sends while a restore is still waiting on a maximised window;
+   * the coordinator's fallback ends the wait.
+   */
+  private requestUnmaximise(): void {
+    if (this.unmaximiseQueued) return;
+    this.unmaximiseQueued = true;
+    setTimeout(() => {
+      this.unmaximiseQueued = false;
+      if (!this.restoring || this.win.isDestroyed() || this.win.isFullScreen() || !this.win.isMaximized()) return;
+      this.win.unmaximize();
+      setTimeout(() => {
+        if (this.restoring && !this.win.isDestroyed() && !this.win.isFullScreen() && this.win.isMaximized()) this.requestUnmaximise();
+      }, 100);
+    }, 30);
   }
 
   /** Whether the window is still full screen or maximised. */
@@ -200,6 +227,7 @@ export class DisplayPreviewWindow extends EventEmitter {
 
   /** Stops waiting for a restore(), so later user state changes are left alone. */
   cancelRestore(): void {
+    this.restoreToken += 1;
     this.restoring = false;
     this.awaitingMaximise = false;
   }

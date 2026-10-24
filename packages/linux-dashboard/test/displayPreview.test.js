@@ -558,7 +558,7 @@ test('a maximised Display is restored before the preset is applied', async () =>
   assert.ok(window.bounds.x >= 406, 'only the newer preset is applied');
 });
 
-test('a restore the window manager never reports still applies the preset after a timeout', async () => {
+test('a restore the window manager makes without reporting it still gets the preset after a timeout', async () => {
   const { coordinator, window } = snapFixture();
   let maximised = true;
   window.restore = () => {
@@ -568,6 +568,7 @@ test('a restore the window manager never reports still applies the preset after 
   };
   let cancelled = 0;
   window.cancelRestore = () => { cancelled += 1; };
+  window.needsRestore = () => false; // restored, just never reported
   coordinator.snapTo('left-half');
   window.bounds = { x: 100, y: 100, width: 480, height: 402 };
   await new Promise((resolve) => setTimeout(resolve, 1200));

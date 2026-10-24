@@ -446,8 +446,10 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     if (window.restore?.() || this.pendingSnap) {
       // Leaving maximised or full-screen state is an asynchronous round trip to
       // the window manager, which would otherwise overwrite the snapped frame.
-      // Apply once the window reports it is restored (or after a fallback
-      // delay); a newer preset replaces one still waiting.
+      // Apply once the window reports it is restored. After a fallback delay,
+      // apply only if the window is no longer maximised or full screen (the
+      // window manager would overwrite it), else drop it. A newer preset
+      // replaces one still waiting.
       if (this.pendingSnap) {
         this.pendingSnap.preset = preset;
         return;
