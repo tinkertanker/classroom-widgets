@@ -548,8 +548,26 @@ test('a maximised Display is restored before the preset is applied', async () =>
   window.bounds = { x: 0, y: 0, width: 800, height: 600 };
   coordinator.snapTo('left-half');
   assert.deepEqual(window.bounds, { x: 0, y: 0, width: 800, height: 600 }, 'nothing is applied while the window manager restores');
+  // A newer preset chosen while still waiting replaces the first.
+  coordinator.snapTo('right-half');
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  assert.deepEqual(window.bounds, { x: 0, y: 0, width: 800, height: 600 }, 'still waiting for the restore');
   window.bounds = { x: 100, y: 100, width: 480, height: 402 }; // the restored frame
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  window.emit('restored');
+  assert.equal(window.bounds.x + window.bounds.width, 788, JSON.stringify(window.bounds));
+  assert.ok(window.bounds.x >= 406, 'only the newer preset is applied');
+});
+
+test('a restore the window manager never reports still applies the preset after a timeout', async () => {
+  const { coordinator, window } = snapFixture();
+  let maximised = true;
+  window.restore = () => {
+    if (!maximised) return false;
+    maximised = false;
+    return true;
+  };
+  coordinator.snapTo('left-half');
+  window.bounds = { x: 100, y: 100, width: 480, height: 402 };
+  await new Promise((resolve) => setTimeout(resolve, 1200));
   assert.equal(window.bounds.x, 12);
-  assert.ok(window.bounds.x + window.bounds.width <= 394, JSON.stringify(window.bounds));
 });

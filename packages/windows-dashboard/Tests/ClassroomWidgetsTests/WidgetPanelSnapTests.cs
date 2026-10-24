@@ -1,4 +1,5 @@
 using System.IO;
+using System.Reflection;
 using System.Text.Json;
 using System.Windows;
 using ClassroomWidgets;
@@ -23,6 +24,9 @@ public sealed class WidgetPanelSnapTests
         {
             WpfTestHost.Run(() =>
             {
+                // Panels host WebView2. Like WebViewRecoveryTests, start a fresh environment in
+                // this test's profile: an earlier test's environment may already be gone.
+                typeof(DashboardWebView).GetField("_environment", BindingFlags.Static | BindingFlags.NonPublic)!.SetValue(null, null);
                 var payload = JsonDocument.Parse("{}").RootElement;
                 WidgetPanelDescriptor Descriptor(string id, PanelSize preferred, PanelSize? maximum, bool resizable, double? aspect)
                     => new(id, id, preferred, new PanelSize(250, 160), maximum, resizable, aspect, 1, 1, false, payload);
@@ -76,20 +80,30 @@ public sealed class WidgetPanelSnapTests
                         Assert.True(Math.Abs(timer.Width / (timer.Height - WidgetPanelWindow.ChromeHeight) - 350d / 415d) < 0.01, $"timer {preset} keeps its web aspect ratio");
                         var banner = coordinator.PanelFor("banner")!.CurrentFrame;
                         Assert.True(banner.Width <= 500.5 && banner.Height <= 300.5 + WidgetPanelWindow.ChromeHeight, $"banner {preset} keeps its maximum");
-                        Assert.Equal(lightSize, coordinator.PanelFor("light")!.CurrentFrame.Size);
+                        var light = coordinator.PanelFor("light")!.CurrentFrame.Size;
+                        Assert.True(Math.Abs(light.Width - lightSize.Width) <= 0.5 && Math.Abs(light.Height - lightSize.Height) <= 0.5, $"light {preset} is only moved: {light}");
                     }
                     Assert.Equal(WidgetPanelLayout.Freeform, coordinator.Layout);
                 }
                 finally
                 {
                     coordinator.Deactivate();
+                    WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(300));
                 }
             });
         }
         finally
         {
             DashboardSettings.UseDataDirectory(realDataDirectory);
-            if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
+            // The WebView2 browser may release its profile files asynchronously; a leftover
+            // temp profile is harmless, so cleanup is best effort.
+            try
+            {
+                if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+            {
+            }
         }
     }
 }

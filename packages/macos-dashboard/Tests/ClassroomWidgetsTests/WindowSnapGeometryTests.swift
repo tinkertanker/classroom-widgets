@@ -89,7 +89,8 @@ final class WindowSnapGeometryTests: XCTestCase {
     }
 
     func testPreviewKeepsTheSourceAspectWithChromeAdded() {
-        for aspect: CGFloat in [16 / 9, 4 / 3, 16 / 10, 21 / 9, 9 / 16] {
+        let aspects: [CGFloat] = [16.0 / 9.0, 4.0 / 3.0, 16.0 / 10.0, 21.0 / 9.0, 9.0 / 16.0]
+        for aspect in aspects {
             for preset in WindowSnapPreset.allCases where preset != .centre {
                 let result = frame(preset, aspect: aspect)!
                 let preview = result.width / (result.height - chrome.height)

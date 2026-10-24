@@ -78,6 +78,9 @@ export class DisplayPreviewWindow extends EventEmitter {
     this.win.webContents.once('destroyed', () => windows.delete(contentsId));
     this.win.on('move', () => this.emit('moved'));
     this.win.on('resize', () => this.emit('resized'));
+    // Fired by the window manager once a restore() has taken effect.
+    this.win.on('unmaximize', () => this.emit('restored'));
+    this.win.on('leave-full-screen', () => this.emit('restored'));
     this.win.once('closed', () => {
       windows.delete(contentsId);
       this.emit('closed');

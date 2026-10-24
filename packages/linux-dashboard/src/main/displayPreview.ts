@@ -60,7 +60,7 @@ export interface DisplayPreviewWindowLike extends EventEmitter {
 
 const MINIMUM_PREVIEW_SIZE = { width: 320, height: 180 };
 const FRAME_INSET = 12;
-const SNAP_RESTORE_DELAY_MS = 250;
+const SNAP_RESTORE_TIMEOUT_MS = 1000;
 const OVERLAP_MESSAGE = 'Preview suspended while it overlaps the source display. Move it fully clear to resume.';
 
 export class DisplayPreviewCoordinator extends EventEmitter {
@@ -75,6 +75,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   private startGeneration = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private autoReopenedAt: number | null = null;
+  private pendingSnap: { preset: WindowSnapPreset; timer: NodeJS.Timeout } | null = null;
   private readonly reconnect: DisplayReconnectPolicy;
   private readonly displayChanged = (): void => {
     this.refreshSources();
@@ -425,15 +426,34 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     ]);
   }
 
-  /** Moves and resizes Display within the work area of the screen it is on. */
+  /**
+   * Moves and resizes Display within the work area of the screen it is on, or,
+   * if that is the source display, of another screen (see snapWorkArea).
+   */
   snapTo(preset: WindowSnapPreset): void {
     const window = this.window;
     if (!window) return;
-    if (window.restore?.()) {
+    if (window.restore?.() || this.pendingSnap) {
       // Leaving maximised or full-screen state is an asynchronous round trip to
       // the window manager, which would otherwise overwrite the snapped frame.
-      const timer = setTimeout(() => { if (this.window === window) this.applySnap(preset); }, SNAP_RESTORE_DELAY_MS);
+      // Apply once the window reports it is restored (or after a fallback
+      // delay); a newer preset replaces one still waiting.
+      if (this.pendingSnap) {
+        this.pendingSnap.preset = preset;
+        return;
+      }
+      const finish = (): void => {
+        const pending = this.pendingSnap;
+        if (!pending) return;
+        clearTimeout(pending.timer);
+        window.removeListener('restored', finish);
+        this.pendingSnap = null;
+        if (this.window === window) this.applySnap(pending.preset);
+      };
+      const timer = setTimeout(finish, SNAP_RESTORE_TIMEOUT_MS);
       timer.unref?.();
+      this.pendingSnap = { preset, timer };
+      window.once('restored', finish);
       return;
     }
     this.applySnap(preset);

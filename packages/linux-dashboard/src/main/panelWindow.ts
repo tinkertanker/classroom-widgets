@@ -562,7 +562,7 @@ export class WidgetPanelWindow extends EventEmitter {
           entry('Arrange in a row', 'row'),
           entry('Arrange in a column', 'column'),
           { type: 'separator' },
-          { label: 'Move This Widget', enabled: false },
+          { label: 'Move this widget', enabled: false },
           snap('left-half'), snap('right-half'), snap('top-half'), snap('bottom-half'),
           { type: 'separator' },
           snap('top-left'), snap('top-right'), snap('bottom-left'), snap('bottom-right'),

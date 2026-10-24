@@ -65,7 +65,7 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
             maximum = preferredFrameSize
             aspect = nil
         }
-        return WindowSnapGeometry.frame(
+        guard let frame = WindowSnapGeometry.frame(
             for: preset,
             visibleFrame: screen.visibleFrame,
             aspect: aspect,
@@ -74,7 +74,11 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
             maximumFrame: maximum,
             currentFrame: window.frame,
             margin: 12
-        )
+        ) else { return nil }
+        // AppKit settles window frames on whole points; round the edges here so the
+        // frame that is saved is the one the window ends up with.
+        let minX = frame.minX.rounded(), minY = frame.minY.rounded()
+        return NSRect(x: minX, y: minY, width: frame.maxX.rounded() - minX, height: frame.maxY.rounded() - minY)
     }
 
     var preferredFrameSize: NSSize {

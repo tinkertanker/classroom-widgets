@@ -339,25 +339,35 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     }
 
     /// <summary>
-    /// Moves and resizes Display within the work area of the monitor it is on, so it never
-    /// jumps to another monitor (or onto the source display).
+    /// Moves and resizes Display within the work area of the monitor it is on. If that is
+    /// the source display, it goes to the non-source monitor it overlaps most (else the
+    /// first one), so a preset never puts Display on the display it previews.
     /// </summary>
-    internal bool SnapTo(WindowSnapPreset preset)
+    internal bool SnapTo(WindowSnapPreset preset) => SnapTo(preset, allowMonitorChange: true);
+
+    private bool SnapTo(WindowSnapPreset preset, bool allowMonitorChange)
     {
         if (_window is null) return false;
-        if (_window.WindowState != WindowState.Normal) SystemCommands.RestoreWindow(_window);
+        // Synchronous, unlike SystemCommands.RestoreWindow, which only posts SC_RESTORE: a
+        // restore arriving after the snap would put the window back where it was.
+        if (_window.WindowState != WindowState.Normal) _window.WindowState = WindowState.Normal;
         var current = HostDisplay();
         if (current is null) return false;
         // Physical pixels throughout: the work area, the window rectangle and the preview.
         var bounds = _window.GetPhysicalBounds();
-        // Never snap onto the source display, even when most of the window already sits there:
-        // use the non-source monitor it overlaps most, else the first one.
-        var host = current;
         if (_selected is not null && string.Equals(current.Id, _selected.Id, StringComparison.OrdinalIgnoreCase))
         {
+            if (!allowMonitorChange) return false;
             var others = _catalog.Displays().Where(display => !string.Equals(display.Id, _selected.Id, StringComparison.OrdinalIgnoreCase)).ToList();
             if (others.Count == 0) return false;
-            host = others.OrderByDescending(display => OverlapArea(display.Bounds, bounds)).First();
+            var target = others.OrderByDescending(display => OverlapArea(display.Bounds, bounds)).First();
+            // Move there at the current size first (twice: WM_DPICHANGED may apply its own
+            // rectangle on the first move), so the chrome, minimum and margin below are
+            // measured at the target monitor's DPI.
+            var parked = DisplayGeometry.Clamp(bounds, target.WorkingArea);
+            if (!_window.SetPhysicalBounds(parked) || !_window.SetPhysicalBounds(parked)) return false;
+            _window.UpdateLayout();
+            return SnapTo(preset, allowMonitorChange: false);
         }
         var preview = _window.PreviewSizePixels;
         if (preview.IsEmpty) return false;
@@ -365,7 +375,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         var aspect = _selected is { Bounds: { Width: > 0, Height: > 0 } sourceBounds } ? sourceBounds.Width / sourceBounds.Height : (double?)null;
         var frame = WindowSnapGeometry.Frame(
             preset,
-            host.WorkingArea,
+            current.WorkingArea,
             aspect,
             new Size(Math.Max(0, bounds.Width - preview.Width), Math.Max(0, bounds.Height - preview.Height)),
             new Size(_window.MinWidth * scale, _window.MinHeight * scale),
@@ -373,9 +383,6 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             bounds,
             12 * scale);
         if (frame is null || !_window.SetPhysicalBounds(frame.Value)) return false;
-        // Moving to another monitor can apply WM_DPICHANGED's suggested rectangle during
-        // the first placement; place again once WPF has adopted the new DPI.
-        if (!ReferenceEquals(host, current) && !_window.SetPhysicalBounds(frame.Value)) return false;
         // ActualWidth/Height lag until layout runs; settle it so the saved frame is the new one.
         _window.UpdateLayout();
         // As with TryMoveFocused, do not wait for the frame debounce.

@@ -295,6 +295,16 @@ public sealed class DisplayPreviewCoordinatorTests
                         WpfTestHost.SaveEvidence($"snap-{preset}.png", Snapshot(window));
                     }
                 }
+
+                // A maximised window: the restore must not land after the snap and undo it.
+                window.WindowState = WindowState.Maximized;
+                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(300));
+                Assert.True(coordinator.SnapTo(WindowSnapPreset.LeftHalf));
+                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(600));
+                Assert.Equal(WindowState.Normal, window.WindowState);
+                var restored = window.GetPhysicalBounds();
+                Assert.InRange(restored.Left - (work.Left + margin), -1, 1);
+                Assert.True(restored.Width < work.Width * 0.6, $"Left Half after maximise: {restored}");
             });
         }
         finally

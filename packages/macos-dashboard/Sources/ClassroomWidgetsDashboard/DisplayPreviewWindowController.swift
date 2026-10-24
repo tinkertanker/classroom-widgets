@@ -433,8 +433,8 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         snap(to: preset, animated: true)
     }
 
-    /// Moves and resizes Display within the visible frame of the screen it is on,
-    /// so it never jumps to another screen (or onto the source display).
+    /// Moves and resizes Display within the visible frame of the screen it is on, or,
+    /// if that is the source display, of another screen (see snapScreen).
     @discardableResult
     func snap(to preset: WindowSnapPreset, animated: Bool) -> Bool {
         guard let window, let screen = snapScreen(for: window) else { return false }
@@ -448,7 +448,16 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
             currentFrame: window.frame,
             margin: 12
         ), !target.isEmpty else { return false }
-        window.setFrame(target, display: true, animate: animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        if animated, !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            // Same short animation as widget panels. setFrame(_:display:animate:) blocks
+            // the main thread for a time that grows with the distance moved.
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.18
+                window.animator().setFrame(target, display: true)
+            }
+        } else {
+            window.setFrame(target, display: true)
+        }
         return true
     }
 
