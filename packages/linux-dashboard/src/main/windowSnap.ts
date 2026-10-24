@@ -1,7 +1,7 @@
 import type { Rect, Size } from './displayGeometry';
 
 /** Where the Display window's layout menu can put it on its current screen. */
-export const DISPLAY_SNAP_PRESETS = [
+export const WINDOW_SNAP_PRESETS = [
   'left-half',
   'right-half',
   'top-half',
@@ -14,9 +14,9 @@ export const DISPLAY_SNAP_PRESETS = [
   'fill',
 ] as const;
 
-export type DisplaySnapPreset = typeof DISPLAY_SNAP_PRESETS[number];
+export type WindowSnapPreset = typeof WINDOW_SNAP_PRESETS[number];
 
-export const DISPLAY_SNAP_LABELS: Record<DisplaySnapPreset, string> = {
+export const WINDOW_SNAP_LABELS: Record<WindowSnapPreset, string> = {
   'left-half': 'Left Half',
   'right-half': 'Right Half',
   'top-half': 'Top Half',
@@ -29,13 +29,15 @@ export const DISPLAY_SNAP_LABELS: Record<DisplaySnapPreset, string> = {
   fill: 'Fill Screen',
 };
 
-export interface DisplaySnapOptions {
+export interface WindowSnapOptions {
   /** Source display width / height, or null when no source is selected. */
   aspect: number | null;
   /** Window size that is not preview: title bar, control bar and borders. */
   chrome: Size;
   minimumFrame: Size;
-  /** Used by `centre`, which keeps the window's size. */
+  /** Largest window size, or null for no limit. The minimum wins if they conflict. */
+  maximumFrame?: Size | null;
+  /** Used by `centre`, which keeps the window's size (within the minimum and maximum). */
   currentFrame: Rect;
   /** Gap kept from the work-area edges and between neighbouring halves. */
   margin: number;
@@ -44,7 +46,7 @@ export interface DisplaySnapOptions {
 type Span = 'start' | 'end' | 'full';
 
 // [horizontal span, vertical span]. A full span centres the window on that axis.
-const SPANS: Record<DisplaySnapPreset, [Span, Span]> = {
+const SPANS: Record<WindowSnapPreset, [Span, Span]> = {
   'left-half': ['start', 'full'],
   'right-half': ['end', 'full'],
   'top-half': ['full', 'start'],
@@ -77,7 +79,7 @@ function place(span: Span, regionStart: number, regionLength: number, size: numb
  * half is the largest preview that fits the half, pushed to its edge. Null
  * when the input cannot produce a usable frame.
  */
-export function snapDisplayFrame(preset: string, workArea: Rect, options: DisplaySnapOptions): Rect | null {
+export function snapWindowFrame(preset: string, workArea: Rect, options: WindowSnapOptions): Rect | null {
   const spans = (SPANS as Record<string, [Span, Span] | undefined>)[preset];
   if (!spans || !finite(workArea.x, workArea.y, workArea.width, workArea.height)
     || workArea.width <= 0 || workArea.height <= 0) return null;
@@ -92,6 +94,10 @@ export function snapDisplayFrame(preset: string, workArea: Rect, options: Displa
   const chromeHeight = Number.isFinite(options.chrome.height) ? Math.max(options.chrome.height, 0) : 0;
   const minWidth = Number.isFinite(options.minimumFrame.width) ? Math.max(options.minimumFrame.width, 1) : 1;
   const minHeight = Number.isFinite(options.minimumFrame.height) ? Math.max(options.minimumFrame.height, 1) : 1;
+  const maxWidth = options.maximumFrame && Number.isFinite(options.maximumFrame.width) && options.maximumFrame.width > 0
+    ? options.maximumFrame.width : Number.POSITIVE_INFINITY;
+  const maxHeight = options.maximumFrame && Number.isFinite(options.maximumFrame.height) && options.maximumFrame.height > 0
+    ? options.maximumFrame.height : Number.POSITIVE_INFINITY;
   const aspect = options.aspect !== null && Number.isFinite(options.aspect) && options.aspect > 0 ? options.aspect : null;
 
   let width: number;
@@ -99,19 +105,20 @@ export function snapDisplayFrame(preset: string, workArea: Rect, options: Displa
   if (preset === 'centre') {
     const current = options.currentFrame;
     if (!finite(current.width, current.height) || current.width <= 0 || current.height <= 0) return null;
-    width = current.width;
-    height = current.height;
+    width = Math.max(Math.min(current.width, maxWidth), minWidth);
+    height = Math.max(Math.min(current.height, maxHeight), minHeight);
   } else if (aspect !== null) {
     const availableWidth = Math.max(rw - chromeWidth, 1);
     const availableHeight = Math.max(rh - chromeHeight, 1);
     let scale = Math.min(availableWidth / aspect, availableHeight);
+    scale = Math.min(scale, (maxWidth - chromeWidth) / aspect, maxHeight - chromeHeight);
     // Grow, keeping the aspect, until the window meets its minimum size.
     scale = Math.max(scale, (minWidth - chromeWidth) / aspect, minHeight - chromeHeight);
     width = aspect * scale + chromeWidth;
     height = scale + chromeHeight;
   } else {
-    width = Math.max(rw, minWidth);
-    height = Math.max(rh, minHeight);
+    width = Math.max(Math.min(rw, maxWidth), minWidth);
+    height = Math.max(Math.min(rh, maxHeight), minHeight);
   }
   // Never larger than the work area, even if that breaks the aspect on a tiny screen.
   width = Math.min(Math.round(width), Math.floor(area.width));

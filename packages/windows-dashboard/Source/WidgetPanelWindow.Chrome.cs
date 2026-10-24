@@ -96,6 +96,23 @@ public partial class WidgetPanelWindow
         System.Windows.Automation.AutomationProperties.SetName(VolumeButton, label);
     }
 
+    /// <summary>Position presets for this widget alone, below the layouts that move every widget.</summary>
+    private void AddSnapItems()
+    {
+        ArrangeMenu.Items.Add(new Separator());
+        ArrangeMenu.Items.Add(new MenuItem { Header = "Move this widget", IsEnabled = false });
+        for (var index = 0; index < WindowSnapGeometry.Groups.Length; index++)
+        {
+            if (index > 0) ArrangeMenu.Items.Add(new Separator());
+            foreach (var preset in WindowSnapGeometry.Groups[index])
+            {
+                var item = new MenuItem { Header = WindowSnapGeometry.Title(preset) };
+                item.Click += (_, _) => SnapRequested?.Invoke(preset);
+                ArrangeMenu.Items.Add(item);
+            }
+        }
+    }
+
     private void ArrangeMenuItem_Click(object sender, RoutedEventArgs args)
     {
         if (sender is MenuItem { Tag: string tag } && Enum.TryParse<WidgetPanelLayout>(tag, out var layout))

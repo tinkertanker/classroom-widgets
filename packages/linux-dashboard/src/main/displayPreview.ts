@@ -16,7 +16,7 @@ import {
 } from './displayPreviewWindow';
 import { movePointer } from './pointer';
 import { nextDisplayFrame, type MoveDirection } from './moveToNextDisplay';
-import { DISPLAY_SNAP_LABELS, DisplaySnapPreset, snapDisplayFrame } from './displaySnap';
+import { WINDOW_SNAP_LABELS, WindowSnapPreset, snapWindowFrame } from './windowSnap';
 import { DISPLAY_RECONNECT_DEBOUNCE_MS, DisplayReconnectPolicy, STAND_IN_SWITCH_WINDOW_MS } from './displayReconnect';
 
 interface ScreenLike {
@@ -410,8 +410,8 @@ export class DisplayPreviewCoordinator extends EventEmitter {
 
   private showLayoutMenu(): void {
     if (!this.window) return;
-    const entry = (preset: DisplaySnapPreset): MenuItemConstructorOptions => ({
-      label: DISPLAY_SNAP_LABELS[preset],
+    const entry = (preset: WindowSnapPreset): MenuItemConstructorOptions => ({
+      label: WINDOW_SNAP_LABELS[preset],
       click: () => this.snapTo(preset),
     });
     this.window.popupMenu([
@@ -424,7 +424,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
   }
 
   /** Moves and resizes Display within the work area of the screen it is on. */
-  snapTo(preset: DisplaySnapPreset): void {
+  snapTo(preset: WindowSnapPreset): void {
     if (!this.window) return;
     this.window.restore?.();
     const bounds = this.window.getBounds();
@@ -435,7 +435,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       height: Math.max(bounds.height - content.height, 0) + DISPLAY_PREVIEW_CHROME_HEIGHT,
     };
     const source = this.selectedSource;
-    const frame = snapDisplayFrame(preset, host.workArea, {
+    const frame = snapWindowFrame(preset, host.workArea, {
       aspect: source && source.bounds.height > 0 ? source.bounds.width / source.bounds.height : null,
       chrome,
       // Matches the window's own minimum: a 320x240 preview plus chrome.

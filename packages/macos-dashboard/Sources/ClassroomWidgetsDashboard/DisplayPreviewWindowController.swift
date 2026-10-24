@@ -416,7 +416,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     /// Exposed for tests so the menu contract is checked without popping it up.
     func makeLayoutMenu() -> NSMenu {
         let menu = NSMenu(title: "Position and Size")
-        for (index, group) in DisplaySnapPreset.groups.enumerated() {
+        for (index, group) in WindowSnapPreset.groups.enumerated() {
             if index > 0 { menu.addItem(.separator()) }
             for preset in group {
                 let item = NSMenuItem(title: preset.title, action: #selector(snapToPreset(_:)), keyEquivalent: "")
@@ -429,19 +429,19 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     }
 
     @objc private func snapToPreset(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String, let preset = DisplaySnapPreset(rawValue: raw) else { return }
+        guard let raw = sender.representedObject as? String, let preset = WindowSnapPreset(rawValue: raw) else { return }
         snap(to: preset, animated: true)
     }
 
     /// Moves and resizes Display within the visible frame of the screen it is on,
     /// so it never jumps to another screen (or onto the source display).
     @discardableResult
-    func snap(to preset: DisplaySnapPreset, animated: Bool) -> Bool {
+    func snap(to preset: WindowSnapPreset, animated: Bool) -> Bool {
         guard let window,
               let screen = window.screen ?? Self.screen(containingMostOf: window.frame) ?? NSScreen.main
         else { return false }
         let minimumFrame = window.frameRect(forContentRect: NSRect(origin: .zero, size: window.contentMinSize)).size
-        guard let target = DisplaySnapGeometry.frame(
+        guard let target = WindowSnapGeometry.frame(
             for: preset,
             visibleFrame: screen.visibleFrame,
             aspect: currentSourceAspect,

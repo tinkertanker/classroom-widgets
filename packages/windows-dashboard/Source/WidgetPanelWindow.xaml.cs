@@ -44,6 +44,7 @@ public partial class WidgetPanelWindow : Window
     public event Action<int>? WidgetCreationRequested;
     public event Action? DisplayPreviewRequested;
     public event Action<WidgetPanelLayout>? LayoutRequested;
+    public event Action<WindowSnapPreset>? SnapRequested;
     public event Action<string, Rect>? FrameChanged;
     public event Action? OpenSettingsRequested;
 
@@ -66,6 +67,7 @@ public partial class WidgetPanelWindow : Window
         _backgroundOpacity = Math.Clamp(backgroundOpacity, 0, 1);
         _settings = settings;
         InitializeComponent();
+        AddSnapItems();
         Topmost = alwaysOnTop;
         ApplyDescriptorPresentation();
         UpdateVolumeButton();
@@ -174,6 +176,24 @@ public partial class WidgetPanelWindow : Window
             _programmaticFrameChange = false;
         }
         if (initializing) _frameTimer.Stop();
+    }
+
+    /// <summary>
+    /// Frame (DIPs) for a position preset on <paramref name="workArea"/>: resizable widgets
+    /// fill the region within their size limits and web aspect ratio; fixed-size ones only move.
+    /// </summary>
+    public Rect? SnapFrame(WindowSnapPreset preset, Rect workArea)
+    {
+        var chrome = new Size(0, ChromeHeight);
+        var current = CurrentFrame;
+        if (!_descriptor.IsResizable)
+        {
+            var size = PreferredFrameSize;
+            return WindowSnapGeometry.Frame(preset, workArea, null, chrome, size, size, current, 12);
+        }
+        double? aspect = _descriptor.AspectRatio is { } ratio && double.IsFinite(ratio) && ratio > 0 ? ratio : null;
+        Size? maximum = double.IsFinite(MaxWidth) && double.IsFinite(MaxHeight) ? new Size(MaxWidth, MaxHeight) : null;
+        return WindowSnapGeometry.Frame(preset, workArea, aspect, chrome, new Size(MinWidth, MinHeight), maximum, current, 12);
     }
 
     public Rect DefaultFrame()

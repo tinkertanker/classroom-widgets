@@ -18,6 +18,7 @@ import { shortenerSettingsScript } from './shortenerSettings';
 import { desktopHostScripts } from './generated/desktopHostScripts';
 import { widgetMenuItems } from './widgetMenu';
 import { preloadPath, rendererPath } from './paths';
+import { WINDOW_SNAP_LABELS, WindowSnapPreset } from './windowSnap';
 
 interface ChromeUpdate {
   title: string;
@@ -190,6 +191,26 @@ export class WidgetPanelWindow extends EventEmitter {
 
   get currentFrame(): Rect {
     return this.win.getBounds();
+  }
+
+  /** Size rules for the position presets, in window (frame) sizes. */
+  snapConstraints(): { aspect: number | null; chrome: { width: number; height: number }; minimumFrame: { width: number; height: number }; maximumFrame: { width: number; height: number } | null } {
+    const chrome = { width: 0, height: CHROME_HEIGHT };
+    if (!this.descriptor.isResizable) {
+      // Fixed-size widgets are only moved.
+      const size = this.preferredFrameSize();
+      return { aspect: null, chrome, minimumFrame: size, maximumFrame: size };
+    }
+    const limits = sizeLimits(this.descriptor);
+    const aspect = this.descriptor.aspectRatio && this.descriptor.aspectRatio > 0 ? this.descriptor.aspectRatio : null;
+    return {
+      aspect,
+      chrome,
+      minimumFrame: { width: limits.minWidth, height: limits.minHeight },
+      maximumFrame: limits.maxWidth !== undefined && limits.maxHeight !== undefined
+        ? { width: limits.maxWidth, height: limits.maxHeight }
+        : null,
+    };
   }
 
   preferredFrameSize(): { width: number; height: number } {
@@ -532,10 +553,21 @@ export class WidgetPanelWindow extends EventEmitter {
           checked: current === layout,
           click: () => this.emit('layoutRequested', layout),
         });
+        const snap = (preset: WindowSnapPreset) => ({
+          label: WINDOW_SNAP_LABELS[preset],
+          click: () => this.emit('snapRequested', preset),
+        });
         const menu = Menu.buildFromTemplate([
           entry('Free placement', 'freeform'),
           entry('Arrange in a row', 'row'),
           entry('Arrange in a column', 'column'),
+          { type: 'separator' },
+          { label: 'Move This Widget', enabled: false },
+          snap('left-half'), snap('right-half'), snap('top-half'), snap('bottom-half'),
+          { type: 'separator' },
+          snap('top-left'), snap('top-right'), snap('bottom-left'), snap('bottom-right'),
+          { type: 'separator' },
+          snap('centre'), snap('fill'),
         ]);
         this.trackMenu(menu);
         menu.popup({ window: this.win, y: CHROME_HEIGHT });

@@ -10,6 +10,7 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
     var onDisplayPreviewRequested: (@MainActor () -> Void)?
     var onOutputVolumeChanged: (@MainActor (Double) -> Void)?
     var onLayoutRequested: (@MainActor (WidgetPanelLayout) -> Void)?
+    var onSnapRequested: (@MainActor (WindowSnapPreset) -> Void)?
     var onFrameChanged: (@MainActor (String, NSRect) -> Void)?
     var onBecameKey: (@MainActor (String) -> Void)?
 
@@ -37,6 +38,45 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
     var widgetID: String { descriptor.id }
     var isResizable: Bool { descriptor.isResizable }
     var isHidden: Bool { descriptor.hidden }
+    /// Frame for a position preset on the panel's screen: resizable widgets fill the
+    /// region (keeping their web aspect ratio and size limits); fixed-size ones only move.
+    func snapFrame(for preset: WindowSnapPreset) -> NSRect? {
+        guard let window,
+              let screen = window.screen ?? NSScreen.screens.first(where: { $0.frame.intersects(window.frame) }) ?? NSScreen.main
+        else { return nil }
+        let content = window.contentRect(forFrameRect: window.frame).size
+        // Everything that is not web view: the title bar plus the shared top gap.
+        let chrome = NSSize(
+            width: max(window.frame.width - content.width, 0),
+            height: max(window.frame.height - content.height, 0) + WidgetPanelContentLayout.topGap
+        )
+        let frameSize = { (webSize: CGSize) in
+            window.frameRect(forContentRect: NSRect(origin: .zero, size: WidgetPanelContentLayout.panelSize(for: webSize))).size
+        }
+        let minimum: NSSize
+        let maximum: NSSize?
+        let aspect: CGFloat?
+        if descriptor.isResizable {
+            minimum = frameSize(descriptor.minimumContentSize.cgSize)
+            maximum = descriptor.maximumContentSize.map { frameSize($0.cgSize) }
+            aspect = descriptor.aspectRatio.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
+        } else {
+            minimum = preferredFrameSize
+            maximum = preferredFrameSize
+            aspect = nil
+        }
+        return WindowSnapGeometry.frame(
+            for: preset,
+            visibleFrame: screen.visibleFrame,
+            aspect: aspect,
+            chrome: chrome,
+            minimumFrame: minimum,
+            maximumFrame: maximum,
+            currentFrame: window.frame,
+            margin: 12
+        )
+    }
+
     var preferredFrameSize: NSSize {
         let size = WidgetPanelContentLayout.panelSize(for: descriptor.preferredContentSize.cgSize)
         guard let window else { return size }

@@ -11,6 +11,7 @@ import {
 import { WidgetPanelWindow } from './panelWindow';
 import { clampRect, type Rect } from './displayGeometry';
 import { nextDisplayFrame, type MoveDirection } from './moveToNextDisplay';
+import { snapWindowFrame, type WindowSnapPreset } from './windowSnap';
 
 const GAP = 12;
 const OVERFLOW_STEP = 28;
@@ -233,6 +234,29 @@ export class WidgetPanelCoordinator extends EventEmitter {
     this.persist(panel.currentFrame, panel.widgetId);
   }
 
+  /**
+   * Moves (and, for a resizable widget, resizes) one panel to a position
+   * preset on the screen it is on. Treated like a manual drag: layout becomes
+   * freeform and the new frame is persisted.
+   */
+  snapPanel(panel: WidgetPanelWindow, preset: WindowSnapPreset): void {
+    const current = panel.currentFrame;
+    const frame = snapWindowFrame(preset, workAreaContaining(current), {
+      ...panel.snapConstraints(),
+      currentFrame: current,
+      margin: GAP,
+    });
+    if (!frame) return;
+    const layoutChanged = this.layout !== 'freeform';
+    if (layoutChanged) {
+      this.layout = 'freeform';
+      this.freeformFrames.clear();
+    }
+    panel.setFrame(frame);
+    this.persist(panel.currentFrame, panel.widgetId);
+    if (layoutChanged) this.emit('changed');
+  }
+
   private selectedPanel(): WidgetPanelWindow | null {
     for (const panel of this.panels.values()) {
       if (!panel.isHidden && panel.isFocused()) return panel;
@@ -344,6 +368,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     panel.on('displayPreviewRequested', () => this.emit('displayPreviewRequested'));
     panel.on('openSettingsRequested', () => this.emit('openSettingsRequested'));
     panel.on('layoutRequested', (layout: WidgetPanelLayout) => this.arrange(layout, workAreaContaining(panel.currentFrame)));
+    panel.on('snapRequested', (preset: WindowSnapPreset) => this.snapPanel(panel, preset));
     panel.on('focused', (widgetId: string) => { this.lastFocusedId = widgetId; });
     panel.on('frameChanged', (widgetId: string, frame: Rect) => {
       if (this.layout !== 'freeform') {

@@ -239,6 +239,19 @@ final class WidgetPanelCoordinator: NSObject {
         persist(frame: moved, for: controller.widgetID)
     }
 
+    /// Moves (and, for a resizable widget, resizes) one panel to a position preset
+    /// on its screen. Mirrors a manual drag, as moveSelectedPanel does.
+    func snapPanel(_ controller: WidgetPanelController, to preset: WindowSnapPreset, animate: Bool = true) {
+        guard let frame = controller.snapFrame(for: preset), !frame.isEmpty else { return }
+        controller.setFrame(frame, animate: animate)
+        persist(frame: frame, for: controller.widgetID)
+    }
+
+    func snapPanel(widgetID: String, to preset: WindowSnapPreset, animate: Bool = true) {
+        guard let controller = panelControllers[widgetID] else { return }
+        snapPanel(controller, to: preset, animate: animate)
+    }
+
     private func isPresented(_ controller: WidgetPanelController) -> Bool {
         controller.window?.isVisible == true && !controller.isHidden
     }
@@ -312,6 +325,10 @@ final class WidgetPanelCoordinator: NSObject {
         }
         controller.onLayoutRequested = { [weak self, weak controller] layout in
             self?.arrange(layout, on: controller?.window?.screen)
+        }
+        controller.onSnapRequested = { [weak self, weak controller] preset in
+            guard let controller else { return }
+            self?.snapPanel(controller, to: preset)
         }
         controller.onFrameChanged = { [weak self] widgetID, frame in
             self?.persist(frame: frame, for: widgetID)

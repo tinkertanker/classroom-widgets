@@ -10,20 +10,30 @@ import XCTest
 // - a visible frame with a non-zero origin (menu bar, Dock, second screen) is ignored
 // - the minimum size pushes the frame off the visible frame
 // - bad aspect or screen values produce NaN frames
-final class DisplaySnapGeometryTests: XCTestCase {
+// - a widget's maximum size is ignored, or a capped window drifts off its edge
+// - a fixed-size widget is resized instead of only moved
+final class WindowSnapGeometryTests: XCTestCase {
     private let visible = CGRect(x: 0, y: 0, width: 1920, height: 1080)
     private let area = CGRect(x: 12, y: 12, width: 1896, height: 1056)
     private let chrome = CGSize(width: 0, height: 38)
     private let minimum = CGSize(width: 320, height: 278)
     private let current = CGRect(x: 100, y: 100, width: 480, height: 360)
 
-    private func frame(_ preset: DisplaySnapPreset, aspect: CGFloat? = 16 / 9, in visible: CGRect? = nil, current: CGRect? = nil) -> CGRect? {
-        DisplaySnapGeometry.frame(
+    private func frame(
+        _ preset: WindowSnapPreset,
+        aspect: CGFloat? = 16 / 9,
+        in visible: CGRect? = nil,
+        current: CGRect? = nil,
+        minimum: CGSize? = nil,
+        maximum: CGSize? = nil
+    ) -> CGRect? {
+        WindowSnapGeometry.frame(
             for: preset,
             visibleFrame: visible ?? self.visible,
             aspect: aspect,
             chrome: chrome,
-            minimumFrame: minimum,
+            minimumFrame: minimum ?? self.minimum,
+            maximumFrame: maximum,
             currentFrame: current ?? self.current,
             margin: 12
         )
@@ -40,7 +50,7 @@ final class DisplaySnapGeometryTests: XCTestCase {
     }
 
     func testEveryPresetStaysInsideTheInsetVisibleFrame() {
-        for preset in DisplaySnapPreset.allCases {
+        for preset in WindowSnapPreset.allCases {
             let result = frame(preset)
             XCTAssertNotNil(result, preset.rawValue)
             if let result { assertInside(result, area, preset.rawValue) }
@@ -70,7 +80,7 @@ final class DisplaySnapGeometryTests: XCTestCase {
     }
 
     func testQuartersDoNotOverlap() {
-        let corners = [DisplaySnapPreset.topLeft, .topRight, .bottomLeft, .bottomRight].map { frame($0)! }
+        let corners = [WindowSnapPreset.topLeft, .topRight, .bottomLeft, .bottomRight].map { frame($0)! }
         for i in corners.indices {
             for j in corners.indices where j > i {
                 XCTAssertFalse(overlaps(corners[i], corners[j]), "\(i) \(j)")
@@ -80,7 +90,7 @@ final class DisplaySnapGeometryTests: XCTestCase {
 
     func testPreviewKeepsTheSourceAspectWithChromeAdded() {
         for aspect: CGFloat in [16 / 9, 4 / 3, 16 / 10, 21 / 9, 9 / 16] {
-            for preset in DisplaySnapPreset.allCases where preset != .centre {
+            for preset in WindowSnapPreset.allCases where preset != .centre {
                 let result = frame(preset, aspect: aspect)!
                 let preview = result.width / (result.height - chrome.height)
                 XCTAssertEqual(preview, aspect, accuracy: aspect * 0.001, "\(preset.rawValue) \(aspect)")
@@ -106,7 +116,7 @@ final class DisplaySnapGeometryTests: XCTestCase {
         // A left-hand second screen whose visible frame sits above a Dock.
         let second = CGRect(x: -1440, y: 70, width: 1440, height: 805)
         let secondArea = second.insetBy(dx: 12, dy: 12)
-        for preset in DisplaySnapPreset.allCases {
+        for preset in WindowSnapPreset.allCases {
             assertInside(frame(preset, in: second)!, secondArea, preset.rawValue)
         }
         XCTAssertEqual(frame(.topLeft, in: second)!.maxY, secondArea.maxY, accuracy: 0.001)
@@ -115,7 +125,7 @@ final class DisplaySnapGeometryTests: XCTestCase {
     func testMinimumSizeWinsOverASmallRegionButStaysOnScreen() {
         let small = CGRect(x: 100, y: 50, width: 700, height: 500)
         let smallArea = small.insetBy(dx: 12, dy: 12)
-        for preset in DisplaySnapPreset.allCases {
+        for preset in WindowSnapPreset.allCases {
             let result = frame(preset, in: small)!
             XCTAssertGreaterThanOrEqual(result.width, minimum.width - 0.001, preset.rawValue)
             XCTAssertGreaterThanOrEqual(result.height, minimum.height - 0.001, preset.rawValue)
@@ -127,6 +137,30 @@ final class DisplaySnapGeometryTests: XCTestCase {
     func testScreenSmallerThanTheMinimumIsUsedWhole() {
         let tiny = CGRect(x: 0, y: 0, width: 300, height: 200)
         assertInside(frame(.leftHalf, in: tiny)!, tiny, "tiny")
+    }
+
+    func testMaximumCapsTheFrameKeepsTheAspectAndTheEdge() {
+        let rightHalf = frame(.rightHalf, maximum: CGSize(width: 500, height: 600))!
+        XCTAssertLessThanOrEqual(rightHalf.width, 500.001)
+        XCTAssertEqual(rightHalf.width / (rightHalf.height - chrome.height), 16 / 9, accuracy: 0.001)
+        XCTAssertEqual(rightHalf.maxX, area.maxX, accuracy: 0.001)
+        let free = frame(.bottomLeft, aspect: nil, maximum: CGSize(width: 500, height: 600))!
+        XCTAssertEqual(free, CGRect(x: 12, y: 12, width: 500, height: 522))
+    }
+
+    func testFixedSizeWidgetIsOnlyMoved() {
+        let size = CGSize(width: 300, height: 200)
+        for preset in WindowSnapPreset.allCases {
+            let result = frame(preset, aspect: nil, minimum: size, maximum: size)!
+            XCTAssertEqual(result.size, size, preset.rawValue)
+            assertInside(result, area, preset.rawValue)
+        }
+        XCTAssertEqual(frame(.topRight, aspect: nil, minimum: size, maximum: size), CGRect(x: 1608, y: 868, width: 300, height: 200))
+    }
+
+    func testMinimumWinsOverABrokenMaximum() {
+        let result = frame(.fill, aspect: nil, maximum: CGSize(width: 100, height: 100))!
+        XCTAssertEqual(result.size, minimum)
     }
 
     func testUnusableInputReturnsNil() {

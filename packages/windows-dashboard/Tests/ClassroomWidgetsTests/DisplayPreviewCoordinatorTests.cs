@@ -258,7 +258,7 @@ public sealed class DisplayPreviewCoordinatorTests
                 WpfTestHost.PumpUntil(() => window.IsVisible && window.StatusText.Text == "Click to see display", Timeout, "the preview to open");
                 var work = host.WorkingArea;
                 var margin = 12 * window.DeviceScale;
-                foreach (var preset in Enum.GetValues<DisplaySnapPreset>())
+                foreach (var preset in Enum.GetValues<WindowSnapPreset>())
                 {
                     Assert.True(coordinator.SnapTo(preset), preset.ToString());
                     WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(250));
@@ -271,26 +271,26 @@ public sealed class DisplayPreviewCoordinatorTests
                     Assert.True(Math.Abs(preview.Width / preview.Height - 16d / 9d) < 0.02, $"{preset}: preview {preview}");
                     switch (preset)
                     {
-                        case DisplaySnapPreset.LeftHalf or DisplaySnapPreset.TopLeft or DisplaySnapPreset.BottomLeft:
+                        case WindowSnapPreset.LeftHalf or WindowSnapPreset.TopLeft or WindowSnapPreset.BottomLeft:
                             Assert.InRange(bounds.Left - (work.Left + margin), -1, 1);
                             break;
-                        case DisplaySnapPreset.RightHalf or DisplaySnapPreset.TopRight or DisplaySnapPreset.BottomRight:
+                        case WindowSnapPreset.RightHalf or WindowSnapPreset.TopRight or WindowSnapPreset.BottomRight:
                             Assert.InRange(work.Right - margin - bounds.Right, -1, 1);
                             break;
                     }
                     switch (preset)
                     {
-                        case DisplaySnapPreset.TopHalf or DisplaySnapPreset.TopLeft or DisplaySnapPreset.TopRight:
+                        case WindowSnapPreset.TopHalf or WindowSnapPreset.TopLeft or WindowSnapPreset.TopRight:
                             Assert.InRange(bounds.Top - (work.Top + margin), -1, 1);
                             break;
-                        case DisplaySnapPreset.BottomHalf or DisplaySnapPreset.BottomLeft or DisplaySnapPreset.BottomRight:
+                        case WindowSnapPreset.BottomHalf or WindowSnapPreset.BottomLeft or WindowSnapPreset.BottomRight:
                             Assert.InRange(work.Bottom - margin - bounds.Bottom, -1, 1);
                             break;
                     }
                     var saved = settings.DisplayPreviewFrame!;
                     Assert.InRange(saved.Left - window.Left, -0.5, 0.5);
                     Assert.InRange(saved.Width - window.ActualWidth, -0.5, 0.5);
-                    if (preset is DisplaySnapPreset.LeftHalf or DisplaySnapPreset.BottomRight or DisplaySnapPreset.Fill)
+                    if (preset is WindowSnapPreset.LeftHalf or WindowSnapPreset.BottomRight or WindowSnapPreset.Fill)
                     {
                         WpfTestHost.SaveEvidence($"snap-{preset}.png", Snapshot(window));
                     }

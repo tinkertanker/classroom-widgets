@@ -143,6 +143,30 @@ public sealed class WidgetPanelCoordinator
         Persist(panel.CurrentFrame, panel.WidgetId);
     }
 
+    /// <summary>
+    /// Moves (and, for a resizable widget, resizes) one panel to a position preset on the
+    /// monitor it is on. Treated like a manual drag: layout becomes freeform and the new frame
+    /// is persisted.
+    /// </summary>
+    internal bool SnapPanel(string widgetId, WindowSnapPreset preset)
+        => _panels.TryGetValue(widgetId, out var panel) && SnapPanel(panel, preset);
+
+    internal WidgetPanelWindow? PanelFor(string widgetId) => _panels.GetValueOrDefault(widgetId);
+
+    internal bool SnapPanel(WidgetPanelWindow panel, WindowSnapPreset preset)
+    {
+        if (panel.SnapFrame(preset, ScreenGeometry.WorkAreaContaining(panel.CurrentFrame)) is not { } frame) return false;
+        if (_layout != WidgetPanelLayout.Freeform)
+        {
+            _layout = WidgetPanelLayout.Freeform;
+            _freeformFrames.Clear();
+        }
+        panel.SetFrame(frame);
+        // ActualWidth/Height lag until the next layout pass, so save the frame that was set.
+        Persist(frame, panel.WidgetId);
+        return true;
+    }
+
     private WidgetPanelWindow? SelectedPanel()
     {
         var active = _panels.Values.FirstOrDefault(panel => panel.IsActive && !panel.IsHidden);
@@ -250,6 +274,7 @@ public sealed class WidgetPanelCoordinator
         panel.DisplayPreviewRequested += () => DisplayPreviewRequested?.Invoke();
         panel.OpenSettingsRequested += () => OpenSettingsRequested?.Invoke();
         panel.LayoutRequested += layout => Arrange(layout, ScreenGeometry.WorkAreaContaining(panel.CurrentFrame));
+        panel.SnapRequested += preset => SnapPanel(panel, preset);
         panel.Activated += (_, _) => _lastActivatedId = panel.WidgetId;
         panel.FrameChanged += (widgetId, frame) =>
         {

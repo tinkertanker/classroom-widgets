@@ -695,7 +695,7 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
             controller.onFrameChanged = { reported.append($0) }
             let screen = panel.screen ?? NSScreen.main
             let area = (screen?.visibleFrame ?? panel.frame).insetBy(dx: 12, dy: 12)
-            for preset in DisplaySnapPreset.allCases {
+            for preset in WindowSnapPreset.allCases {
                 reported.removeAll()
                 XCTAssertTrue(controller.snap(to: preset, animated: false), preset.rawValue)
                 panel.contentView?.layoutSubtreeIfNeeded()

@@ -209,7 +209,30 @@ extension WidgetPanelController {
             item.representedObject = itemLayout.layout.rawValue
             menu.addItem(item)
         }
+        addSnapItems(to: menu)
         menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.maxY + 4), in: sender)
+    }
+
+    /// Position presets for this widget alone, below the layouts that move every widget.
+    func addSnapItems(to menu: NSMenu) {
+        menu.addItem(.separator())
+        let header = NSMenuItem(title: "Move This Widget", action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        menu.addItem(header)
+        for (index, group) in WindowSnapPreset.groups.enumerated() {
+            if index > 0 { menu.addItem(.separator()) }
+            for preset in group {
+                let item = NSMenuItem(title: preset.title, action: #selector(requestSnap(_:)), keyEquivalent: "")
+                item.target = self
+                item.representedObject = preset.rawValue
+                menu.addItem(item)
+            }
+        }
+    }
+
+    @objc private func requestSnap(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String, let preset = WindowSnapPreset(rawValue: raw) else { return }
+        onSnapRequested?(preset)
     }
 
     @objc private func requestLayout(_ sender: NSMenuItem) {

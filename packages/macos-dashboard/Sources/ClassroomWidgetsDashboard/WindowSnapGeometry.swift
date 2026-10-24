@@ -1,7 +1,7 @@
 import CoreGraphics
 
 /// Where the Display window's layout menu can put it on its current screen.
-enum DisplaySnapPreset: String, CaseIterable {
+enum WindowSnapPreset: String, CaseIterable {
     case leftHalf, rightHalf, topHalf, bottomHalf
     case topLeft, topRight, bottomLeft, bottomRight
     case centre, fill
@@ -22,18 +22,18 @@ enum DisplaySnapPreset: String, CaseIterable {
     }
 
     /// Menu groups, separated in the layout menu.
-    static let groups: [[DisplaySnapPreset]] = [
+    static let groups: [[WindowSnapPreset]] = [
         [.leftHalf, .rightHalf, .topHalf, .bottomHalf],
         [.topLeft, .topRight, .bottomLeft, .bottomRight],
         [.centre, .fill]
     ]
 }
 
-enum DisplaySnapGeometry {
+enum WindowSnapGeometry {
     private enum Span { case low, high, full }
 
     /// [horizontal, vertical] spans in AppKit coordinates: `.high` vertical is the top.
-    private static func spans(for preset: DisplaySnapPreset) -> (Span, Span) {
+    private static func spans(for preset: WindowSnapPreset) -> (Span, Span) {
         switch preset {
         case .leftHalf: return (.low, .full)
         case .rightHalf: return (.high, .full)
@@ -66,11 +66,12 @@ enum DisplaySnapGeometry {
     /// largest preview that fits the half, pushed to its edge. Nil when the
     /// input cannot produce a usable frame.
     static func frame(
-        for preset: DisplaySnapPreset,
+        for preset: WindowSnapPreset,
         visibleFrame: CGRect,
         aspect: CGFloat?,
         chrome: CGSize,
         minimumFrame: CGSize,
+        maximumFrame: CGSize? = nil,
         currentFrame: CGRect,
         margin: CGFloat
     ) -> CGRect? {
@@ -89,6 +90,9 @@ enum DisplaySnapGeometry {
         let chromeHeight = chrome.height.isFinite ? max(chrome.height, 0) : 0
         let minWidth = minimumFrame.width.isFinite ? max(minimumFrame.width, 1) : 1
         let minHeight = minimumFrame.height.isFinite ? max(minimumFrame.height, 1) : 1
+        // The minimum wins if the two conflict.
+        let maxWidth = maximumFrame.flatMap { $0.width.isFinite && $0.width > 0 ? $0.width : nil } ?? .greatestFiniteMagnitude
+        let maxHeight = maximumFrame.flatMap { $0.height.isFinite && $0.height > 0 ? $0.height : nil } ?? .greatestFiniteMagnitude
         let validAspect = aspect.flatMap { $0.isFinite && $0 > 0 ? $0 : nil }
 
         var width: CGFloat
@@ -97,17 +101,18 @@ enum DisplaySnapGeometry {
             guard currentFrame.width.isFinite, currentFrame.height.isFinite,
                   currentFrame.width > 0, currentFrame.height > 0
             else { return nil }
-            width = currentFrame.width
-            height = currentFrame.height
+            width = max(min(currentFrame.width, maxWidth), minWidth)
+            height = max(min(currentFrame.height, maxHeight), minHeight)
         } else if let aspect = validAspect {
             var scale = min(max(rw - chromeWidth, 1) / aspect, max(rh - chromeHeight, 1))
+            scale = min(scale, (maxWidth - chromeWidth) / aspect, maxHeight - chromeHeight)
             // Grow, keeping the aspect, until the window meets its minimum size.
             scale = max(scale, (minWidth - chromeWidth) / aspect, minHeight - chromeHeight)
             width = aspect * scale + chromeWidth
             height = scale + chromeHeight
         } else {
-            width = max(rw, minWidth)
-            height = max(rh, minHeight)
+            width = max(min(rw, maxWidth), minWidth)
+            height = max(min(rh, maxHeight), minHeight)
         }
         // Never larger than the screen, even if that breaks the aspect on a tiny screen.
         width = min(width, area.width)

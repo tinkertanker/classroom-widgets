@@ -325,12 +325,12 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     {
         if (_window is null) return;
         var menu = new ContextMenu();
-        foreach (var group in DisplaySnapGeometry.Groups)
+        foreach (var group in WindowSnapGeometry.Groups)
         {
             if (menu.Items.Count > 0) menu.Items.Add(new Separator());
             foreach (var preset in group)
             {
-                var item = new MenuItem { Header = DisplaySnapGeometry.Title(preset) };
+                var item = new MenuItem { Header = WindowSnapGeometry.Title(preset) };
                 item.Click += (_, _) => SnapTo(preset);
                 menu.Items.Add(item);
             }
@@ -342,7 +342,7 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     /// Moves and resizes Display within the work area of the monitor it is on, so it never
     /// jumps to another monitor (or onto the source display).
     /// </summary>
-    internal bool SnapTo(DisplaySnapPreset preset)
+    internal bool SnapTo(WindowSnapPreset preset)
     {
         if (_window is null) return false;
         if (_window.WindowState != WindowState.Normal) SystemCommands.RestoreWindow(_window);
@@ -354,12 +354,13 @@ public sealed class DisplayPreviewCoordinator : IDisposable
         if (preview.IsEmpty) return false;
         var scale = _window.DeviceScale;
         var aspect = _selected is { Bounds: { Width: > 0, Height: > 0 } sourceBounds } ? sourceBounds.Width / sourceBounds.Height : (double?)null;
-        var frame = DisplaySnapGeometry.Frame(
+        var frame = WindowSnapGeometry.Frame(
             preset,
             host.WorkingArea,
             aspect,
             new Size(Math.Max(0, bounds.Width - preview.Width), Math.Max(0, bounds.Height - preview.Height)),
             new Size(_window.MinWidth * scale, _window.MinHeight * scale),
+            null,
             bounds,
             12 * scale);
         if (frame is null || !_window.SetPhysicalBounds(frame.Value)) return false;
