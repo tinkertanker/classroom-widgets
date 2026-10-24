@@ -45,6 +45,7 @@ export interface DisplayPreviewWindowLike extends EventEmitter {
   /** Leaves maximised or full-screen state, so explicit bounds apply. True when it had to. */
   restore?(): boolean;
   cancelRestore?(): void;
+  needsRestore?(): boolean;
   setContentSize(size: { width: number; height: number }): void;
   getContentSize(): { width: number; height: number };
   show(): void;
@@ -456,9 +457,10 @@ export class DisplayPreviewCoordinator extends EventEmitter {
         if (!pending) return;
         clearTimeout(pending.timer);
         window.removeListener('restored', finish);
-        window.cancelRestore?.(); // after a timeout, stop the window waiting too
+        window.cancelRestore?.(); // on the fallback path, stop the window waiting too
         this.pendingSnap = null;
-        if (this.window === window) this.applySnap(pending.preset);
+        // If the user went full screen or maximised again meanwhile, leave it be.
+        if (this.window === window && !window.needsRestore?.()) this.applySnap(pending.preset);
       };
       const timer = setTimeout(finish, SNAP_RESTORE_TIMEOUT_MS);
       timer.unref?.();

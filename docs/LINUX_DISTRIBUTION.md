@@ -145,7 +145,7 @@ with `xdotool` and ImageMagick's `import` command installed. On headless Linux,
 start Xvfb at 2560x900 and Openbox in that X session, then run:
 
 ```bash
-for case in move always-on-top aspect aspect-limit pointer-missing pointer-unavailable pointer-success; do
+for case in move always-on-top aspect aspect-limit snap pointer-missing pointer-unavailable pointer-success; do
   CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=/tmp/linux-display-evidence \
     packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu \
     packages/linux-dashboard/tests/displayShell.cjs --background --case="$case"
@@ -159,6 +159,13 @@ ID is assigned to the second fixture monitor. This does not validate physical
 multi-monitor identity or a Wayland compositor. The aspect case checks both the
 hidden and Alt-visible native menu, including repeated Match actions; aspect-limit
 checks that matching an oversized preview reserves menu space within the work area.
+The snap case runs Display's position presets. In the same session,
+`tests/displayRestore.cjs` (no arguments) checks that a preset chosen while
+Display is maximised, full screen, or full screen over maximised restores the
+window first, that Centre keeps the restored size, and that an F11 round trip
+still returns a maximised window to maximised. `tests/widgetSnap.cjs
+--background`, on a 2560x800 screen, runs the presets from each widget's
+arrange menu across two displays.
 
 The arrange check needs a 2560-pixel-wide X screen, which it reports to the
 app as two 1280x800 displays:

@@ -589,3 +589,13 @@ test('closing Display drops a preset still waiting for a restore', () => {
   coordinator.snapTo('left-half');
   assert.equal(reopened.bounds.x, 12, JSON.stringify(reopened.bounds));
 });
+
+test('a preset still waiting is dropped if the user goes full screen meanwhile', async () => {
+  const { coordinator, window } = snapFixture();
+  window.restore = () => true;
+  window.needsRestore = () => true; // the user pressed F11 before the restore arrived
+  window.bounds = { x: 0, y: 0, width: 800, height: 600 };
+  coordinator.snapTo('left-half');
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  assert.deepEqual(window.bounds, { x: 0, y: 0, width: 800, height: 600 });
+});

@@ -86,7 +86,7 @@ export class DisplayPreviewWindow extends EventEmitter {
     // window to maximised. X11 reports leaving full screen synchronously, as a plain
     // window, and only then does the window manager re-maximise a window that went
     // full screen from maximised, so remember that case and wait for it.
-    const restored = (): void => {
+    const restored = (settle = false): void => {
       if (!this.restoring || this.win.isDestroyed()) return;
       if (this.win.isFullScreen()) return;
       if (this.win.isMaximized()) {
@@ -95,8 +95,21 @@ export class DisplayPreviewWindow extends EventEmitter {
       }
       if (this.awaitingMaximise) return;
       this.restoring = false;
-      // Later tick: the caller subscribes after restore() returns.
-      setImmediate(() => this.emit('restored'));
+      if (!settle) {
+        // Later tick: the caller subscribes after restore() returns.
+        setImmediate(() => this.emit('restored'));
+        return;
+      }
+      // The window manager reports leaving maximised before it sends the restored
+      // frame; let that frame arrive first, so Centre keeps the restored size.
+      const done = (): void => {
+        clearTimeout(timer);
+        if (this.win.isDestroyed()) return;
+        this.win.removeListener('resize', done);
+        this.emit('restored');
+      };
+      const timer = setTimeout(done, 200);
+      this.win.once('resize', done);
     };
     this.win.on('maximize', () => {
       this.awaitingMaximise = false;
@@ -105,7 +118,7 @@ export class DisplayPreviewWindow extends EventEmitter {
     this.win.on('unmaximize', () => {
       // Entering full screen from maximised reports unmaximize while already full screen.
       if (this.win.isFullScreen()) this.maximisedUnderFullScreen = true;
-      restored();
+      restored(true);
     });
     this.win.on('leave-full-screen', () => {
       if (this.restoring && this.maximisedUnderFullScreen) this.awaitingMaximise = true;
@@ -173,11 +186,16 @@ export class DisplayPreviewWindow extends EventEmitter {
   restore(): boolean {
     if (this.win.isDestroyed()) return false;
     const restoring = this.win.isFullScreen() || this.win.isMaximized();
-    // Set first, in case the window manager reports the change synchronously.
+    // Set first: on X11, Chromium reports leaving full screen synchronously.
     if (restoring) this.restoring = true;
     if (this.win.isFullScreen()) this.win.setFullScreen(false);
     if (this.win.isMaximized()) this.win.unmaximize();
     return restoring;
+  }
+
+  /** Whether the window is still full screen or maximised. */
+  needsRestore(): boolean {
+    return !this.win.isDestroyed() && (this.win.isFullScreen() || this.win.isMaximized());
   }
 
   /** Stops waiting for a restore(), so later user state changes are left alone. */

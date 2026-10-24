@@ -72,6 +72,22 @@ app.whenReady().then(async () => {
     await check('full screen over maximised', 'left-half');
     await normal();
 
+    // Centre keeps the restored size, not the maximised one.
+    for (const [label, enter] of [
+      ['maximised', async () => { win.maximize(); await delay(700); }],
+      ['full screen over maximised', async () => { win.maximize(); await delay(700); win.setFullScreen(true); await delay(700); }],
+    ]) {
+      await enter();
+      coordinator.snapTo('centre');
+      await delay(600);
+      const b = win.getBounds();
+      log.push(`${label} → centre: ${state()}`);
+      assert.ok(!win.isMaximized() && !win.isFullScreen(), `${label} centre: restored`);
+      assert.deepEqual([b.width, b.height], [600, 460], `${label} centre: keeps the restored size`);
+      assert.equal(b.x, area.x + Math.round((area.width - 600) / 2), `${label} centre: centred`);
+      await normal();
+    }
+
     // F11 without a preset: leaving full screen returns to maximised.
     win.maximize(); await delay(700);
     win.setFullScreen(true); await delay(700);
