@@ -534,7 +534,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
                 <div className="flex h-full w-full items-center justify-center">
                   <span
                     style={{
-                      fontSize: 'clamp(1.5rem, 15cqmin, 4rem)',
+                      fontSize: 'max(1.5rem, 15cqmin)',
                       ...(showJitter && {
                         animation: 'jitter 0.1s ease-in-out infinite'
                       })
@@ -569,8 +569,8 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
                               backgrounds.surface
                             )}
                             style={{
-                              width: 'clamp(2.5rem, 15cqmin, 5rem)',
-                              fontSize: 'clamp(1.5rem, 12cqmin, 3rem)'
+                              width: 'max(2.5rem, 15cqmin)',
+                              fontSize: 'max(1.5rem, 12cqmin)'
                             }}
                             autoFocus
                           />
@@ -585,7 +585,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
                               allowSegmentEditing ? 'cursor-pointer hover:text-sage-600' : 'cursor-default'
                             )}
                             title={allowSegmentEditing ? 'Click to edit' : ''}
-                            style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}
+                            style={{ fontSize: 'max(1.5rem, 12cqmin)' }}
                           >
                             {val}
                           </span>
@@ -594,7 +594,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
                         {idx < segmentEditor.values.length - 1 && (
                           <span
                             className={cn("leading-none mx-0", text.primary)}
-                            style={{ fontSize: 'clamp(1.5rem, 12cqmin, 3rem)' }}
+                            style={{ fontSize: 'max(1.5rem, 12cqmin)' }}
                           >
                             :
                           </span>

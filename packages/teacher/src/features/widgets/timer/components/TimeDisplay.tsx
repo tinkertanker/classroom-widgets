@@ -23,7 +23,7 @@ export const TimeDisplay: React.FC<TimeDisplayProps> = ({ time, isEditing, onPau
   return (
     <div className="flex items-center justify-center w-full h-full cursor-pointer" onClick={onPause}>
       {time >= 3600 ? (
-        <div className="flex items-center" style={{ fontSize: 'clamp(1rem, 12cqmin, 3rem)' }}>
+        <div className="flex items-center" style={{ fontSize: 'max(1rem, 12cqmin)' }}>
           <span className={baseClasses}>{values[0]}</span>
           <span className={baseClasses}>:</span>
           <span className={baseClasses}>{values[1]}</span>
@@ -31,13 +31,13 @@ export const TimeDisplay: React.FC<TimeDisplayProps> = ({ time, isEditing, onPau
           <span className={baseClasses}>{values[2]}</span>
         </div>
       ) : time >= 60 ? (
-        <div className="flex items-center" style={{ fontSize: 'clamp(1.5rem, 20cqmin, 5rem)' }}>
+        <div className="flex items-center" style={{ fontSize: 'max(1.5rem, 20cqmin)' }}>
           <span className={baseClasses}>{values[1]}</span>
           <span className={baseClasses}>:</span>
           <span className={baseClasses}>{values[2]}</span>
         </div>
       ) : (
-        <div className="flex items-center" style={{ fontSize: 'clamp(2rem, 28cqmin, 7rem)' }}>
+        <div className="flex items-center" style={{ fontSize: 'max(2rem, 28cqmin)' }}>
           <span className={baseClasses}>{time}</span>
         </div>
       )}
