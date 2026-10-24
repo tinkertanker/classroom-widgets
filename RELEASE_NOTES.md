@@ -1,10 +1,10 @@
-Faster startup and widget opening, plus a round of widget fixes.
+Position presets for the Display window and every widget, plus a round of fixes.
 
-- All platforms: the app starts sooner and widgets open faster, because the launcher now loads alongside the hidden widget host.
-- All platforms: fonts are bundled with the app, so widgets no longer fetch them from Google Fonts and look the same offline.
-- Timer: adding time no longer drifts, and the countdown animation is smoother.
-- Randomiser: a spin no longer restarts unexpectedly, and the overlay only animates while it is spinning.
-- Sound Effects: keyboard shortcuts no longer swallow typed digits.
-- Task Cue: the cue sound no longer repeats.
-- macOS: the compact panel keeps accepting edits after its state changes.
-- Linux: widget renderers now run sandboxed.
+- All platforms: the Display window has a new "Position and size" button with left, right, top and bottom halves, the four corners, Centre and Fill Screen. Display keeps the source screen's aspect ratio, and moves to another screen if it is on the one it shows.
+- All platforms: each widget's arrange menu now offers the same presets for moving that widget. Choosing one switches the arrangement to free placement.
+- Randomiser: panels open at 350x300, so all three slot rows fit.
+- Windows: at its default size, the Display preview uses about half the CPU it did, and responds faster with 4K screens.
+- Windows and Linux: settings are saved safely, so a crash mid-save no longer loses them, and typing a Short.io key no longer rewrites settings on every keystroke.
+- Windows: the launcher opens again after a failed start instead of needing a restart.
+- macOS: a failed update no longer leaves its download behind, and the launcher recovers if its web view crashes.
+- Linux: the Settings and Display windows now run sandboxed.
