@@ -1,6 +1,6 @@
 import CoreGraphics
 
-/// Where the Display window's layout menu can put it on its current screen.
+/// Where a window's position menu can put it on its current screen (Display and widget panels).
 enum WindowSnapPreset: String, CaseIterable {
     case leftHalf, rightHalf, topHalf, bottomHalf
     case topLeft, topRight, bottomLeft, bottomRight

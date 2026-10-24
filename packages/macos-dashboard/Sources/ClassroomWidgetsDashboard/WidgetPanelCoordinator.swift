@@ -240,9 +240,15 @@ final class WidgetPanelCoordinator: NSObject {
     }
 
     /// Moves (and, for a resizable widget, resizes) one panel to a position preset
-    /// on its screen. Mirrors a manual drag, as moveSelectedPanel does.
+    /// on its screen. Treated as a manual drag in free placement.
     func snapPanel(_ controller: WidgetPanelController, to preset: WindowSnapPreset, animate: Bool = true) {
         guard let frame = controller.snapFrame(for: preset), !frame.isEmpty else { return }
+        // Like Linux and Windows: a preset leaves row/column layout, so a later
+        // reconcile does not re-arrange the panel away from where it was put.
+        if layout != .freeform {
+            layout = .freeform
+            freeformFrames.removeAll()
+        }
         controller.setFrame(frame, animate: animate)
         persist(frame: frame, for: controller.widgetID)
     }

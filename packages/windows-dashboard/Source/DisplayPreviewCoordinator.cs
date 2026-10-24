@@ -346,10 +346,19 @@ public sealed class DisplayPreviewCoordinator : IDisposable
     {
         if (_window is null) return false;
         if (_window.WindowState != WindowState.Normal) SystemCommands.RestoreWindow(_window);
-        var host = HostDisplay();
-        if (host is null) return false;
+        var current = HostDisplay();
+        if (current is null) return false;
         // Physical pixels throughout: the work area, the window rectangle and the preview.
         var bounds = _window.GetPhysicalBounds();
+        // Never snap onto the source display, even when most of the window already sits there:
+        // use the non-source monitor it overlaps most, else the first one.
+        var host = current;
+        if (_selected is not null && string.Equals(current.Id, _selected.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            var others = _catalog.Displays().Where(display => !string.Equals(display.Id, _selected.Id, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (others.Count == 0) return false;
+            host = others.OrderByDescending(display => OverlapArea(display.Bounds, bounds)).First();
+        }
         var preview = _window.PreviewSizePixels;
         if (preview.IsEmpty) return false;
         var scale = _window.DeviceScale;
@@ -364,10 +373,21 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             bounds,
             12 * scale);
         if (frame is null || !_window.SetPhysicalBounds(frame.Value)) return false;
+        // Moving to another monitor can apply WM_DPICHANGED's suggested rectangle during
+        // the first placement; place again once WPF has adopted the new DPI.
+        if (!ReferenceEquals(host, current) && !_window.SetPhysicalBounds(frame.Value)) return false;
+        // ActualWidth/Height lag until layout runs; settle it so the saved frame is the new one.
+        _window.UpdateLayout();
         // As with TryMoveFocused, do not wait for the frame debounce.
         NoteFrameChange();
         RefreshSources();
         return true;
+    }
+
+    private static double OverlapArea(Rect a, Rect b)
+    {
+        var overlap = Rect.Intersect(a, b);
+        return overlap.IsEmpty ? 0 : overlap.Width * overlap.Height;
     }
 
     private string CurrentStatus()

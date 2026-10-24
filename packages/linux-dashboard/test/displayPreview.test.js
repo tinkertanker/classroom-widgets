@@ -502,3 +502,54 @@ test('a live stand-in is not switched away outside the reopen window', async t =
   assert.equal(h.windows[0].states.at(-1).sourceId, 2);
   assert.equal(h.windows[0].states.at(-1).powerState, 'on');
 });
+
+// Position presets: Display must never be snapped onto the display it previews, even
+// when most of it already sits there; and a maximised window must be restored first,
+// or the window manager's late restore overwrites the snapped frame.
+function snapFixture() {
+  const displays = [display(1, 0, 800), display(2, 800, 800)];
+  const overlap = (a, b) => Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x))
+    * Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
+  const fakeScreen = {
+    getAllDisplays: () => displays,
+    getDisplayMatching: (rect) => (overlap(rect, displays[1].bounds) > overlap(rect, displays[0].bounds) ? displays[1] : displays[0]),
+    getCursorScreenPoint: () => ({ x: 100, y: 100 }),
+    on() {},
+    removeListener() {},
+  };
+  let window;
+  const coordinator = new DisplayPreviewCoordinator(
+    { getDisplayPreviewFrame: () => undefined, getDisplayPreviewSourceId: () => 2, setDisplayPreviewSourceId() {}, setDisplayPreviewFrame() {} },
+    new DisplayCatalog(fakeScreen),
+    { screen: fakeScreen, desktopCapturer: { async getSources() { return []; } }, createWindow: (bounds) => (window = new FakeWindow(bounds)) },
+  );
+  coordinator.open();
+  return { coordinator, window, displays };
+}
+
+test('a preset never puts Display on its source display', () => {
+  const { coordinator, window } = snapFixture();
+  for (const preset of ['left-half', 'right-half', 'bottom-right', 'fill', 'centre']) {
+    window.bounds = { x: 900, y: 100, width: 480, height: 402 }; // mostly on source display 2
+    coordinator.snapTo(preset);
+    const b = window.bounds;
+    assert.ok(b.x >= 12 && b.x + b.width <= 788 && b.y >= 12 && b.y + b.height <= 588, `${preset} ${JSON.stringify(b)} stays on display 1`);
+  }
+});
+
+test('a maximised Display is restored before the preset is applied', async () => {
+  const { coordinator, window } = snapFixture();
+  let maximised = true;
+  window.restore = () => {
+    if (!maximised) return false;
+    maximised = false;
+    return true;
+  };
+  window.bounds = { x: 0, y: 0, width: 800, height: 600 };
+  coordinator.snapTo('left-half');
+  assert.deepEqual(window.bounds, { x: 0, y: 0, width: 800, height: 600 }, 'nothing is applied while the window manager restores');
+  window.bounds = { x: 100, y: 100, width: 480, height: 402 }; // the restored frame
+  await new Promise((resolve) => setTimeout(resolve, 400));
+  assert.equal(window.bounds.x, 12);
+  assert.ok(window.bounds.x + window.bounds.width <= 394, JSON.stringify(window.bounds));
+});

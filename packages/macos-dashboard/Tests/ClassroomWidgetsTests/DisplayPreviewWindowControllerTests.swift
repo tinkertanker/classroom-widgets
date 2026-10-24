@@ -690,7 +690,13 @@ final class DisplayPreviewWindowControllerTests: XCTestCase {
                 ["Left Half", "Right Half", "Top Half", "Bottom Half",
                  "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Centre", "Fill Screen"]
             )
-            controller.setSources([landscape16x9], selectedID: landscape16x9.id)
+            // An id no real screen has, so the host screen is never mistaken for the source.
+            let source = DisplayDescriptor(
+                id: 0xFFFF_FF01, uuid: "SNAP-SOURCE", name: "Snap source",
+                bounds: CGRect(x: -212, y: -1080, width: 1920, height: 1080), isActive: true, mirrorMasterID: nil
+            )
+            controller.setSources([source], selectedID: source.id)
+            panel.orderFrontRegardless()
             var reported: [NSRect] = []
             controller.onFrameChanged = { reported.append($0) }
             let screen = panel.screen ?? NSScreen.main

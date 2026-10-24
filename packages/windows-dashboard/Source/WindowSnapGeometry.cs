@@ -2,7 +2,7 @@ using System.Windows;
 
 namespace ClassroomWidgets;
 
-/// <summary>Where the Display window's layout menu can put it on its current monitor.</summary>
+/// <summary>Where a window's position menu can put it on its current monitor (Display and widget panels).</summary>
 public enum WindowSnapPreset
 {
     LeftHalf,

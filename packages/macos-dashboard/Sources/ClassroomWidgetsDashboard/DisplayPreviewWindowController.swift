@@ -437,9 +437,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     /// so it never jumps to another screen (or onto the source display).
     @discardableResult
     func snap(to preset: WindowSnapPreset, animated: Bool) -> Bool {
-        guard let window,
-              let screen = window.screen ?? Self.screen(containingMostOf: window.frame) ?? NSScreen.main
-        else { return false }
+        guard let window, let screen = snapScreen(for: window) else { return false }
         let minimumFrame = window.frameRect(forContentRect: NSRect(origin: .zero, size: window.contentMinSize)).size
         guard let target = WindowSnapGeometry.frame(
             for: preset,
@@ -452,6 +450,18 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         ), !target.isEmpty else { return false }
         window.setFrame(target, display: true, animate: animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         return true
+    }
+
+    /// The screen to snap within: the one holding most of the window, unless that is
+    /// the source display, in which case the non-source screen it overlaps most (else
+    /// the first one). Nil when every screen is the source.
+    private func snapScreen(for window: NSWindow) -> NSScreen? {
+        let host = window.screen ?? Self.screen(containingMostOf: window.frame) ?? NSScreen.main
+        guard let sourceID = selectedSourceID, DisplayCatalog.displayID(for: host) == sourceID else { return host }
+        let others = NSScreen.screens.filter { DisplayCatalog.displayID(for: $0) != sourceID }
+        return others.max {
+            $0.frame.intersection(window.frame).area < $1.frame.intersection(window.frame).area
+        } ?? others.first
     }
 
     /// Exposed for tests so the menu contract is checked without popping it up.

@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import {
   aspectNormalizedWindowSize,
   clampRect,
+  intersectionArea,
   mapPreviewPointToSource,
   Rect,
   rectsIntersect,
@@ -41,8 +42,8 @@ export interface DisplayPreviewDeps {
 export interface DisplayPreviewWindowLike extends EventEmitter {
   getBounds(): Rect;
   setBounds(bounds: Rect): void;
-  /** Leaves maximised or full-screen state, so explicit bounds apply. */
-  restore?(): void;
+  /** Leaves maximised or full-screen state, so explicit bounds apply. True when it had to. */
+  restore?(): boolean;
   setContentSize(size: { width: number; height: number }): void;
   getContentSize(): { width: number; height: number };
   show(): void;
@@ -59,6 +60,7 @@ export interface DisplayPreviewWindowLike extends EventEmitter {
 
 const MINIMUM_PREVIEW_SIZE = { width: 320, height: 180 };
 const FRAME_INSET = 12;
+const SNAP_RESTORE_DELAY_MS = 250;
 const OVERLAP_MESSAGE = 'Preview suspended while it overlaps the source display. Move it fully clear to resume.';
 
 export class DisplayPreviewCoordinator extends EventEmitter {
@@ -425,17 +427,48 @@ export class DisplayPreviewCoordinator extends EventEmitter {
 
   /** Moves and resizes Display within the work area of the screen it is on. */
   snapTo(preset: WindowSnapPreset): void {
-    if (!this.window) return;
-    this.window.restore?.();
-    const bounds = this.window.getBounds();
+    const window = this.window;
+    if (!window) return;
+    if (window.restore?.()) {
+      // Leaving maximised or full-screen state is an asynchronous round trip to
+      // the window manager, which would otherwise overwrite the snapped frame.
+      const timer = setTimeout(() => { if (this.window === window) this.applySnap(preset); }, SNAP_RESTORE_DELAY_MS);
+      timer.unref?.();
+      return;
+    }
+    this.applySnap(preset);
+  }
+
+  /**
+   * The work area to snap within: the screen holding most of the window, unless
+   * that is the source display, in which case the non-source screen it overlaps
+   * most (else the first one). Null when every screen is the source.
+   */
+  private snapWorkArea(bounds: Rect): Rect | null {
     const host = this.deps.screen.getDisplayMatching(bounds);
+    const sourceId = this.selectedSource?.id;
+    if (sourceId === undefined || host.id !== sourceId) return host.workArea;
+    const others = this.deps.screen.getAllDisplays().filter((display) => display.id !== sourceId);
+    if (!others.length) return null;
+    let best = others[0];
+    for (const display of others) {
+      if (intersectionArea(display.bounds, bounds) > intersectionArea(best.bounds, bounds)) best = display;
+    }
+    return best.workArea;
+  }
+
+  private applySnap(preset: WindowSnapPreset): void {
+    if (!this.window) return;
+    const bounds = this.window.getBounds();
+    const workArea = this.snapWorkArea(bounds);
+    if (!workArea) return;
     const content = this.window.getContentSize();
     const chrome = {
       width: Math.max(bounds.width - content.width, 0),
       height: Math.max(bounds.height - content.height, 0) + DISPLAY_PREVIEW_CHROME_HEIGHT,
     };
     const source = this.selectedSource;
-    const frame = snapWindowFrame(preset, host.workArea, {
+    const frame = snapWindowFrame(preset, workArea, {
       aspect: source && source.bounds.height > 0 ? source.bounds.width / source.bounds.height : null,
       chrome,
       // Matches the window's own minimum: a 320x240 preview plus chrome.

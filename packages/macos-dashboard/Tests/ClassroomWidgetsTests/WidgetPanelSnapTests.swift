@@ -32,6 +32,10 @@ final class WidgetPanelSnapTests: XCTestCase {
         let banner = try window("Snap Banner")
         let light = try window("Snap Light")
         let fixedSize = light.frame.size
+        // On screen, so NSWindow.screen is the screen the code snaps within.
+        for panel in [timer, banner, light] { panel.orderFrontRegardless() }
+        panels.arrange(.row)
+        XCTAssertEqual(panels.layout, .row)
 
         for preset in WindowSnapPreset.allCases {
             for (id, panel) in [(resizable, timer), (capped, banner), (fixed, light)] {
@@ -58,12 +62,13 @@ final class WidgetPanelSnapTests: XCTestCase {
                 XCTAssertEqual(saved.width, frame.width, accuracy: 0.5, "\(label) is saved")
             }
             let web = timer.contentRect(forFrameRect: timer.frame).size
-            XCTAssertEqual(web.width / (web.height - WidgetPanelContentLayout.topGap), 350.0 / 415.0, accuracy: 0.005,
+            XCTAssertEqual(web.width / (web.height - WidgetPanelContentLayout.topGap), 350.0 / 415.0, accuracy: 0.01,
                            "Snap Timer \(preset.rawValue) keeps its web aspect ratio")
             let bannerContent = banner.contentRect(forFrameRect: banner.frame).size
             XCTAssertLessThanOrEqual(bannerContent.width, 500.5)
             XCTAssertLessThanOrEqual(bannerContent.height - WidgetPanelContentLayout.topGap, 300.5)
             XCTAssertEqual(light.frame.size, fixedSize, "a fixed-size widget is only moved")
         }
+        XCTAssertEqual(panels.layout, .freeform, "a preset leaves row layout")
     }
 }

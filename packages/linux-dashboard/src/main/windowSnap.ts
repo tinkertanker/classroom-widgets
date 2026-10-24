@@ -1,6 +1,6 @@
 import type { Rect, Size } from './displayGeometry';
 
-/** Where the Display window's layout menu can put it on its current screen. */
+/** Where a window's position menu can put it on its current screen (Display and widget panels). */
 export const WINDOW_SNAP_PRESETS = [
   'left-half',
   'right-half',

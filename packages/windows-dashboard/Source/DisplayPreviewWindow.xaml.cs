@@ -87,14 +87,9 @@ public partial class DisplayPreviewWindow : Window
         var right = (int)Math.Round(bounds.Right);
         var bottom = (int)Math.Round(bounds.Bottom);
         const uint flags = 0x0004 | 0x0010; // SWP_NOZORDER | SWP_NOACTIVATE
-        if (!NativeMethods.SetWindowPos(handle, IntPtr.Zero, left, top, right - left, bottom - top, flags)) return false;
-        if (PresentationSource.FromVisual(this)?.CompositionTarget is { } target)
-        {
-            var position = target.TransformFromDevice.Transform(new Point(left, top));
-            Left = position.X;
-            Top = position.Y;
-        }
-        return true;
+        // WM_MOVE/WM_SIZE update Left/Top/Width/Height; setting them again here could round
+        // differently at fractional scaling and nudge the window by a pixel.
+        return NativeMethods.SetWindowPos(handle, IntPtr.Zero, left, top, right - left, bottom - top, flags);
     }
 
     public void ShowMenu(ContextMenu menu, UIElement? placementTarget = null)

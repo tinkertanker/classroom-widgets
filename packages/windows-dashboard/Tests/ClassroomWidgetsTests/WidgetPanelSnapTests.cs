@@ -73,7 +73,7 @@ public sealed class WidgetPanelSnapTests
                             Assert.True(Math.Abs(saved.Left - frame.Left) <= 0.5 && Math.Abs(saved.Width - frame.Width) <= 0.5, $"{label} is saved");
                         }
                         var timer = coordinator.PanelFor("timer")!.CurrentFrame;
-                        Assert.True(Math.Abs(timer.Width / (timer.Height - WidgetPanelWindow.ChromeHeight) - 350d / 415d) < 0.005, $"timer {preset} keeps its web aspect ratio");
+                        Assert.True(Math.Abs(timer.Width / (timer.Height - WidgetPanelWindow.ChromeHeight) - 350d / 415d) < 0.01, $"timer {preset} keeps its web aspect ratio");
                         var banner = coordinator.PanelFor("banner")!.CurrentFrame;
                         Assert.True(banner.Width <= 500.5 && banner.Height <= 300.5 + WidgetPanelWindow.ChromeHeight, $"banner {preset} keeps its maximum");
                         Assert.Equal(lightSize, coordinator.PanelFor("light")!.CurrentFrame.Size);

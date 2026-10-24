@@ -191,11 +191,13 @@ app.whenReady().then(async () => {
     await snapshot('snap-bottom-right');
     const topLeft = await snap('Top Left');
     assert.deepEqual([topLeft.x, topLeft.y], [area.x, area.y]);
+    const centred = await snap('Centre');
+    assert.deepEqual([centred.width, centred.height], [topLeft.width, topLeft.height], 'Centre keeps the size');
+    assert.ok(Math.abs(centred.x + centred.width / 2 - (area.x + area.width / 2)) <= 1, 'Centre centres horizontally');
+    assert.ok(Math.abs(centred.y + centred.height / 2 - (area.y + area.height / 2)) <= 1, 'Centre centres vertically');
     const fill = await snap('Fill Screen');
     assert.ok(fill.height === area.height || fill.width === area.width, 'Fill Screen touches two edges');
     await snapshot('snap-fill');
-    const centred = await snap('Centre');
-    assert.deepEqual([centred.width, centred.height], [fill.width, fill.height], 'Centre keeps the size');
     record('PASS layout menu snaps within the host work area, keeps the source shape, stays live and is remembered');
     return;
   }

@@ -136,10 +136,12 @@ export class DisplayPreviewWindow extends EventEmitter {
     if (!this.win.isDestroyed()) this.win.setBounds(bounds);
   }
 
-  restore(): void {
-    if (this.win.isDestroyed()) return;
+  restore(): boolean {
+    if (this.win.isDestroyed()) return false;
+    const restoring = this.win.isFullScreen() || this.win.isMaximized();
     if (this.win.isFullScreen()) this.win.setFullScreen(false);
     if (this.win.isMaximized()) this.win.unmaximize();
+    return restoring;
   }
 
   setContentSize(size: Size): void {
