@@ -38,6 +38,14 @@ public sealed class DisplayCaptureSessionTests
             for (var i = 0; i < 50; i++) session.Start();
             Thread.Sleep(350);
             Assert.Equal(before, frames);
+            var drained = false;
+            dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() =>
+            {
+                Assert.InRange(frames - before, 0, 1);
+                drained = true;
+            }));
+            WpfTestHost.PumpUntil(() => drained, Timeout, "the bounded presentation queue");
+            before = frames;
             session.Dispose();
             WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
             Assert.Equal(before, frames);

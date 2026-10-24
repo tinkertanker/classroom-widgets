@@ -64,6 +64,30 @@ public sealed class DisplayPreviewCoordinatorTests
             WpfTestHost.PumpUntil(() => window.IsVisible && window.StatusText.Text == "Click to see display", Timeout, "the preview to open");
             Assert.False(DisplayGeometry.Intersects(window.GetPhysicalBounds(), ClearSourceBounds));
 
+            // Starting, changing source geometry, then stopping without pumping leaves
+            // capture requests in flight. Neither retired generation may publish later.
+            var retiredFrames = 0;
+            for (var cycle = 0; cycle < 10; cycle++)
+            {
+                window.PowerButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                var pending = coordinator.Capture!;
+                pending.FrameReady += () => retiredFrames++;
+                sourceBounds = new Rect(0, 0, 320, 240);
+                coordinator.DisplaysChanged();
+                var replacement = coordinator.Capture!;
+                Assert.NotSame(pending, replacement);
+                replacement.FrameReady += () => retiredFrames++;
+                coordinator.Stop();
+                sourceBounds = ClearSourceBounds;
+                coordinator.DisplaysChanged();
+                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(150));
+                Assert.Null(pending.Image);
+                Assert.Null(replacement.Image);
+                Assert.Null(window.PreviewImage.Source);
+                Assert.Null(coordinator.Capture);
+            }
+            Assert.Equal(0, retiredFrames);
+
             ClickPower(window);
             WpfTestHost.PumpUntil(() => coordinator.Capture is not null && window.PreviewImage.Source is not null, Timeout, "the first live frame");
             var oldCapture = coordinator.Capture!;
@@ -215,6 +239,23 @@ public sealed class DisplayPreviewCoordinatorTests
                     WpfTestHost.SaveEvidence("211-coordinator-window.png", Snapshot(window));
                     AssertQuadrant(SyntheticSourceWindow.TopLeft, WpfTestHost.PixelAt(rendered, width, width / 4, height / 4));
                     AssertQuadrant(SyntheticSourceWindow.BottomRight, WpfTestHost.PixelAt(rendered, width, width * 3 / 4, height * 3 / 4));
+
+                    // A non-central click must map to source pixels, not the much smaller
+                    // captured bitmap. Compute the letterboxed image rectangle independently.
+                    var fitDip = Math.Min(window.PreviewSurface.ActualWidth / sourceBounds.Width,
+                        window.PreviewSurface.ActualHeight / sourceBounds.Height);
+                    var drawWidth = sourceBounds.Width * fitDip;
+                    var drawHeight = sourceBounds.Height * fitDip;
+                    var click = new Point((window.PreviewSurface.ActualWidth - drawWidth) / 2 + drawWidth * 0.75,
+                        (window.PreviewSurface.ActualHeight - drawHeight) / 2 + drawHeight * 0.25);
+                    var screenPoint = window.PreviewSurface.PointToScreen(click);
+                    Assert.True(NativeMethods.SetCursorPos((int)screenPoint.X, (int)screenPoint.Y));
+                    WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(100));
+                    ClickPreview(window);
+                    var mapped = CursorPosition();
+                    Assert.InRange(mapped.X, (int)(sourceBounds.Width * 0.75) - 4, (int)(sourceBounds.Width * 0.75) + 4);
+                    Assert.InRange(mapped.Y, (int)(sourceBounds.Height * 0.25) - 4, (int)(sourceBounds.Height * 0.25) + 4);
+                    WpfTestHost.SaveEvidenceText("211-pointer-mapping.txt", $"source={sourceBounds} frame={width}x{height} mapped={mapped}\n");
                 }
                 finally
                 {

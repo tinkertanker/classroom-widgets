@@ -7,13 +7,15 @@ using System.Windows.Threading;
 namespace ClassroomWidgets;
 
 /// <summary>
-/// Copies a source display into a WPF bitmap on the UI thread, at most about 15 times a
-/// second (the 66 ms timer re-arms after each frame, so slow frames lower the rate).
+/// Captures on one worker, awaiting presentation before starting another frame. There is
+/// one reusable pixel buffer and at most one pending frame, even if the dispatcher stalls.
+/// Only preview-state reads, WPF presentation and events run on the creating dispatcher.
+/// The 66 ms delay follows each frame, so slow capture/presentation lowers the rate.
 /// The memory DC, screen-compatible bitmap and pixel buffer are kept until the output size
 /// changes. When the preview is at most half the source size, GDI scales the frame down as it
 /// copies (COLORONCOLOR), so the pixels read back, copied into WPF and uploaded are
-/// preview-sized. GDI still reads the whole source rectangle, which is the bulk of the cost
-/// on large sources; moving capture off the UI thread is the next step (#211 phase 2).
+/// preview-sized. Disposal cancels queued presentation immediately; the worker releases its
+/// native resources after any in-flight GDI call, without blocking the dispatcher.
 /// </summary>
 public sealed class DisplayCaptureSession : IDisposable
 {
@@ -36,9 +38,12 @@ public sealed class DisplayCaptureSession : IDisposable
     private readonly Rect _sourceBounds;
     private readonly Func<bool>? _canCapture;
     private readonly Func<Size>? _targetPixelSize;
-    private readonly DispatcherTimer _timer;
-    private readonly EventHandler _tickHandler;
+    private readonly Dispatcher _dispatcher;
+    private readonly CancellationTokenSource _stop = new();
+    private Task? _worker;
     private WriteableBitmap? _bitmap;
+    // Native resources and resize hysteresis belong exclusively to the worker. It keeps
+    // the buffer unchanged while the dispatcher consumes it.
     private IntPtr _memoryDc;
     private IntPtr _surface;
     private IntPtr _pixels;
@@ -47,8 +52,6 @@ public sealed class DisplayCaptureSession : IDisposable
     private int _height;
     private (int Width, int Height) _pendingSize;
     private int _pendingFrames;
-    private int _consecutiveFailures;
-    private bool _failed;
     private bool _disposed;
 
     public ImageSource? Image => _bitmap;
@@ -69,44 +72,97 @@ public sealed class DisplayCaptureSession : IDisposable
         _sourceBounds = sourceBounds;
         _canCapture = canCapture;
         _targetPixelSize = targetPixelSize;
-        _timer = new DispatcherTimer(DispatcherPriority.Background)
-        {
-            Interval = TimeSpan.FromMilliseconds(66)
-        };
-        _tickHandler = (_, _) => CaptureFrame();
-        _timer.Tick += _tickHandler;
+        _dispatcher = Dispatcher.CurrentDispatcher;
     }
 
+    /// <summary>Starts asynchronous capture. Repeated starts while running do not enqueue work.</summary>
     public void Start()
     {
-        if (_disposed) return;
-        if (!_timer.IsEnabled)
-        {
-            _failed = false;
-            _consecutiveFailures = 0;
-            _timer.Start();
-        }
-        CaptureFrame();
+        _dispatcher.VerifyAccess();
+        if (_disposed || _worker is { IsCompleted: false }) return;
+        _worker = Task.Run(CaptureLoopAsync);
     }
 
-    private void CaptureFrame()
+    private async Task CaptureLoopAsync()
     {
-        if (_disposed || _failed) return;
-        var screenDc = IntPtr.Zero;
-        var previous = IntPtr.Zero;
-        var presented = false;
+        var token = _stop.Token;
+        var consecutiveFailures = 0;
+        var sourceWidth = Math.Max(1, (int)Math.Round(_sourceBounds.Width));
+        var sourceHeight = Math.Max(1, (int)Math.Round(_sourceBounds.Height));
         try
         {
-            if (_canCapture is not null && !_canCapture())
+            while (!token.IsCancellationRequested)
             {
-                // Hidden or minimised: free the surface (up to ~70 MB at 4K) until it is back.
-                ReleaseSurface();
-                return;
+                var inFrameHandler = false;
+                try
+                {
+                    // These callbacks may read WPF controls. Snapshot them before doing
+                    // native work; no WPF object is accessed by the capture worker.
+                    var target = await _dispatcher.InvokeAsync(() =>
+                        _canCapture?.Invoke() == false ? (Size?)null : _targetPixelSize?.Invoke() ?? _sourceBounds.Size,
+                        DispatcherPriority.Background, token).Task.ConfigureAwait(false);
+                    token.ThrowIfCancellationRequested();
+                    if (target is null)
+                    {
+                        ReleaseSurface();
+                    }
+                    else if (OutputSize(sourceWidth, sourceHeight, target.Value) is { } size)
+                    {
+                        CaptureFrame(sourceWidth, sourceHeight, size.Width, size.Height);
+                        var presented = await _dispatcher.InvokeAsync(() =>
+                        {
+                            // Visibility may have changed while GDI was busy. Never publish
+                            // a late frame from a disposed/replaced or hidden session.
+                            if (_canCapture?.Invoke() == false) return false;
+                            token.ThrowIfCancellationRequested();
+                            _bitmap = PresentFrame(_bitmap, _pixels, size.Width, size.Height);
+                            inFrameHandler = true;
+                            FrameReady?.Invoke();
+                            inFrameHandler = false;
+                            return true;
+                        }, DispatcherPriority.Background, token).Task.ConfigureAwait(false);
+                        if (presented) consecutiveFailures = 0;
+                    }
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested || _dispatcher.HasShutdownStarted)
+                {
+                    break;
+                }
+                catch (Exception error)
+                {
+                    ReleaseSurface();
+                    if (inFrameHandler || ++consecutiveFailures >= MaxConsecutiveFailures)
+                    {
+                        DashboardLog.Error($"Display capture stopped: {error}");
+                        await _dispatcher.InvokeAsync(() => Failed?.Invoke(error),
+                            DispatcherPriority.Background, token).Task.ConfigureAwait(false);
+                        return;
+                    }
+                    DashboardLog.Warn($"Display capture frame failed ({consecutiveFailures} in a row), retrying: {error.Message}");
+                }
+                await Task.Delay(66, token).ConfigureAwait(false);
             }
-            var sourceWidth = Math.Max(1, (int)Math.Round(_sourceBounds.Width));
-            var sourceHeight = Math.Max(1, (int)Math.Round(_sourceBounds.Height));
-            if (OutputSize(sourceWidth, sourceHeight) is not { } size) return;
-            var (width, height) = size;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested || _dispatcher.HasShutdownStarted)
+        {
+        }
+        catch (Exception error)
+        {
+            // A Failed subscriber must not leave an unobserved worker exception.
+            DashboardLog.Error($"Display capture failure handler failed: {error}");
+        }
+        finally
+        {
+            ReleaseSurface();
+        }
+    }
+
+    private void CaptureFrame(int sourceWidth, int sourceHeight, int width, int height)
+    {
+        var screenDc = IntPtr.Zero;
+        var previous = IntPtr.Zero;
+        try
+        {
             screenDc = NativeMethods.GetDC(IntPtr.Zero);
             if (screenDc == IntPtr.Zero) throw new InvalidOperationException("Unable to acquire the screen device context.");
             EnsureSurface(screenDc, width, height);
@@ -128,64 +184,22 @@ public sealed class DisplayCaptureSession : IDisposable
             {
                 throw new InvalidOperationException("Unable to read the capture bitmap.");
             }
-
-            _bitmap = PresentFrame(_bitmap, _pixels, width, height);
-            presented = true;
-        }
-        catch (Exception error)
-        {
-            if (previous != IntPtr.Zero)
-            {
-                NativeMethods.SelectObject(_memoryDc, previous);
-                previous = IntPtr.Zero;
-            }
-            ReleaseSurface();
-            if (++_consecutiveFailures < MaxConsecutiveFailures)
-            {
-                DashboardLog.Warn($"Display capture frame failed ({_consecutiveFailures} in a row), retrying: {error.Message}");
-                return;
-            }
-            Fail(error);
-            DashboardLog.Error($"Display capture stopped after {MaxConsecutiveFailures} failed frames: {error}");
         }
         finally
         {
             if (previous != IntPtr.Zero) NativeMethods.SelectObject(_memoryDc, previous);
             if (screenDc != IntPtr.Zero) NativeMethods.ReleaseDC(IntPtr.Zero, screenDc);
         }
-        if (!presented) return;
-        _consecutiveFailures = 0;
-        // Outside the try: a handler's exception is not a capture failure to retry. It stops
-        // the session, so the preview never claims to be live while frozen.
-        try
-        {
-            FrameReady?.Invoke();
-        }
-        catch (Exception error)
-        {
-            Fail(error);
-            DashboardLog.Error($"Display capture stopped by a frame handler: {error}");
-        }
-    }
-
-    private void Fail(Exception error)
-    {
-        _failed = true;
-        _timer.Stop();
-        Failed?.Invoke(error);
     }
 
     /// <summary>The size to capture this frame at, or null to skip the frame.</summary>
-    private (int Width, int Height)? OutputSize(int sourceWidth, int sourceHeight)
+    private (int Width, int Height)? OutputSize(int sourceWidth, int sourceHeight, Size target)
     {
         var desired = (sourceWidth, sourceHeight);
-        if (_targetPixelSize is not null)
+        if (DisplayGeometry.CaptureSize(new Size(sourceWidth, sourceHeight), target) is not { } fitted) return null;
+        if (fitted.Width <= sourceWidth * MaxStretchScale && fitted.Height <= sourceHeight * MaxStretchScale)
         {
-            if (DisplayGeometry.CaptureSize(new Size(sourceWidth, sourceHeight), _targetPixelSize()) is not { } fitted) return null;
-            if (fitted.Width <= sourceWidth * MaxStretchScale && fitted.Height <= sourceHeight * MaxStretchScale)
-            {
-                desired = fitted;
-            }
+            desired = fitted;
         }
         if (_surface == IntPtr.Zero || desired == (_width, _height))
         {
@@ -280,11 +294,14 @@ public sealed class DisplayCaptureSession : IDisposable
 
     public void Dispose()
     {
+        _dispatcher.VerifyAccess();
         if (_disposed) return;
         _disposed = true;
-        _timer.Stop();
-        _timer.Tick -= _tickHandler;
-        ReleaseSurface();
+        _stop.Cancel();
+        // The worker owns native resources, including while presentation is queued. Do not
+        // free its buffer here or wait for GDI on the dispatcher. Its finally releases it
+        // even if the dispatcher shuts down before the pending operation can run.
+        _ = (_worker ?? Task.CompletedTask).ContinueWith(_ => _stop.Dispose(), TaskScheduler.Default);
         _bitmap = null;
     }
 
