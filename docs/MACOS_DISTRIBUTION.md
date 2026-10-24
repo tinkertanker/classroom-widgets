@@ -121,6 +121,27 @@ when the DOM and host-state assertions pass. Use separate evidence directories f
 separate runs so later captures do not overwrite earlier ones. The tests do not
 require changing the user's keyboard layout.
 
+For Display capture resolution, use a disposable Mac with Screen Recording
+authorized for the test runner:
+
+```bash
+CLASSROOM_WIDGETS_CAPTURE_TESTS=1 \
+CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR="$PWD/dist/display-resize-evidence" \
+swift test --package-path packages/macos-dashboard -j 2 --filter DisplayCaptureResizeTests
+```
+
+This checks actual delivered pixel-buffer dimensions after debounced shrink/grow
+bursts, retained capture ownership, asymmetric pointer mapping, and delayed native
+configuration completions during source selection and close/reopen. It writes
+`capture-resize.txt` and window PNGs. Only the placement guard is bypassed to allow
+a one-screen runner; the real preview exclusion filter remains active. The
+alternate source-selection descriptor is synthetic and is never captured. A real
+backing-scale transition is checked only when screens with different scales are
+available; otherwise the evidence explicitly marks it unexercised. Missing Screen
+Recording permission skips the test, not proves it. Inspect the PNGs and separately
+profile app/WindowServer CPU and memory on a controlled workload; fewer captured
+pixels alone do not establish resource savings.
+
 ## Local DMG
 
 Install [`create-dmg`](https://github.com/create-dmg/create-dmg), then run:

@@ -10,6 +10,29 @@ final class DisplayPreviewGeometryTests: XCTestCase {
         topologyRevision: 4
     )
 
+    // Failure modes: treating points as pixels, using letterbox space as image
+    // resolution, transposing portrait, exceeding the cap, and rounding jitter.
+    func testCaptureResolutionFitsBackingViewportAndCapsBothOrientations() {
+        let landscapeSource = CGSize(width: 1920, height: 1080)
+        for (viewport, expected) in [
+            (CGSize(width: 640, height: 480), CGSize(width: 640, height: 360)),
+            (CGSize(width: 1280, height: 960), CGSize(width: 1280, height: 720)),
+            (CGSize(width: 2560, height: 1920), CGSize(width: 1920, height: 1080)),
+            (CGSize(width: 1000, height: 300), CGSize(width: 533, height: 300)),
+            (CGSize(width: 640.9, height: 480), CGSize(width: 640, height: 360))
+        ] {
+            XCTAssertEqual(DisplayPreviewGeometry.captureOutputSize(
+                sourceSize: landscapeSource, viewportPixels: viewport
+            ), expected)
+        }
+        XCTAssertEqual(DisplayPreviewGeometry.captureOutputSize(
+            sourceSize: CGSize(width: 900, height: 1600), viewportPixels: CGSize(width: 900, height: 700)
+        ), CGSize(width: 393, height: 700))
+        XCTAssertEqual(DisplayPreviewGeometry.captureOutputSize(
+            sourceSize: CGSize(width: 900, height: 1600), viewportPixels: CGSize(width: 1800, height: 3200)
+        ), CGSize(width: 1080, height: 1920))
+    }
+
     func testMapsAsymmetricNegativeOriginFixtureIndependentOfBufferScale() {
         XCTAssertEqual(
             DisplayPreviewGeometry.target(

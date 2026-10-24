@@ -1,5 +1,6 @@
 import AppKit
 import CoreVideo
+import ScreenCaptureKit
 import XCTest
 @testable import ClassroomWidgets
 
@@ -20,17 +21,34 @@ final class DisplayCaptureResizeTests: XCTestCase {
         let source = try XCTUnwrap(DisplayCatalog().displays().first)
         let suite = "DisplayCaptureResizeTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        // Only selection uses this descriptor; never start capture on a fake ID.
+        // This lets one-screen runners exercise stale source-generation callbacks.
+        let alternate = DisplayDescriptor(
+            id: source.id ^ 0x80000000, uuid: "alternate-fixture", name: "Alternate fixture",
+            bounds: source.bounds, isActive: true, mirrorMasterID: nil
+        )
+        defaults.set(source.uuid, forKey: DisplayPreviewCoordinator.Keys.sourceUUID)
         var creations = 0
+        var updates = 0
+        var holdUpdate = false
+        var pendingUpdate: CheckedContinuation<Void, Never>?
         let coordinator = DisplayPreviewCoordinator(
-            catalog: DisplayCatalog(displays: { [source] }), defaults: defaults,
+            catalog: DisplayCatalog(displays: { [source, alternate] }), defaults: defaults,
             hostDisplayID: { _ in nil }, overlapsSource: { _, _ in false },
             makeCaptureSession: {
                 creations += 1
-                return DisplayCaptureSession(sourceID: $0)
+                return DisplayCaptureSession(sourceID: $0, configurationUpdate: { stream, configuration in
+                    updates += 1
+                    try await stream.updateConfiguration(configuration)
+                    if holdUpdate {
+                        await withCheckedContinuation { pendingUpdate = $0 }
+                    }
+                })
             }
         )
         coordinator.open()
         defer {
+            pendingUpdate?.resume()
             coordinator.dismiss()
             coordinator.flushPersistedState()
             defaults.removePersistentDomain(forName: suite)
@@ -54,12 +72,15 @@ final class DisplayCaptureResizeTests: XCTestCase {
 
         // A small-start stream must grow again below the cap, not just shrink.
         for width: CGFloat in [480, 720, 520] {
-            let frame = NSRect(
-                origin: window.frame.origin,
-                size: NSSize(width: width, height: width * source.bounds.height / source.bounds.width + controller.previewChromeHeight)
-            )
-            window.setFrame(frame, display: true)
-            window.contentView?.layoutSubtreeIfNeeded()
+            let updatesBeforeBurst = updates
+            for transientWidth in [width + 20, width + 10, width] {
+                window.setFrame(NSRect(
+                    origin: window.frame.origin,
+                    size: NSSize(width: transientWidth, height: transientWidth * source.bounds.height / source.bounds.width + controller.previewChromeHeight)
+                ), display: true)
+                window.contentView?.layoutSubtreeIfNeeded()
+                try await Task.sleep(nanoseconds: 30_000_000)
+            }
             let backing = controller.previewView.convertToBacking(controller.previewView.bounds).size
             let scale = min(backing.width / source.bounds.width, backing.height / source.bounds.height,
                             1920 / max(source.bounds.width, source.bounds.height))
@@ -76,6 +97,7 @@ final class DisplayCaptureResizeTests: XCTestCase {
             }
             XCTAssertTrue(coordinator.session === capture)
             XCTAssertEqual(creations, 1, "Ordinary resize must not replace the capture session")
+            XCTAssertEqual(updates - updatesBeforeBurst, 1, "A settled resize burst must coalesce to one native update")
             let geometry = try XCTUnwrap(coordinator.presentedGeometry)
             let point = CGPoint(x: geometry.imageRect.minX + geometry.imageRect.width * 0.25,
                                 y: geometry.imageRect.minY + geometry.imageRect.height * 0.75)
@@ -87,6 +109,68 @@ final class DisplayCaptureResizeTests: XCTestCase {
             evidence.append("PASS viewport=\(backing) delivered=\(expected) sessions=\(creations) pointer=\(target)")
             saveWindow(window, label: "resize-\(Int(width))")
         }
+
+        if let otherScreen = NSScreen.screens.first(where: { $0.backingScaleFactor != window.backingScaleFactor }) {
+            let priorCount = delivered.count
+            window.setFrameOrigin(NSPoint(x: otherScreen.visibleFrame.minX + 20, y: otherScreen.visibleFrame.minY + 20))
+            try await waitUntil("native backing scale change") { window.backingScaleFactor == otherScreen.backingScaleFactor }
+            window.contentView?.layoutSubtreeIfNeeded()
+            let backing = controller.previewView.convertToBacking(controller.previewView.bounds).size
+            let scale = min(backing.width / source.bounds.width, backing.height / source.bounds.height,
+                            1920 / max(source.bounds.width, source.bounds.height))
+            let expected = CGSize(width: max(2, floor(source.bounds.width * scale)),
+                                  height: max(2, floor(source.bounds.height * scale)))
+            try await waitUntil("buffer at new backing scale") { delivered.dropFirst(priorCount).contains(expected) }
+            XCTAssertTrue(coordinator.session === capture)
+            evidence.append("PASS native backing scale=\(window.backingScaleFactor) delivered=\(expected)")
+            saveWindow(window, label: "backing-scale-changed")
+        } else {
+            evidence.append("NOT EXERCISED: native backing-scale transition; no second screen with a different backing scale")
+        }
+
+        let updatesBeforeBackingNotice = updates
+        controller.windowDidChangeBackingProperties(Notification(name: NSWindow.didChangeBackingPropertiesNotification))
+        try await Task.sleep(nanoseconds: 400_000_000)
+        XCTAssertEqual(updates, updatesBeforeBackingNotice, "Same backing dimensions must be a no-op")
+
+        // A source switch while an update completion is pending may not publish
+        // old geometry, change the new selection, or restart the old stream.
+        holdUpdate = true
+        window.setContentSize(NSSize(width: 580, height: 580 * source.bounds.height / source.bounds.width + 10))
+        try await waitUntil("pending update before source switch") { pendingUpdate != nil }
+        coordinator.selectSource(alternate.id)
+        XCTAssertNil(coordinator.presentedGeometry)
+        pendingUpdate?.resume()
+        pendingUpdate = nil
+        holdUpdate = false
+        try await waitUntil("source switch teardown") { coordinator.session == nil }
+        XCTAssertEqual(coordinator.selectedSource, alternate)
+        XCTAssertNil(coordinator.presentedGeometry)
+        XCTAssertEqual(creations, 1)
+        evidence.append("PASS delayed native update across source switch (alternate selection metadata is synthetic)")
+        coordinator.selectSource(source.id)
+        coordinator.start()
+        try await waitUntil("restarted real source frame") { coordinator.presentedGeometry != nil }
+        let beforeReopen = try XCTUnwrap(coordinator.session)
+
+        // Keep a native update completion in flight while closing and reopening.
+        // The old completion must not revive pixels or configure the replacement.
+        holdUpdate = true
+        window.setContentSize(NSSize(width: 610, height: 610 * source.bounds.height / source.bounds.width + 10))
+        try await waitUntil("pending native configuration completion") { pendingUpdate != nil }
+        coordinator.dismiss()
+        coordinator.open()
+        XCTAssertTrue(coordinator.session === beforeReopen, "The old stream remains owned until teardown completes")
+        XCTAssertNil(coordinator.presentedGeometry)
+        let updatesAtStop = updates
+        pendingUpdate?.resume()
+        pendingUpdate = nil
+        holdUpdate = false
+        try await waitUntil("replacement session after owned stop") { creations == 3 }
+        try await waitUntil("replacement frame") { coordinator.presentedGeometry != nil }
+        XCTAssertFalse(coordinator.session === beforeReopen)
+        XCTAssertEqual(updates, updatesAtStop, "A cancelled update must not reconfigure a replacement stream")
+        evidence.append("PASS delayed resize completion across close/reopen; replacement frame accepted without stale update")
         let stopped = await coordinator.prepareForTermination()
         XCTAssertTrue(stopped)
         evidence.append("PASS stop completed")
