@@ -233,6 +233,9 @@ extension AppDelegate {
 
     @objc private func showAbout() {
         let appIcon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage ?? NSImage()
+        // Activate first: a menu-bar app is inactive when its menu fires, and a
+        // panel ordered front while inactive can stay behind the frontmost app.
+        NSApp.activate(ignoringOtherApps: true)
         NSApp.orderFrontStandardAboutPanel(options: [
             .applicationName: "Classroom Widgets",
             .applicationIcon: appIcon,
@@ -240,7 +243,6 @@ extension AppDelegate {
                 string: "A menu-bar launcher for floating classroom widgets."
             )
         ])
-        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func toggleLaunchAtLogin() {
