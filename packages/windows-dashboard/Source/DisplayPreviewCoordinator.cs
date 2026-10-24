@@ -361,14 +361,16 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             var others = _catalog.Displays().Where(display => !string.Equals(display.Id, _selected.Id, StringComparison.OrdinalIgnoreCase)).ToList();
             if (others.Count == 0) return false;
             var target = others.OrderByDescending(display => OverlapArea(display.Bounds, bounds)).First();
-            // Move there at the current size first (twice: WM_DPICHANGED may apply its own
-            // rectangle on the first move), so the chrome, minimum and margin below are
-            // measured at the target monitor's DPI.
-            var parked = DisplayGeometry.Clamp(bounds, target.WorkingArea);
-            if (!_window.SetPhysicalBounds(parked) || !_window.SetPhysicalBounds(parked)) return false;
+            // Move there first, so the chrome, minimum and margin below are measured at the
+            // target monitor's DPI. WM_DPICHANGED rescales the window during that move to keep
+            // its size in DIPs (which Centre keeps); clamp that result back into the work area
+            // rather than reapplying the old pixel size.
+            if (!_window.SetPhysicalBounds(DisplayGeometry.Clamp(bounds, target.WorkingArea))) return false;
+            var parked = DisplayGeometry.Clamp(_window.GetPhysicalBounds(), target.WorkingArea);
+            if (parked != _window.GetPhysicalBounds() && !_window.SetPhysicalBounds(parked)) return false;
             _window.UpdateLayout();
             if (SnapTo(preset, allowMonitorChange: false)) return true;
-            // The window has still left the source display: save that and resume capture.
+            // The park may still have moved the window: save that and let capture re-check.
             NoteFrameChange();
             RefreshSources();
             return false;

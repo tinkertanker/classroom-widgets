@@ -49,6 +49,7 @@ export class DisplayPreviewWindow extends EventEmitter {
   private pendingState: DisplayPreviewState | null = null;
   private pendingStart: { streamId: number; sourceId: string; width: number; height: number } | null = null;
   private pendingStop = false;
+  private restoring = false;
   private nextStreamId = 0;
   private streamId: number | null = null;
 
@@ -78,17 +79,21 @@ export class DisplayPreviewWindow extends EventEmitter {
     this.win.webContents.once('destroyed', () => windows.delete(contentsId));
     this.win.on('move', () => this.emit('moved'));
     this.win.on('resize', () => this.emit('resized'));
-    // Fired by the window manager once a restore() has taken effect.
-    // Leaving full screen can land in the maximised state, so wait for both.
+    // Fired by the window manager once a restore() has taken effect. Leaving full
+    // screen can land in the maximised state, so wait until it is neither. Only a
+    // restore() asked for here reacts, so F11 still returns a window to maximised.
     const restored = (): void => {
-      if (!this.win.isDestroyed() && !this.win.isFullScreen() && !this.win.isMaximized()) this.emit('restored');
+      if (!this.restoring || this.win.isDestroyed()) return;
+      if (this.win.isFullScreen()) return;
+      if (this.win.isMaximized()) {
+        this.win.unmaximize();
+        return;
+      }
+      this.restoring = false;
+      this.emit('restored');
     };
     this.win.on('unmaximize', restored);
-    this.win.on('leave-full-screen', () => {
-      // A window maximised before going full screen returns to maximised.
-      if (!this.win.isDestroyed() && this.win.isMaximized()) this.win.unmaximize();
-      else restored();
-    });
+    this.win.on('leave-full-screen', restored);
     this.win.once('closed', () => {
       windows.delete(contentsId);
       this.emit('closed');
@@ -152,6 +157,7 @@ export class DisplayPreviewWindow extends EventEmitter {
     const restoring = this.win.isFullScreen() || this.win.isMaximized();
     if (this.win.isFullScreen()) this.win.setFullScreen(false);
     if (this.win.isMaximized()) this.win.unmaximize();
+    if (restoring) this.restoring = true;
     return restoring;
   }
 
