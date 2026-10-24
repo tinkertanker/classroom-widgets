@@ -2,7 +2,7 @@
 //
 //   dotnet run -c Release --project packages/windows-dashboard/perf/CaptureBench --
 //       [--label NAME] [--source X,Y,W,H] [--preview W,H] [--seconds 20] [--captures 200]
-//       [--cycles 50] [--out DIR]
+//       [--cycles 50] [--out DIR] [--moving-source]
 //
 // --source is the captured region in physical pixels (default: the primary display). With
 // only one display the live phase captures its own window; use another monitor if you can.
@@ -13,12 +13,15 @@
 // To measure a baseline, keep this folder and the csproj and swap in the old capture code:
 //   git checkout <base> -- packages/windows-dashboard/Source
 // Builds without the target-size constructor ignore --preview and capture at source size;
-// summary.json records which constructor ran. "sync" times only the UI-thread work; WPF's
-// render-thread copy and GPU upload show up in the live phase's CPU and input latency.
+// summary.json records which constructor ran. Capture-to-presentation latency starts when
+// the session samples the preview size and ends at FrameReady, on both sync and async builds.
+// It includes worker/dispatcher scheduling but not the 66 ms inter-frame delay. WPF's render
+// thread and GPU upload show up in live CPU and input latency. --moving-source starts a
+// separate animated-source process, excluded from the measured capture-process CPU.
 //
 // Phases, all on one STA dispatcher like the app:
 //   1. idle:      dispatcher latency with no capture, for a baseline.
-//   2. sync:      --captures synchronous captures (Start() captures one frame at once).
+//   2. capture:   --captures completed frames; Start need not emit a frame synchronously.
 //   3. live:      the real 66 ms capture timer feeding an Image in a preview-sized window for
 //                 --seconds, while a worker thread posts an Input-priority item every 16 ms
 //                 and records how late it runs (what a click or key press would feel).
@@ -42,10 +45,17 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Contains("--source-only"))
+        {
+            MovingSource(Options.Parse(args).Source);
+            return 0;
+        }
         var options = Options.Parse(args);
         Directory.CreateDirectory(options.Out);
         var dispatcher = Dispatcher.CurrentDispatcher;
         SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(dispatcher));
+        using var source = args.Contains("--moving-source") ? StartMovingSource(options) : null;
+        Pump(TimeSpan.FromSeconds(1));
         var result = new Dictionary<string, object?>
         {
             ["label"] = options.Label,
@@ -55,18 +65,71 @@ internal static class Program
             ["source"] = options.Source.ToString(),
             ["preview"] = options.Preview.ToString(),
             ["targetSizeConstructor"] = TargetConstructor() is not null,
+            ["movingSource"] = source is not null,
+            ["processorCount"] = Environment.ProcessorCount,
+            ["captureMetric"] = "Preview-size sampling to FrameReady, including scheduling/presentation, excluding cadence delay",
         };
 
-        result["idle"] = Latency(dispatcher, TimeSpan.FromSeconds(Math.Min(5, options.Seconds)), null);
-        result["sync"] = SyncCaptures(options);
-        result["live"] = Live(dispatcher, options);
-        result["gdi"] = GdiCycles(options);
+        try
+        {
+            result["idle"] = Latency(dispatcher, TimeSpan.FromSeconds(Math.Min(5, options.Seconds)), null);
+            result["capture"] = Captures(options);
+            result["live"] = Live(dispatcher, options);
+            result["gdi"] = GdiCycles(options);
+        }
+        finally
+        {
+            if (source is { HasExited: false }) source.Kill();
+        }
 
         var json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(Path.Combine(options.Out, "summary.json"), json);
         File.WriteAllText(Path.Combine(options.Out, "summary.md"), Markdown(result));
         Console.WriteLine(json);
         return 0;
+    }
+
+    private static Process StartMovingSource(Options options)
+    {
+        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+        // Also support `dotnet CaptureBench.dll`, not only the apphost executable.
+        if (Path.GetFileNameWithoutExtension(start.FileName).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
+            start.ArgumentList.Add(typeof(Program).Assembly.Location);
+        start.ArgumentList.Add("--source-only");
+        start.ArgumentList.Add("--source");
+        start.ArgumentList.Add(options.Source.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        return Process.Start(start)!;
+    }
+
+    private static void MovingSource(Rect bounds)
+    {
+        var canvas = new Canvas { Background = Brushes.DarkSlateBlue, ClipToBounds = true };
+        var window = new Window { Content = canvas, WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false };
+        window.SourceInitialized += (_, _) =>
+        {
+            var transform = PresentationSource.FromVisual(window)!.CompositionTarget!.TransformFromDevice;
+            var dip = Rect.Transform(bounds, transform);
+            window.Left = dip.X;
+            window.Top = dip.Y;
+            window.Width = dip.Width;
+            window.Height = dip.Height;
+        };
+        var stripe = new System.Windows.Shapes.Rectangle { Width = 180, Fill = Brushes.Gold };
+        canvas.Children.Add(stripe);
+        var label = new TextBlock { Foreground = Brushes.White, FontSize = 48, Text = "Moving capture source" };
+        canvas.Children.Add(label);
+        Canvas.SetTop(label, 60);
+        var clock = Stopwatch.StartNew();
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        timer.Tick += (_, _) =>
+        {
+            stripe.Height = canvas.ActualHeight;
+            Canvas.SetLeft(stripe, (clock.Elapsed.TotalSeconds * 250) % Math.Max(1, canvas.ActualWidth));
+            label.Text = $"Moving capture source {clock.Elapsed.TotalSeconds:0.00}s";
+        };
+        timer.Start();
+        new Application().Run(window);
+        timer.Stop();
     }
 
     private static ConstructorInfo? TargetConstructor()
@@ -80,32 +143,24 @@ internal static class Program
             : new DisplayCaptureSession(options.Source);
     }
 
-    private static object SyncCaptures(Options options)
+    private static object Captures(Options options)
     {
-        using var session = Create(options, () => options.Preview);
+        var started = 0L;
+        using var session = Create(options, () => { started = Stopwatch.GetTimestamp(); return options.Preview; });
         Exception? failure = null;
         session.Failed += error => failure = error;
-        // Warm up allocations and GDI's first-use costs.
-        for (var i = 0; i < 5; i++) session.Start();
         var samples = new List<double>(options.Captures);
         var frames = 0;
-        var missed = 0;
-        session.FrameReady += () => frames++;
-        for (var i = 0; i < options.Captures && failure is null; i++)
+        session.FrameReady += () =>
         {
-            var before = frames;
-            var started = Stopwatch.GetTimestamp();
-            session.Start();
-            var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-            // Only time captures that produced a frame; a failed or skipped one is counted.
-            if (frames > before) samples.Add(elapsed);
-            else missed++;
-        }
+            if (++frames > 5) samples.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
+        };
+        session.Start();
+        WaitUntil(() => samples.Count >= options.Captures || failure is not null, TimeSpan.FromSeconds(Math.Max(30, options.Captures)), "capture samples");
         var image = session.Image as System.Windows.Media.Imaging.BitmapSource;
         return new
         {
             failure = failure?.Message,
-            missed,
             frameWidth = image?.PixelWidth,
             frameHeight = image?.PixelHeight,
             captureMs = Stats(samples),
@@ -124,6 +179,7 @@ internal static class Program
             UseLayoutRounding = true,
             WindowStyle = WindowStyle.ToolWindow,
             ShowActivated = false,
+            Topmost = true,
             Left = 0,
             Top = 0,
         };
@@ -145,16 +201,20 @@ internal static class Program
         var frames = 0;
         Exception? failure = null;
         var gdiMax = 0u;
+        long workingSetMax = 0;
         session.FrameReady += () =>
         {
             frames++;
             image.Source = session.Image;
             gdiMax = Math.Max(gdiMax, Gdi());
+            using var current = Process.GetCurrentProcess();
+            workingSetMax = Math.Max(workingSetMax, current.WorkingSet64);
         };
         session.Failed += error => failure = error;
         using var process = Process.GetCurrentProcess();
         process.Refresh();
         var cpuBefore = process.TotalProcessorTime;
+        var workingSetBefore = process.WorkingSet64;
         var wall = Stopwatch.StartNew();
         session.Start();
         var latency = Latency(dispatcher, TimeSpan.FromSeconds(options.Seconds), () => failure is not null);
@@ -176,6 +236,9 @@ internal static class Program
             frameHeight = shown?.PixelHeight,
             imageAreaPixels = ImagePixels().ToString(),
             cpuPercentOfOneCore = 100 * cpu.TotalMilliseconds / wall.Elapsed.TotalMilliseconds,
+            workingSetBefore,
+            workingSetMax,
+            workingSetAfter = process.WorkingSet64,
             gdiObjectsMax = gdiMax,
             inputLatencyMs = latency,
         };
@@ -189,8 +252,10 @@ internal static class Program
         {
             var size = cycle % 2 == 0 ? options.Preview : new Size(options.Preview.Width / 2, options.Preview.Height / 2);
             using var session = Create(options, () => size);
+            var frames = 0;
+            session.FrameReady += () => frames++;
             session.Start();
-            session.Start();
+            WaitUntil(() => frames >= 2, TimeSpan.FromSeconds(10), "GDI cycle frames");
             during.Add(Gdi());
         }
         Pump(TimeSpan.FromMilliseconds(200));
@@ -203,18 +268,32 @@ internal static class Program
     private static object Latency(Dispatcher dispatcher, TimeSpan duration, Func<bool>? stop)
     {
         var samples = new List<double>();
+        var heartbeat = new List<double>();
+        var lastBeat = Stopwatch.GetTimestamp();
+        var timer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromMilliseconds(16) };
+        timer.Tick += (_, _) =>
+        {
+            heartbeat.Add(Math.Max(0, Stopwatch.GetElapsedTime(lastBeat).TotalMilliseconds - 16));
+            lastBeat = Stopwatch.GetTimestamp();
+        };
+        timer.Start();
         var gate = new object();
+        var pending = 0;
         using var done = new ManualResetEventSlim();
         var worker = new Thread(() =>
         {
             while (!done.IsSet)
             {
-                var posted = Stopwatch.GetTimestamp();
-                dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                if (Interlocked.CompareExchange(ref pending, 1, 0) == 0)
                 {
-                    var late = Stopwatch.GetElapsedTime(posted).TotalMilliseconds;
-                    lock (gate) samples.Add(late);
-                }));
+                    var posted = Stopwatch.GetTimestamp();
+                    dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                    {
+                        var late = Stopwatch.GetElapsedTime(posted).TotalMilliseconds;
+                        lock (gate) samples.Add(late);
+                        Interlocked.Exchange(ref pending, 0);
+                    }));
+                }
                 done.Wait(16);
             }
         }) { IsBackground = true };
@@ -223,8 +302,19 @@ internal static class Program
         while (deadline.Elapsed < duration && !(stop?.Invoke() ?? false)) Pump(TimeSpan.FromMilliseconds(50));
         done.Set();
         worker.Join();
+        timer.Stop();
         Pump(TimeSpan.FromMilliseconds(100));
-        lock (gate) return Stats(samples);
+        lock (gate) return new { input = Stats(samples), heartbeatDelay = Stats(heartbeat) };
+    }
+
+    private static void WaitUntil(Func<bool> condition, TimeSpan timeout, string what)
+    {
+        var deadline = Stopwatch.StartNew();
+        while (!condition())
+        {
+            if (deadline.Elapsed > timeout) throw new TimeoutException($"Waiting for {what}");
+            Pump(TimeSpan.FromMilliseconds(5));
+        }
     }
 
     private static void Pump(TimeSpan duration)
@@ -285,13 +375,15 @@ internal static class Program
 
             | Measure | Value |
             | --- | --- |
-            | Frame size | {Get("sync", "frameWidth")}x{Get("sync", "frameHeight")} |
-            | Capture ms p50 / p95 / max | {Get("sync", "captureMs", "p50")} / {Get("sync", "captureMs", "p95")} / {Get("sync", "captureMs", "max")} |
+            | Frame size | {Get("capture", "frameWidth")}x{Get("capture", "frameHeight")} |
+            | Capture-to-presentation ms p50 / p95 / max | {Get("capture", "captureMs", "p50")} / {Get("capture", "captureMs", "p95")} / {Get("capture", "captureMs", "max")} |
             | Live fps | {Get("live", "fps")} |
             | Live CPU % of one core | {Get("live", "cpuPercentOfOneCore")} |
-            | Input latency idle p50 / p95 / max ms | {Get("idle", "p50")} / {Get("idle", "p95")} / {Get("idle", "max")} |
-            | Input latency live p50 / p95 / p99 / max ms | {Get("live", "inputLatencyMs", "p50")} / {Get("live", "inputLatencyMs", "p95")} / {Get("live", "inputLatencyMs", "p99")} / {Get("live", "inputLatencyMs", "max")} |
-            | Input items later than 33 ms (live) | {Get("live", "inputLatencyMs", "over33")} of {Get("live", "inputLatencyMs", "count")} |
+            | Input latency idle p50 / p95 / max ms | {Get("idle", "input", "p50")} / {Get("idle", "input", "p95")} / {Get("idle", "input", "max")} |
+            | Input latency live p50 / p95 / p99 / max ms | {Get("live", "inputLatencyMs", "input", "p50")} / {Get("live", "inputLatencyMs", "input", "p95")} / {Get("live", "inputLatencyMs", "input", "p99")} / {Get("live", "inputLatencyMs", "input", "max")} |
+            | Input items later than 33 ms (live) | {Get("live", "inputLatencyMs", "input", "over33")} of {Get("live", "inputLatencyMs", "input", "count")} |
+            | Heartbeat delay live p95 / max ms | {Get("live", "inputLatencyMs", "heartbeatDelay", "p95")} / {Get("live", "inputLatencyMs", "heartbeatDelay", "max")} |
+            | Working set before / peak / after bytes | {Get("live", "workingSetBefore")} / {Get("live", "workingSetMax")} / {Get("live", "workingSetAfter")} |
             | GDI objects live max | {Get("live", "gdiObjectsMax")} |
             | GDI objects before / during max / after {Get("gdi", "cycles")} sessions | {Get("gdi", "before")} / {Get("gdi", "duringMax")} / {Get("gdi", "after")} |
 

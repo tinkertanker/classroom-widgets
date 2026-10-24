@@ -11,6 +11,67 @@ public sealed class DisplayCaptureSessionTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
+    // Async capture can regress by blocking Start, touching WPF callbacks on a worker,
+    // accumulating frames behind a busy dispatcher, or publishing after disposal. Exercise
+    // the real GDI session, with a deliberately stalled dispatcher rather than mock capture.
+    [Fact]
+    public void StartReturnsBeforeCaptureAndDisposalSuppressesPendingFrames()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+            var frames = 0;
+            Exception? failure = null;
+            using var session = new DisplayCaptureSession(new Rect(0, 0, 400, 300),
+                canCapture: () => { dispatcher.VerifyAccess(); return true; },
+                targetPixelSize: () => { dispatcher.VerifyAccess(); return new Size(200, 150); });
+            session.FrameReady += () => { dispatcher.VerifyAccess(); frames++; };
+            session.Failed += error => { dispatcher.VerifyAccess(); failure = error; };
+            session.Start();
+            Assert.Equal(0, frames);
+            Assert.Null(session.Image);
+            WpfTestHost.PumpUntil(() => frames > 0 || failure is not null, Timeout, "the asynchronous first frame");
+            Assert.Null(failure);
+
+            // Repeated starts must not force synchronous frames or queue extra work.
+            var before = frames;
+            for (var i = 0; i < 50; i++) session.Start();
+            Thread.Sleep(350);
+            Assert.Equal(before, frames);
+            session.Dispose();
+            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
+            Assert.Equal(before, frames);
+            Assert.Null(session.Image);
+            Assert.Null(failure);
+            WpfTestHost.SaveEvidenceText("211-async-lifecycle.txt",
+                $"Start returned before its first frame; {before} frames before dispatcher stall; no events after disposal.\n");
+        });
+    }
+
+    [Fact]
+    public void HiddenCaptureReleasesSurfaceAndResumesWithoutStaleFrames()
+    {
+        WpfTestHost.Run(() =>
+        {
+            var visible = true;
+            var frames = 0;
+            using var session = new DisplayCaptureSession(new Rect(0, 0, 400, 300), () => visible);
+            session.FrameReady += () => frames++;
+            session.Start();
+            WpfTestHost.PumpUntil(() => frames >= 2, Timeout, "live capture before hiding");
+            var liveGdi = GdiObjects();
+            visible = false;
+            var before = frames;
+            WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(500));
+            Assert.Equal(before, frames);
+            var hiddenGdi = GdiObjects();
+            Assert.True(hiddenGdi <= liveGdi - 2, $"live={liveGdi}, hidden={hiddenGdi}");
+            visible = true;
+            WpfTestHost.PumpUntil(() => frames >= before + 2, Timeout, "capture after showing again");
+            WpfTestHost.SaveEvidenceText("211-hidden-surface.txt", $"liveGdi={liveGdi} hiddenGdi={hiddenGdi}; resumed\n");
+        });
+    }
+
     // GDI's 32-bit BI_RGB layout is B, G, R, then an unused byte that GDI is free to leave at zero.
     [Fact]
     public void PresentFrameRendersOpaquePixelsInGdiChannelOrderWhenHighByteIsZero()
