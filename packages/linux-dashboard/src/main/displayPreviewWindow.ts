@@ -50,7 +50,7 @@ export class DisplayPreviewWindow extends EventEmitter {
   private pendingStart: { streamId: number; sourceId: string; width: number; height: number } | null = null;
   private pendingStop = false;
   private restoring = false;
-  /** Bumped by each restore() and cancelRestore(), so a stale settle never reports. */
+  /** Bumped by a restore() that starts a restore and by cancelRestore(), so a stale settle never reports. */
   private restoreToken = 0;
   private unmaximiseQueued = false;
   private maximisedUnderFullScreen = false;
@@ -202,10 +202,12 @@ export class DisplayPreviewWindow extends EventEmitter {
   }
 
   /**
-   * Unmaximises a little later rather than from inside a window-state event:
-   * xfwm4 ignores an unmaximise sent from there and answers with a storm of
-   * state events. Re-sends while a restore is still waiting on a maximised window;
-   * the coordinator's fallback ends the wait.
+   * Unmaximises a little later rather than from inside a window-state handler:
+   * changing window state there makes Electron re-dispatch state events
+   * synchronously (hundreds deep under xfwm4), and the request is lost. Re-sends
+   * about every 130 ms while a restore is still waiting on a maximised window.
+   * Callers of restore() must end the wait with cancelRestore(), as the
+   * coordinator's fallback does, or this keeps re-sending.
    */
   private requestUnmaximise(): void {
     if (this.unmaximiseQueued) return;
