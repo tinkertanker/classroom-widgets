@@ -367,7 +367,11 @@ public sealed class DisplayPreviewCoordinator : IDisposable
             var parked = DisplayGeometry.Clamp(bounds, target.WorkingArea);
             if (!_window.SetPhysicalBounds(parked) || !_window.SetPhysicalBounds(parked)) return false;
             _window.UpdateLayout();
-            return SnapTo(preset, allowMonitorChange: false);
+            if (SnapTo(preset, allowMonitorChange: false)) return true;
+            // The window has still left the source display: save that and resume capture.
+            NoteFrameChange();
+            RefreshSources();
+            return false;
         }
         var preview = _window.PreviewSizePixels;
         if (preview.IsEmpty) return false;

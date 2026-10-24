@@ -165,8 +165,14 @@ export class DisplayPreviewCoordinator extends EventEmitter {
     this.deps.screen.removeListener?.('display-removed', this.displayChanged);
     this.deps.screen.removeListener?.('display-metrics-changed', this.displayChanged);
     this.stop();
+    this.cancelPendingSnap();
     this.window?.close();
     this.window = null;
+  }
+
+  private cancelPendingSnap(): void {
+    if (this.pendingSnap) clearTimeout(this.pendingSnap.timer);
+    this.pendingSnap = null;
   }
 
   private applyDisplayAvailability(): void {
@@ -223,6 +229,7 @@ export class DisplayPreviewCoordinator extends EventEmitter {
       this.stopCapture();
       if (this.frameTimer) clearTimeout(this.frameTimer);
       this.frameTimer = null;
+      this.cancelPendingSnap();
       this.window = null;
       this.reconnect.windowClosed();
       this.emit('closed');

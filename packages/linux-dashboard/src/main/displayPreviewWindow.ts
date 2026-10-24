@@ -79,8 +79,16 @@ export class DisplayPreviewWindow extends EventEmitter {
     this.win.on('move', () => this.emit('moved'));
     this.win.on('resize', () => this.emit('resized'));
     // Fired by the window manager once a restore() has taken effect.
-    this.win.on('unmaximize', () => this.emit('restored'));
-    this.win.on('leave-full-screen', () => this.emit('restored'));
+    // Leaving full screen can land in the maximised state, so wait for both.
+    const restored = (): void => {
+      if (!this.win.isDestroyed() && !this.win.isFullScreen() && !this.win.isMaximized()) this.emit('restored');
+    };
+    this.win.on('unmaximize', restored);
+    this.win.on('leave-full-screen', () => {
+      // A window maximised before going full screen returns to maximised.
+      if (!this.win.isDestroyed() && this.win.isMaximized()) this.win.unmaximize();
+      else restored();
+    });
     this.win.once('closed', () => {
       windows.delete(contentsId);
       this.emit('closed');

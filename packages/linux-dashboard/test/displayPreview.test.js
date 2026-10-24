@@ -571,3 +571,17 @@ test('a restore the window manager never reports still applies the preset after 
   await new Promise((resolve) => setTimeout(resolve, 1200));
   assert.equal(window.bounds.x, 12);
 });
+
+test('closing Display drops a preset still waiting for a restore', () => {
+  const fixture = snapFixture();
+  const { coordinator } = fixture;
+  fixture.window.restore = () => true;
+  coordinator.snapTo('left-half');
+  fixture.window.close();
+  // A new window must not inherit the stale wait; its preset applies at once.
+  coordinator.open();
+  const reopened = coordinator.window;
+  reopened.bounds = { x: 100, y: 100, width: 480, height: 402 };
+  coordinator.snapTo('left-half');
+  assert.equal(reopened.bounds.x, 12, JSON.stringify(reopened.bounds));
+});
