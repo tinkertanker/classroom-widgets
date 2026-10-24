@@ -5,7 +5,7 @@ import AppKit
 /// revision is monotonic for each host instance so native can reject stale
 /// reconciliation results without blocking a reloaded web process.
 struct WidgetPanelDescriptor {
-    struct Size {
+    struct Size: Equatable {
         let width: CGFloat
         let height: CGFloat
 
