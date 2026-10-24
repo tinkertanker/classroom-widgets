@@ -2,10 +2,10 @@
 // presentation must not touch its native window, its chrome or the tray menu.
 // Build the teacher app (vite build) and this package first, then from the
 // repository root:
-// Run with an X11 window manager (e.g. Openbox), xprop and xdotool installed:
+// Run with an X11 window manager (e.g. Openbox), xprop, xdotool and ffmpeg installed:
 // CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=<dir> packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/panelPresentation.cjs
 // Evidence: panel-presentation.txt (per-step counts) and dark-panels.png.
-const { app, BrowserWindow, globalShortcut, nativeTheme, Tray } = require('electron');
+const { app, BrowserWindow, globalShortcut, nativeTheme, screen, Tray } = require('electron');
 const assert = require('node:assert/strict');
 const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');
@@ -32,6 +32,13 @@ registerPrivilegedScheme();
 const lines = [];
 const record = message => { lines.push(message); console.log(message); };
 const delay = ms => new Promise(done => setTimeout(done, ms));
+// BrowserWindow.capturePage omits its child WebContentsView. Capture the actual
+// desktop so evidence includes both the native stacking and rendered widget.
+const capture = name => {
+  const { width, height } = screen.getPrimaryDisplay().size;
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'x11grab', '-video_size', `${width}x${height}`,
+    '-i', process.env.DISPLAY, '-frames:v', '1', join(evidence, name)]);
+};
 async function until(label, check) {
   for (let i = 0; i < 300; i++) {
     const value = await check();
@@ -154,7 +161,7 @@ app.whenReady().then(async () => {
   const inventories = inventory(host).revision - startRevision;
   record(`typing 5 keys into one of 6 panels: inventories=${inventories} setters=${typed.setters} chromeUpdates=${typed.chrome} trayMenus=${typed.trayMenus} calls=${JSON.stringify(typed.calls)}`);
   record(`stable X11 stacking order: ${JSON.stringify(beforeOrder)}`);
-  writeFileSync(join(evidence, 'edited-list.png'), (await listWindow.capturePage()).toPNG());
+  capture('edited-list.png');
   assert.ok(inventories >= 5, 'each key sends an inventory');
   assert.equal(typed.setters, 0, 'typing must not call native window setters');
   assert.equal(typed.chrome, 0, 'typing must not resend panel chrome');
@@ -172,7 +179,7 @@ app.whenReady().then(async () => {
   await delay(500);
   const themed = summary();
   record(`theme light->dark: setters=${themed.setters} chromeUpdates=${themed.chrome} trayMenus=${themed.trayMenus} calls=${JSON.stringify(themed.calls)}`);
-  writeFileSync(join(evidence, 'dark-panels.png'), (await listWindow.capturePage()).toPNG());
+  capture('dark-panels.png');
 
   // Change native fields with the same content revisions. Presentation and
   // snapshot deduplication must be independent, including aspect on creation.
