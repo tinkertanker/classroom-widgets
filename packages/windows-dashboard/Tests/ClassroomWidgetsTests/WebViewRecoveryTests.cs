@@ -12,6 +12,87 @@ namespace ClassroomWidgetsTests;
 
 public sealed class WebViewRecoveryTests
 {
+    // Failure modes: List inventories raise idle panels or allocate chrome again;
+    // deduplication incorrectly drops changed constraints/theme or a recovered panel.
+    [Fact]
+    public void ListEditingPreservesPanelPresentation()
+        => WithBrowser((host, _) =>
+        {
+            foreach (var type in new[] { 2, 1, 4, 12 }) Add(host, type);
+            var panels = Panels(host);
+            var list = panels.First();
+            WaitForTextArea(View(list));
+            for (var i = 0; i < panels.Count; i++)
+                panels[i].SetFrame(new Rect(100 + i * 30, 100 + i * 30, 360, 430));
+            list.Activate();
+            var handles = panels.Select(p => new System.Windows.Interop.WindowInteropHelper(p).Handle).ToHashSet();
+            nint[] Order()
+            {
+                var result = new List<nint>();
+                for (var handle = GetTopWindow(0); handle != 0; handle = GetWindow(handle, 2))
+                    if (handles.Contains(handle)) result.Add(handle);
+                return result.ToArray();
+            }
+            var before = Order();
+            Assert.Equal(4, before.Length);
+            Assert.Equal(new System.Windows.Interop.WindowInteropHelper(list).Handle, before[0]);
+            var resources = panels.Select(p => new[] { p.Resources["PanelBackground"], p.Resources["ChromeForeground"], p.Resources["ChromeHover"] }).ToArray();
+            foreach (var text in new[] { "A", "AB", "ABC", "ABCD", "ABCDE" })
+            {
+                EnterText(View(list), text);
+                WaitForState(host, text);
+                Assert.Equal(before, Order());
+                for (var i = 0; i < panels.Count; i++)
+                {
+                    Assert.Same(resources[i][0], panels[i].Resources["PanelBackground"]);
+                    Assert.Same(resources[i][1], panels[i].Resources["ChromeForeground"]);
+                    Assert.Same(resources[i][2], panels[i].Resources["ChromeHover"]);
+                }
+            }
+            Log($"#213 five accepted List edits: stable native z-order {string.Join(",", before)}, no replacement chrome brushes");
+            Capture("panel-presentation-list.png", View(list));
+            var original = Descriptor(list);
+            var dark = JsonSerializer.SerializeToElement(new { theme = "dark" });
+            list.Apply(original with { Title = "Changed title", MinimumContentSize = new(271, 193),
+                MaximumContentSize = new(643, 517), IsResizable = false, AspectRatio = 2, SnapshotPayload = dark });
+            Assert.Equal("Changed title", list.Title);
+            Assert.Equal("Changed title", list.TitleText.Text);
+            Assert.Equal(271, list.MinWidth);
+            Assert.Equal(223, list.MinHeight);
+            Assert.Equal(643, list.MaxWidth);
+            Assert.Equal(547, list.MaxHeight);
+            Assert.Equal(ResizeMode.NoResize, list.ResizeMode);
+            Assert.NotSame(resources[0][0], list.Resources["PanelBackground"]);
+            list.Apply(original with { AspectRatio = 2 });
+            var snapped = list.SnapFrame(WindowSnapPreset.LeftHalf, new Rect(0, 0, 1600, 1000))!.Value;
+            Assert.InRange(snapped.Width / (snapped.Height - WidgetPanelWindow.ChromeHeight), 1.99, 2.01);
+            Assert.Equal(original.Title, list.Title);
+            Assert.Equal(double.PositiveInfinity, list.MaxWidth);
+            Assert.Equal(ResizeMode.CanResize, list.ResizeMode);
+            list.Apply(original);
+            list.ApplyPresentationSettings(0.65, true);
+            Assert.Equal(0.65, ((System.Windows.Media.SolidColorBrush)list.Resources["PanelBackground"]).Opacity);
+            panels.Last().Activate();
+            Assert.Equal(new System.Windows.Interop.WindowInteropHelper(panels.Last()).Handle, Order()[0]);
+            Complete(host.ToggleWidgetAsync(1));
+            WpfTestHost.PumpUntil(() => !panels[1].IsVisible, TimeSpan.FromSeconds(15), "hidden Timer");
+            Complete(host.ShowWidgetAsync(1));
+            WpfTestHost.PumpUntil(() => panels[1].IsVisible, TimeSpan.FromSeconds(15), "unhidden Timer");
+            list.Hide();
+            host.Coordinator.Activate();
+            Assert.True(list.IsVisible);
+            Complete(host.ReloadWidgetsAsync());
+            WpfTestHost.PumpUntil(() => Panels(host).Count == 4 && !ReferenceEquals(Panels(host)[0], list),
+                TimeSpan.FromSeconds(30), "replacement panels after reload");
+            WaitForListText(View(Panels(host)[0]), "ABCDE");
+            Log("#213 changed title/min/max/resize/aspect/theme/opacity apply; explicit raise, hide/show and reload recovery pass");
+        });
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint GetTopWindow(nint parent);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern nint GetWindow(nint window, uint command);
+
     // Failure modes: navigating a browser's closed control never restores the
     // host; a launcher's ready flag hides a crashed renderer; one failed panel
     // checkpoint discards another panel's destructively collected latest edit.

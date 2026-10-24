@@ -4,6 +4,56 @@ import XCTest
 @testable import ClassroomWidgets
 
 final class WidgetCheckpointTests: XCTestCase {
+    // Inventories emitted by List editing must not raise idle overlapping panels.
+    // Initial display, explicit raises, hidden panels and reload recovery still show.
+    @MainActor
+    func testListEditingPreservesOverlappingPanelOrder() async throws {
+        try XCTSkipUnless(FileManager.default.fileExists(atPath: WebRootResolver.resolve().appendingPathComponent("index.html").path),
+                          "Build teacher assets with pnpm --filter @classroom-widgets/teacher build:desktop")
+        _ = NSApplication.shared
+        let panels = WidgetPanelCoordinator()
+        let host = WidgetHostController(websiteDataStore: .nonPersistent(), panelCoordinator: panels)
+        defer { panels.deactivate(); host.webView.stopLoading() }
+        try await waitUntil { !host.widgetOptions.isEmpty }
+        for type in [2, 1, 4, 12] { host.addWidget(type) }
+        let titles = ["List", "Timer", "Traffic Light", "QR Code"]
+        try await waitUntil { titles.allSatisfy { self.panelWebView(title: $0) != nil } }
+        let list = try XCTUnwrap(panelWebView(title: "List"))
+        let window = try XCTUnwrap(list.window)
+        let windows = try titles.map { try XCTUnwrap(panelWebView(title: $0)?.window) }
+        for (index, panel) in windows.enumerated() {
+            panel.setFrameOrigin(NSPoint(x: 100 + index * 30, y: 180 + index * 30))
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        let ids = Set(windows.map(\.windowNumber))
+        func order() -> [Int] { NSApp.orderedWindows.map(\.windowNumber).filter { ids.contains($0) } }
+        let before = order()
+        XCTAssertEqual(before.first, window.windowNumber)
+        try await waitUntil { (try? await list.evaluateJavaScript("!!document.querySelector('textarea')")) as? Bool == true }
+        for text in ["A", "AB", "ABC", "ABCD", "ABCDE"] {
+            try await type(text, in: list)
+            try await waitUntil { try await self.hostContains(text, host: host) }
+            XCTAssertEqual(order(), before, "Accepted List edit \(text) must not reorder visible panels")
+        }
+        let other = try XCTUnwrap(windows.last)
+        other.makeKeyAndOrderFront(nil)
+        XCTAssertEqual(order().first, other.windowNumber, "Explicit user raises must still work")
+        other.orderOut(nil)
+        XCTAssertFalse(other.isVisible)
+        panels.activate()
+        try await waitUntil { other.isVisible }
+        host.reloadWidgets()
+        try await waitUntil { self.panelWebView(title: "List").map { $0 !== list } == true }
+        try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "ABCDE" }
+        let evidence = "PASS five accepted List edits preserve panel order \(before); explicit raise, order-out recovery and reload retain ABCDE\n"
+        print(evidence)
+        if let directory = ProcessInfo.processInfo.environment["CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR"] {
+            try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+            try evidence.write(toFile: directory + "/panel-presentation.txt", atomically: true, encoding: .utf8)
+        }
+    }
+
     @MainActor
     func testFailedReloadPreservesHealthyPendingEdits() async throws {
         try await exerciseFailedCheckpoint(quit: false)
