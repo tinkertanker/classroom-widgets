@@ -3,65 +3,124 @@
 <head>
 <meta charset="utf-8">
 <title>Classroom Widgets OG card</title>
-<!-- 1200x630 link-preview card for widgets.tk.sg. Render with ./render.sh. -->
+<!-- Fixed-size media composition, not a web page. Render with ./render.sh. -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&display=block" rel="stylesheet">
 <style>
   * { box-sizing: border-box; }
   html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
-  body { position: relative; font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; color: #fff; }
-  .bg { position: absolute; inset: -40px; background: url(../display-widget-demo/pipeline/assets/lowpoly-bg-blur.jpg) center/cover; }
-  .vig { position: absolute; inset: 0; background: radial-gradient(900px 560px at 50% 45%, rgba(60,30,5,0) 0%, rgba(60,30,5,.35) 100%), rgba(90,50,15,.18); }
-  .logo { position: absolute; left: 50%; top: 22px; width: 216px; height: 216px; margin-left: -108px; filter: drop-shadow(0 8px 14px rgba(40,20,0,.35)); }
-  .title { position: absolute; left: 0; right: 0; top: 222px; text-align: center; font-size: 92px; font-weight: 700; letter-spacing: -1px; text-shadow: 0 5px 18px rgba(60,30,0,.35); }
-  .subtitle { position: absolute; left: 0; right: 0; top: 352px; text-align: center; font-size: 32px; font-weight: 600; color: #fbe2c4; text-shadow: 0 3px 12px rgba(60,30,0,.3); }
-  .link { position: absolute; left: 50%; top: 424px; transform: translateX(-50%); padding: 4px 56px 12px; border-radius: 60px; background: #cc7d4a; font-size: 64px; font-weight: 700; box-shadow: 0 12px 26px rgba(60,30,0,.3); white-space: nowrap; }
-  .platforms { position: absolute; left: 0; right: 0; top: 548px; text-align: center; font-size: 28px; font-weight: 600; }
-  .sticker { position: absolute; }
-  .sticker svg { display: block; overflow: visible; }
+  body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; color: #fffdf8; background: #88501d; }
+  .bg { position: absolute; inset: -40px; width: 1280px; height: 710px; object-fit: cover; }
+  .shade { position: absolute; inset: 0; background: linear-gradient(100deg, #482307b8, #6c350838 65%, #c5892420); }
+  .copy { position: absolute; left: 64px; top: 66px; }
+  .eyebrow { margin: 0 0 22px; font-size: 19px; font-weight: 600; letter-spacing: 3px; color: #ffe5bc; }
+  h1 { margin: 0; font-size: 78px; line-height: 1.13; letter-spacing: -3px; font-weight: 700; }
+  .subtitle { margin: 25px 0 0; font-size: 27px; line-height: 1.6; color: #ffe8ca; font-weight: 500; }
+  .link { position: absolute; left: 64px; bottom: 92px; padding: 12px 28px; border-radius: 22px; background: #fff4de; color: #653914; font-size: 36px; font-weight: 700; letter-spacing: -.8px; box-shadow: 0 8px 24px #3d210326; }
+  .platforms { position: absolute; left: 66px; bottom: 43px; font-size: 20px; font-weight: 500; color: #ffe8ca; }
+  .scene { position: absolute; right: 26px; top: 33px; width: 510px; height: 540px; overflow: visible; }
+  .label { font-family: 'Poppins', sans-serif; font-weight: 600; }
 </style>
 </head>
 <body>
-  <div class="bg"></div><div class="vig"></div>
-  <div id="stickers"></div>
-  <img class="logo" src="../../packages/teacher/public/logo-mark.png" alt="">
-  <div class="title">Classroom Widgets</div>
-  <div class="subtitle">Free timers, polls, Q&amp;A and more for teachers</div>
-  <div class="link">widgets.tk.sg</div>
-  <div class="platforms">Web app&nbsp; · &nbsp;macOS&nbsp; · &nbsp;Windows&nbsp; · &nbsp;Linux</div>
+  <img class="bg" src="../display-widget-demo/pipeline/assets/lowpoly-bg-blur.jpg" alt="">
+  <div class="shade"></div>
+  <div class="copy">
+    <p class="eyebrow">LITTLE TOOLS. BIG CLASSROOM ENERGY.</p>
+    <h1>Classroom<br>Widgets</h1>
+    <p class="subtitle">Free timers, polls, Q&amp;A &amp; more.<br>No logins. Just teach.</p>
+  </div>
+  <div class="link">widgets.tk.sg <span aria-hidden="true">↗</span></div>
+  <div class="platforms">Web app · macOS · Windows · Linux</div>
+  <svg class="scene" viewBox="0 0 510 540" role="img" aria-label="Our hamster starts a rainbow timer and brings a live poll to life">
+    <defs>
+      <linearGradient id="rainbow" gradientUnits="userSpaceOnUse" x1="111" x2="429"><stop stop-color="#ec5a4b"/><stop offset=".167" stop-color="#f48d2f"/><stop offset=".333" stop-color="#f4c332"/><stop offset=".5" stop-color="#5cb866"/><stop offset=".667" stop-color="#2fb2ad"/><stop offset=".833" stop-color="#4a8ddf"/><stop offset="1" stop-color="#9868d8"/></linearGradient>
+      <radialGradient id="face" cx="35%" cy="25%" r="80%"><stop stop-color="#fffdf8"/><stop offset="1" stop-color="#eee2cb"/></radialGradient>
+      <filter id="shadow" x="-40%" y="-40%" width="180%" height="190%"><feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#45280c" flood-opacity=".25"/></filter>
+      <filter id="sticker" x="-40%" y="-50%" width="180%" height="200%">
+        <feMorphology in="SourceAlpha" operator="dilate" radius=".65" result="edge"/>
+        <feFlood flood-color="#fffdf8"/><feComposite in2="edge" operator="in"/>
+        <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+      <!-- The app's hamster, from scripts/generateAppIcons.mjs / timer creatures.tsx. -->
+      <g id="hamster-art" filter="url(#sticker)">
+        <ellipse cx="0" cy="0" rx="6" ry="4.5" fill="#D2691E" stroke="#8B4513" stroke-width=".8"/>
+        <g id="head">
+          <circle cx="-4" cy="-1.5" r="3.5" fill="#DEB887" stroke="#8B4513" stroke-width=".8"/>
+          <circle cx="-5.5" cy="-3.5" r="1.3" fill="#D2691E"/><circle cx="-2.5" cy="-3.5" r="1.3" fill="#D2691E"/>
+          <g id="eyes"><circle cx="-5" cy="-1.5" r=".7"/><circle cx="-3" cy="-1.5" r=".7"/><circle cx="-4.8" cy="-1.8" r=".3" fill="#fff"/><circle cx="-2.8" cy="-1.8" r=".3" fill="#fff"/></g>
+          <circle cx="-6.5" cy="-.5" r=".4" fill="#8B4513"/>
+        </g>
+        <g id="feet" fill="#654321" stroke="#3D2611" stroke-width=".3">
+          <ellipse cx="-2.5" cy="3.5" rx="1" ry="1.5"/><ellipse cx="-4" cy="3.5" rx="1" ry="1.5"/><ellipse cx="1.5" cy="3.5" rx="1" ry="1.5"/><ellipse cx="3" cy="3.5" rx="1" ry="1.5"/>
+        </g>
+        <path d="M4.5 0Q7 -1.5 8.5 1" stroke="#8B4513" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      </g>
+    </defs>
+    <!-- The hamster peeks from behind the dial, then hops onto its spent notch. -->
+    <g id="dial" filter="url(#shadow)">
+      <circle cx="270" cy="265" r="165" fill="#fffdf8"/>
+      <circle cx="270" cy="265" r="132" fill="url(#face)" stroke="#e3d5bc" stroke-width="24"/>
+      <path id="band-border" fill="none" stroke="#fffdf8" stroke-width="78" stroke-linecap="round"/>
+      <path id="band" fill="none" stroke="url(#rainbow)" stroke-width="54" stroke-linecap="round"/>
+    </g>
+    <g id="mascot"><use href="#hamster-art"/></g>
+    <g id="tap" fill="none" stroke="#fff2c5" stroke-width="5" stroke-linecap="round"><path d="M112 235l-17 5M120 249l-10 14M110 219l-17 -8"/></g>
+    <g id="poll" transform="translate(270 375) rotate(6)">
+      <rect width="206" height="149" rx="23" fill="#fffdf8" filter="url(#shadow)"/>
+      <text x="22" y="35" class="label" font-size="17" fill="#67482f">Everyone's in.</text>
+      <path d="M22 121H183" stroke="#e8dfd1" stroke-width="2"/>
+      <rect id="bar1" x="26" width="35" rx="7" fill="#79a67b"/>
+      <rect id="bar2" x="83" width="35" rx="7" fill="#db9870"/>
+      <rect id="bar3" x="140" width="35" rx="7" fill="#8caacb"/>
+    </g>
+    <g transform="translate(74 389) rotate(-8)">
+      <rect width="148" height="56" rx="18" fill="#fff4de" filter="url(#shadow)"/>
+      <text id="timer-label" x="74" y="36" text-anchor="middle" class="label" font-size="21" fill="#67482f">Let's go!</text>
+    </g>
+    <path id="spark" d="M410 86l7 20 21 7-21 7-7 20-7-20-21-7 21-7Z" fill="#ffe4a0" stroke="#fffdf8" stroke-width="5"/>
+  </svg>
 <script>
-// Sticker artwork and outline filter match media/display-widget-demo/pipeline/compose/compose.js.
-const STICKERS = {
-  star: { vb: '0 0 576 512', color: '#f5c536', body: `<path d="M316.9 18C311.6 7 300.4 0 288.1 0s-23.4 7-28.8 18L195 150.3 51.4 171.5c-12 1.8-22 10.2-25.7 21.7s-.7 24.2 7.9 32.7L137.8 329 113.2 474.7c-2 12 3 24.2 12.9 31.3s23 8 33.8 2.3l128.3-68.5 128.3 68.5c10.8 5.7 23.9 4.9 33.8-2.3s14.9-19.3 12.9-31.3L438.5 329 542.7 225.9c8.6-8.5 11.7-21.2 7.9-32.7s-13.7-19.9-25.7-21.7L381.2 150.3 316.9 18z" fill="url(#G)"/>`, grad: .7 },
-  heart: { vb: '0 0 512 512', color: '#ec5b6e', body: `<path d="M47.6 300.4L228.3 469.1c7.5 7 17.4 10.9 27.7 10.9s20.2-3.9 27.7-10.9L464.4 300.4c30.4-28.3 47.6-68 47.6-109.5v-5.8c0-69.9-50.5-129.5-119.4-141C347 36.5 300.6 51.4 268 84L256 96 244 84c-32.6-32.6-79-47.5-124.6-39.9C50.5 55.6 0 115.2 0 185.1v5.8c0 41.5 17.2 81.2 47.6 109.5z" fill="url(#G)"/>`, grad: .6 },
-  smile: { vb: '0 0 512 512', color: '#4a8fe0', body: `<circle cx="256" cy="256" r="240" fill="url(#G)"/><ellipse cx="180" cy="200" rx="28" ry="42" fill="white"/><ellipse cx="332" cy="200" rx="28" ry="42" fill="white"/><path d="M180 320 Q256 380 332 320" stroke="white" stroke-width="36" fill="none" stroke-linecap="round"/>`, grad: .6 },
-  rainbow: { vb: '0 60 512 360', color: '#000', body: `<g transform="translate(0, 60)"><path d="M256 80C362 80 448 166 448 272L448 320L416 320L416 272C416 183 343 112 256 112C169 112 96 183 96 272L96 320L64 320L64 272C64 166 150 80 256 80Z" fill="#ff4444"/><path d="M256 112C343 112 416 183 416 272L416 320L384 320L384 272C384 201 327 144 256 144C185 144 128 201 128 272L128 320L96 320L96 272C96 183 169 112 256 112Z" fill="#ff8800"/><path d="M256 144C327 144 384 201 384 272L384 320L352 320L352 272C352 219 309 176 256 176C203 176 160 219 160 272L160 320L128 320L128 272C128 201 185 144 256 144Z" fill="#ffdd00"/><path d="M256 176C309 176 352 219 352 272L352 320L320 320L320 272C320 237 291 208 256 208C221 208 192 237 192 272L192 320L160 320L160 272C160 219 203 176 256 176Z" fill="#44dd44"/><path d="M256 208C291 208 320 237 320 272L320 320L288 320L288 272C288 255 273 240 256 240C239 240 224 255 224 272L224 320L192 320L192 272C192 237 221 208 256 208Z" fill="#4488ff"/><path d="M256 240C273 240 288 255 288 272L288 320L224 320L224 272C224 255 239 240 256 240Z" fill="#8844ff"/></g>`, grad: 1 },
+const el = id => document.getElementById(id);
+const ease = (t, start, end) => { const x = Math.max(0, Math.min(1, (t - start) / (end - start))); return x * x * (3 - 2 * x); };
+const arc = end => {
+  const point = angle => [270 + 132 * Math.sin(angle * Math.PI / 180), 265 - 132 * Math.cos(angle * Math.PI / 180)];
+  return `M${point(16).join(' ')} A132 132 0 ${end - 16 > 180 ? 1 : 0} 1 ${point(end).join(' ')}`;
 };
-function stickerSVG(name, size, id) {
-  const s = STICKERS[name]; const R = 30;
-  const [vx, vy, vw, vh] = s.vb.split(' ').map(Number);
-  return `<svg width="${size}" height="${size * vh / vw}" viewBox="${s.vb}" style="color:${s.color}">
-    <defs><radialGradient id="${id}g" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="currentColor" stop-opacity="${s.grad}"/><stop offset="100%" stop-color="currentColor" stop-opacity="1"/></radialGradient>
-    <filter id="${id}f" x="-40%" y="-40%" width="180%" height="180%">
-      <feMorphology in="SourceAlpha" operator="dilate" radius="${R}" result="d"/>
-      <feGaussianBlur in="d" stdDeviation="${R * .45}" result="db"/>
-      <feComponentTransfer in="db" result="border"><feFuncA type="linear" slope="6" intercept="-2.2"/></feComponentTransfer>
-      <feFlood flood-color="#fffdf8" result="w"/><feComposite in="w" in2="border" operator="in" result="wb"/>
-      <feGaussianBlur in="border" stdDeviation="${R * .7}" result="sh"/><feOffset in="sh" dx="${R * .35}" dy="${R * .6}" result="sho"/>
-      <feComponentTransfer in="sho" result="shadow"><feFuncA type="linear" slope=".38"/></feComponentTransfer>
-      <feMerge><feMergeNode in="shadow"/><feMergeNode in="wb"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-    <g filter="url(#${id}f)">${s.body.replaceAll('url(#G)', `url(#${id}g)`)}</g></svg>`;
+// Explicit time makes the JPEG and every encoded video frame reproducible.
+window.renderAt = seconds => {
+  const t = ((seconds % 6) + 6) % 6;
+  const hop = ease(t, .7, 1.5);
+  const reset = ease(t, 5, 5.9);
+  const active = hop * (1 - reset);
+  const progress = ease(t, 1.6, 4.6) * (1 - reset);
+  const nod = Math.sin(ease(t, 3.6, 4.4) * Math.PI * 2) * 7;
+  // Move the same opaque mascot between layers at the top of its hop.
+  if (active < .55) el('dial').before(el('mascot'));
+  else el('dial').after(el('mascot'));
+  const peek = 20 * (1 - ease(t, 0, .6) + reset);
+  el('mascot').setAttribute('transform', `translate(${265 - active * 105} ${152 + active * 12 + peek - Math.sin(active * Math.PI) * 85}) rotate(${-32 * active}) scale(12)`);
+  el('head').setAttribute('transform', `rotate(${nod} -4 -1.5)`);
+  const blink = t > 3.25 && t < 3.4 ? .12 : 1;
+  el('eyes').setAttribute('transform', `translate(0 -1.5) scale(1 ${blink}) translate(0 1.5)`);
+  for (const id of ['band', 'band-border']) el(id).setAttribute('d', arc(258 - progress * 64));
+  el('tap').style.opacity = Math.sin(ease(t, 1.45, 1.95) * Math.PI);
+  const bars = ease(t, 1.8, 2.8) * (1 - reset);
+  [42, 67, 53].forEach((height, i) => {
+    const h = 10 + (height - 10) * bars;
+    el(`bar${i + 1}`).setAttribute('y', 120 - h);
+    el(`bar${i + 1}`).setAttribute('height', h);
+  });
+  el('poll').setAttribute('transform', `translate(270 ${385 - 10 * bars}) rotate(${6 - 3 * bars})`);
+  el('timer-label').textContent = t < 1.6 || t >= 5 ? "Let's go!" : `00:0${5 - Math.min(3, Math.floor(t - 1.6))}`;
+  el('spark').style.opacity = .65 + .35 * Math.sin(t * Math.PI / 6) ** 2;
+};
+window.renderAt(3);
+// ?animate is a local art preview only; published previews use the encoded MP4.
+if (new URLSearchParams(location.search).has('animate') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const start = performance.now();
+  const tick = now => { window.renderAt((now - start) / 1000); requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
 }
-[
-  { name: 'star', x: 120, y: 70, size: 112, rot: -12 },
-  { name: 'heart', x: 70, y: 420, size: 108, rot: -10 },
-  { name: 'rainbow', x: 960, y: 92, size: 124, rot: 8 },
-  { name: 'smile', x: 1010, y: 410, size: 104, rot: 10 },
-].forEach((st, i) => {
-  const d = document.createElement('div'); d.className = 'sticker';
-  Object.assign(d.style, { left: st.x + 'px', top: st.y + 'px', transform: `rotate(${st.rot}deg)` });
-  d.innerHTML = stickerSVG(st.name, st.size, 's' + i);
-  document.getElementById('stickers').appendChild(d);
-});
 </script>
 </body>
 </html>
