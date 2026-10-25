@@ -114,7 +114,7 @@ export class WidgetRegistry {
       defaultSize: { width: 350, height: 250 },
       minSize: { width: 200, height: 150 },
       category: WidgetCategory.INTERACTIVE,
-      description: 'Random selection with slot machine animation',
+      description: 'Pick a name or item',
       compactPanel: {
         supported: true,
         menuEmoji: '🎲',
@@ -138,7 +138,7 @@ export class WidgetRegistry {
       minSize: { width: 250, height: 306 },
       maintainAspectRatio: true,
       category: WidgetCategory.TEACHING_TOOLS,
-      description: 'Countdown and stopwatch functionality',
+      description: 'Count down or use a stopwatch',
       compactPanel: {
         supported: true,
         menuEmoji: '⏱️',
@@ -376,7 +376,7 @@ export class WidgetRegistry {
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 300, height: 225 },
       category: WidgetCategory.FUN,
-      description: 'Audio frequency visualization',
+      description: 'Show a live camera feed',
       columnSizing: 'aspect-ratio',
       features: {
         isResizable: true
@@ -431,7 +431,7 @@ export class WidgetRegistry {
       minSize: { width: 300, height: 250 },
       maxSize: { width: 600, height: 800 },
       category: WidgetCategory.NETWORKED,
-      description: 'Real-time polling with student participation',
+      description: 'Ask a multiple-choice question',
       columnSizing: 'fixed',
       features: {
         isResizable: true
@@ -447,7 +447,7 @@ export class WidgetRegistry {
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 350, height: 400 },
       category: WidgetCategory.NETWORKED,
-      description: 'Collect links or text submissions from students',
+      description: 'Collect links and text',
       columnSizing: 'fixed',
       features: {
         isResizable: true
@@ -463,7 +463,7 @@ export class WidgetRegistry {
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 300, height: 300 },
       category: WidgetCategory.NETWORKED,
-      description: 'Real-time feedback slider for student understanding',
+      description: 'Check student understanding',
       columnSizing: 'fixed',
       features: {
         isResizable: true
@@ -479,7 +479,7 @@ export class WidgetRegistry {
       defaultSize: DEFAULT_SIZE,
       minSize: { width: 350, height: 400 },
       category: WidgetCategory.NETWORKED,
-      description: 'Collect questions and comments with moderation',
+      description: 'Collect and moderate questions',
       columnSizing: 'fixed',
       features: {
         isResizable: true
@@ -529,7 +529,7 @@ export class WidgetRegistry {
       minSize: { width: 400, height: 400 },
       maxSize: { width: 700, height: 800 },
       category: WidgetCategory.NETWORKED,
-      description: 'Code completion activities with syntax highlighting',
+      description: 'Practise completing code',
       columnSizing: 'fixed',
       features: {
         isResizable: true

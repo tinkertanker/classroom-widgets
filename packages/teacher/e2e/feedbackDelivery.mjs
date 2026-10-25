@@ -46,7 +46,7 @@ try {
   const teacherEvents = observe(teacher);
   await teacher.goto(stack.teacherUrl);
   await teacher.getByTitle('More widgets (⌘K)').click();
-  await teacher.getByPlaceholder('Search widgets...').fill('RT Feedback');
+  await teacher.getByRole('textbox', { name: 'Search widgets' }).fill('RT Feedback');
   await teacher.getByRole('dialog').getByText('RT Feedback', { exact: true }).click();
   await teacher.getByRole('button', { name: 'Start RT Feedback' }).click();
   await teacher.getByTitle('Pause feedback').waitFor();

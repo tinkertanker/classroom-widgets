@@ -81,7 +81,7 @@ try {
     const teacher = await teacherContext.newPage();
     await teacher.goto(stack.teacherUrl);
     await teacher.getByTitle('More widgets (⌘K)').click();
-    await teacher.getByPlaceholder('Search widgets...').fill(name);
+    await teacher.getByRole('textbox', { name: 'Search widgets' }).fill(name);
     await teacher.getByRole('dialog').getByText(name, { exact: true }).click();
     await teacher.getByRole('button', { name: 'Create Activity' }).click();
     await teacher.getByTitle('Settings', { exact: true }).click();
