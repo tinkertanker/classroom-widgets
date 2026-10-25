@@ -1,8 +1,10 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using ClassroomWidgets;
 using Xunit;
 using Forms = System.Windows.Forms;
@@ -23,6 +25,74 @@ public sealed class DisplayPreviewCoordinatorTests
     private static readonly TimeSpan Settle = TimeSpan.FromMilliseconds(600);
     private static readonly Rect ClearSourceBounds = new(0, 0, 400, 300);
     private static readonly PanelFrame PreviewFrame = new() { Left = 700, Top = 340, Width = 480, Height = 330 };
+
+    // Menus must follow their own buttons, not Power or coordinates cached before a resize.
+    [Fact]
+    public void MenusFollowTheirButtonsWhenWindowMovesAndResizes()
+    {
+        var realDataDirectory = DashboardSettings.DataDirectory;
+        var testDataDirectory = Path.Combine(Path.GetTempPath(), "ClassroomWidgetsTests", Guid.NewGuid().ToString("N"));
+        DashboardSettings.UseDataDirectory(testDataDirectory);
+        try
+        {
+            WpfTestHost.Run(() =>
+            {
+                using var coordinator = new DisplayPreviewCoordinator(new DashboardSettings(), new DisplayCatalog());
+                coordinator.Open();
+                var window = coordinator.Window!;
+                WpfTestHost.PumpUntil(() => window.IsLoaded, Timeout, "Display to open");
+                var sourceButton = Descendants<Button>(window).Single(button => Equals(button.Content, "⋯"));
+                var work = HostDescriptor().WorkingArea;
+                var scale = window.DeviceScale;
+                var width = Math.Min(900 * scale, work.Width - 100 * scale);
+                var height = Math.Min(600 * scale, work.Height - 100 * scale);
+                var evidence = new List<string>();
+                foreach (var frame in new[]
+                {
+                    new Rect(work.Left + 50 * scale, work.Top + 50 * scale, width, height),
+                    new Rect(work.Left + 50 * scale, work.Top + 50 * scale, width * 0.7, height),
+                    new Rect(work.Right - width - 8 * scale, work.Top + 50 * scale, width, height)
+                })
+                {
+                    Assert.True(window.SetPhysicalBounds(frame));
+                    WpfTestHost.PumpFor(Settle);
+                    foreach (var button in new[] { sourceButton, window.LayoutButton })
+                    {
+                        ContextMenu? menu = null;
+                        try
+                        {
+                            button.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                            WpfTestHost.PumpUntil(() =>
+                            {
+                                menu = PresentationSource.CurrentSources.Cast<PresentationSource>()
+                                    .Where(source => source.Dispatcher.CheckAccess() && source.RootVisual is not null)
+                                    .SelectMany(source => Descendants<ContextMenu>(source.RootVisual))
+                                    .FirstOrDefault(candidate => candidate.IsOpen && candidate.IsLoaded);
+                                return menu is { ActualWidth: > 0 };
+                            }, Timeout, "the visible menu");
+                            var popup = Assert.IsType<ContextMenu>(menu);
+                            var bounds = new Rect(popup.PointToScreen(new Point()),
+                                popup.PointToScreen(new Point(popup.ActualWidth, popup.ActualHeight)));
+                            var buttonCenter = button.PointToScreen(new Point(button.ActualWidth / 2, button.ActualHeight / 2));
+                            evidence.Add($"window={window.GetPhysicalBounds()} button={buttonCenter} menu={bounds}");
+                            WpfTestHost.SaveEvidenceText("display-menu-placement.txt", string.Join("\n", evidence));
+                            Assert.InRange(buttonCenter.X, bounds.Left - 2 * scale, bounds.Right + 2 * scale);
+                        }
+                        finally
+                        {
+                            if (menu is not null) menu.IsOpen = false;
+                            WpfTestHost.DoEvents();
+                        }
+                    }
+                }
+            });
+        }
+        finally
+        {
+            DashboardSettings.UseDataDirectory(realDataDirectory);
+            if (Directory.Exists(testDataDirectory)) Directory.Delete(testDataDirectory, recursive: true);
+        }
+    }
 
     // The coordinator persists the preview frame through DashboardSettings.Save, so settings
     // are redirected to a throwaway directory for the duration of the test.
@@ -385,6 +455,16 @@ public sealed class DisplayPreviewCoordinatorTests
         Assert.InRange(actual.R, Math.Max(0, expected.R - 3), Math.Min(255, expected.R + 3));
         Assert.InRange(actual.G, Math.Max(0, expected.G - 3), Math.Min(255, expected.G + 3));
         Assert.InRange(actual.B, Math.Max(0, expected.B - 3), Math.Min(255, expected.B + 3));
+    }
+
+    private static IEnumerable<T> Descendants<T>(DependencyObject root) where T : DependencyObject
+    {
+        for (var index = 0; index < VisualTreeHelper.GetChildrenCount(root); index++)
+        {
+            var child = VisualTreeHelper.GetChild(root, index);
+            if (child is T match) yield return match;
+            foreach (var descendant in Descendants<T>(child)) yield return descendant;
+        }
     }
 
     private static DisplayDescriptor HostDescriptor()
