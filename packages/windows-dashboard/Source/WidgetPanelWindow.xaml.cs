@@ -21,11 +21,19 @@ public partial class WidgetPanelWindow : Window
     private static readonly Color DarkBackground = Color.FromRgb(0x1E, 0x1F, 0x24);
     private static readonly Color LightForeground = Color.FromRgb(0x1F, 0x29, 0x33);
     private static readonly Color DarkForeground = Color.FromRgb(0xE6, 0xE8, 0xEC);
+    private static readonly SolidColorBrush LightForegroundBrush = Frozen(LightForeground);
+    private static readonly SolidColorBrush DarkForegroundBrush = Frozen(DarkForeground);
+    private static readonly SolidColorBrush LightHoverBrush = Frozen(Color.FromArgb(0x22, 0x00, 0x00, 0x00));
+    private static readonly SolidColorBrush DarkHoverBrush = Frozen(Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF));
 
     private WidgetPanelDescriptor _descriptor;
     private double _backgroundOpacity;
     private readonly DashboardSettings _settings;
     private bool _isDark;
+    // What the chrome resources were last built from. Every inventory
+    // re-applies the descriptor, so only swap brushes when these change (#213).
+    private bool? _appliedChromeIsDark;
+    private (bool IsDark, double Opacity)? _appliedPanelBackground;
     private readonly DispatcherTimer _hoverTimer;
     private readonly DispatcherTimer _frameTimer;
     private DateTime _pointerLeftAt = DateTime.MinValue;
@@ -227,33 +235,46 @@ public partial class WidgetPanelWindow : Window
 
     private void ApplyDescriptorPresentation()
     {
-        Title = _descriptor.Title;
-        TitleText.Text = _descriptor.Title;
+        if (Title != _descriptor.Title) Title = _descriptor.Title;
+        if (TitleText.Text != _descriptor.Title) TitleText.Text = _descriptor.Title;
 
         var minimum = _descriptor.MinimumContentSize.Clamped();
-        MinWidth = minimum.Width;
-        MinHeight = minimum.Height + ChromeHeight;
-        if (_descriptor.MaximumContentSize is { } maximum)
-        {
-            MaxWidth = Math.Max(maximum.Width, MinWidth);
-            MaxHeight = Math.Max(maximum.Height + ChromeHeight, MinHeight);
-        }
-        else
-        {
-            MaxWidth = double.PositiveInfinity;
-            MaxHeight = double.PositiveInfinity;
-        }
-        ResizeMode = _descriptor.IsResizable ? ResizeMode.CanResize : ResizeMode.NoResize;
+        var minHeight = minimum.Height + ChromeHeight;
+        var maximum = _descriptor.MaximumContentSize;
+        var maxWidth = maximum is { } widthLimit ? Math.Max(widthLimit.Width, minimum.Width) : double.PositiveInfinity;
+        var maxHeight = maximum is { } heightLimit ? Math.Max(heightLimit.Height + ChromeHeight, minHeight) : double.PositiveInfinity;
+        if (MinWidth != minimum.Width) MinWidth = minimum.Width;
+        if (MinHeight != minHeight) MinHeight = minHeight;
+        if (MaxWidth != maxWidth) MaxWidth = maxWidth;
+        if (MaxHeight != maxHeight) MaxHeight = maxHeight;
+        var resizeMode = _descriptor.IsResizable ? ResizeMode.CanResize : ResizeMode.NoResize;
+        if (ResizeMode != resizeMode) ResizeMode = resizeMode;
 
         var isDark = _descriptor.SnapshotPayload.TryGetProperty("theme", out var theme) && theme.GetString() == "dark";
         _isDark = isDark;
         ApplyPanelBackground();
-        Resources["ChromeForeground"] = new SolidColorBrush(isDark ? DarkForeground : LightForeground);
-        Resources["ChromeHover"] = new SolidColorBrush(isDark ? Color.FromArgb(0x33, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x22, 0x00, 0x00, 0x00));
+        if (_appliedChromeIsDark == isDark) return;
+        _appliedChromeIsDark = isDark;
+        Resources["ChromeForeground"] = isDark ? DarkForegroundBrush : LightForegroundBrush;
+        Resources["ChromeHover"] = isDark ? DarkHoverBrush : LightHoverBrush;
     }
 
     private void ApplyPanelBackground()
-        => Resources["PanelBackground"] = new SolidColorBrush(_isDark ? DarkBackground : LightBackground) { Opacity = _backgroundOpacity };
+    {
+        var next = (_isDark, _backgroundOpacity);
+        if (_appliedPanelBackground == next) return;
+        _appliedPanelBackground = next;
+        var brush = new SolidColorBrush(_isDark ? DarkBackground : LightBackground) { Opacity = _backgroundOpacity };
+        brush.Freeze();
+        Resources["PanelBackground"] = brush;
+    }
+
+    private static SolidColorBrush Frozen(Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        return brush;
+    }
 
     private void NoteFrameChange()
     {
