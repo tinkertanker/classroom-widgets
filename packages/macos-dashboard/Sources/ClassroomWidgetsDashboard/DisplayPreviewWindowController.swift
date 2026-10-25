@@ -13,6 +13,7 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
     var onMoveToCenter: (() -> Void)?
     var onClose: (() -> Void)?
     var onFrameChanged: ((NSRect) -> Void)?
+    var onViewportChanged: (() -> Void)?
     var onVisibilityChanged: ((Bool) -> Void)?
 
     private let captureButton = NSButton()
@@ -65,7 +66,10 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         panel.setFrame(frame, display: false)
         previewView.onIdlePrimaryClick = { [weak self] in self?.toggleCapture() }
         previewView.onGeometryInvalidated = { [weak self] in self?.presentedGeometry = nil }
-        previewView.onLayoutChanged = { [weak self] in self?.refreshPresentedGeometry() }
+        previewView.onLayoutChanged = { [weak self] in
+            self?.refreshPresentedGeometry()
+            self?.onViewportChanged?()
+        }
         addCompactAccessories(to: panel)
         installChromeTracking(on: panel)
         applyPresentationSettings(backgroundOpacity: backgroundOpacity, keepOnAllSpaces: keepOnAllSpaces)
@@ -673,7 +677,11 @@ final class DisplayPreviewWindowController: NSWindowController, NSWindowDelegate
         normalizeViewportAspectIfNeeded(in: window)
         onFrameChanged?(window.frame)
     }
-    func windowDidEndLiveResize(_ notification: Notification) { if let frame = window?.frame { onFrameChanged?(frame) } }
+    func windowDidEndLiveResize(_ notification: Notification) {
+        if let frame = window?.frame { onFrameChanged?(frame) }
+        onViewportChanged?()
+    }
+    func windowDidChangeBackingProperties(_ notification: Notification) { onViewportChanged?() }
     func windowDidBecomeKey(_ notification: Notification) { revealChrome(); scheduleChromeHide() }
     override func mouseEntered(with event: NSEvent) { revealChrome() }
     override func mouseExited(with event: NSEvent) { scheduleChromeHide() }

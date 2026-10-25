@@ -59,19 +59,10 @@ function chromeTheme(descriptor: WidgetPanelDescriptor): 'light' | 'dark' {
   return descriptor.snapshotPayload.theme === 'dark' ? 'dark' : 'light';
 }
 
-interface AppliedPresentation {
-  title: string;
-  limitsKey: string;
-  isResizable: boolean;
-  aspectRatio: number;
-  theme: 'light' | 'dark';
-}
-
-function presentationOf(descriptor: WidgetPanelDescriptor): AppliedPresentation {
-  const limits = sizeLimits(descriptor);
+function presentationOf(descriptor: WidgetPanelDescriptor) {
   return {
     title: descriptor.title,
-    limitsKey: `${limits.minWidth}x${limits.minHeight}:${limits.maxWidth ?? '-'}x${limits.maxHeight ?? '-'}`,
+    ...sizeLimits(descriptor),
     isResizable: descriptor.isResizable,
     aspectRatio: descriptor.aspectRatio && descriptor.aspectRatio > 0 ? descriptor.aspectRatio : 0,
     theme: chromeTheme(descriptor),
@@ -100,9 +91,7 @@ export class WidgetPanelWindow extends EventEmitter {
   private lastProgrammaticBounds: Rect | null = null;
   private lastPushedRevision: number | null = null;
   private lastPushedStateRevision: number | null = null;
-  // Null until the first apply(), which sets everything (the constructor
-  // does not set the aspect ratio).
-  private appliedPresentation: AppliedPresentation | null = null;
+  private appliedPresentation: ReturnType<typeof presentationOf> | null = null;
   private writesCheckpoint: { resolve: () => void } | null = null;
   private frameTimer: NodeJS.Timeout | null = null;
   private pointerLeftAt: number | null = null;
@@ -193,6 +182,7 @@ export class WidgetPanelWindow extends EventEmitter {
       if (!this.view.webContents.isDestroyed()) this.view.webContents.close();
     });
 
+    this.applyDescriptorPresentation();
     this.loadWidget();
   }
 
@@ -432,13 +422,15 @@ export class WidgetPanelWindow extends EventEmitter {
     this.appliedPresentation = next;
 
     if (previous?.title !== next.title) this.win.setTitle(next.title);
-    if (previous?.limitsKey !== next.limitsKey || previous?.isResizable !== next.isResizable) {
-      // setResizable first: on Linux, Electron's setResizable(true) restores
-      // the limits saved by setResizable(false) and would undo new ones.
-      this.win.setResizable(next.isResizable);
-      const limits = sizeLimits(this.descriptor);
-      this.win.setMinimumSize(limits.minWidth, limits.minHeight);
-      this.win.setMaximumSize(limits.maxWidth ?? 100_000, limits.maxHeight ?? 100_000);
+    const resizeChanged = previous?.isResizable !== next.isResizable;
+    // Electron restores saved limits when resizing is re-enabled, so reapply
+    // both limits after a resize-mode change even when their values match.
+    if (resizeChanged) this.win.setResizable(next.isResizable);
+    if (resizeChanged || previous?.minWidth !== next.minWidth || previous?.minHeight !== next.minHeight) {
+      this.win.setMinimumSize(next.minWidth, next.minHeight);
+    }
+    if (resizeChanged || previous?.maxWidth !== next.maxWidth || previous?.maxHeight !== next.maxHeight) {
+      this.win.setMaximumSize(next.maxWidth ?? 100_000, next.maxHeight ?? 100_000);
     }
     if (previous?.aspectRatio !== next.aspectRatio) {
       if (next.aspectRatio > 0) {

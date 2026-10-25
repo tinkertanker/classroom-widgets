@@ -235,23 +235,20 @@ public partial class WidgetPanelWindow : Window
 
     private void ApplyDescriptorPresentation()
     {
-        Title = _descriptor.Title;
-        TitleText.Text = _descriptor.Title;
+        if (Title != _descriptor.Title) Title = _descriptor.Title;
+        if (TitleText.Text != _descriptor.Title) TitleText.Text = _descriptor.Title;
 
         var minimum = _descriptor.MinimumContentSize.Clamped();
-        MinWidth = minimum.Width;
-        MinHeight = minimum.Height + ChromeHeight;
-        if (_descriptor.MaximumContentSize is { } maximum)
-        {
-            MaxWidth = Math.Max(maximum.Width, MinWidth);
-            MaxHeight = Math.Max(maximum.Height + ChromeHeight, MinHeight);
-        }
-        else
-        {
-            MaxWidth = double.PositiveInfinity;
-            MaxHeight = double.PositiveInfinity;
-        }
-        ResizeMode = _descriptor.IsResizable ? ResizeMode.CanResize : ResizeMode.NoResize;
+        var minHeight = minimum.Height + ChromeHeight;
+        var maximum = _descriptor.MaximumContentSize;
+        var maxWidth = maximum is { } widthLimit ? Math.Max(widthLimit.Width, minimum.Width) : double.PositiveInfinity;
+        var maxHeight = maximum is { } heightLimit ? Math.Max(heightLimit.Height + ChromeHeight, minHeight) : double.PositiveInfinity;
+        if (MinWidth != minimum.Width) MinWidth = minimum.Width;
+        if (MinHeight != minHeight) MinHeight = minHeight;
+        if (MaxWidth != maxWidth) MaxWidth = maxWidth;
+        if (MaxHeight != maxHeight) MaxHeight = maxHeight;
+        var resizeMode = _descriptor.IsResizable ? ResizeMode.CanResize : ResizeMode.NoResize;
+        if (ResizeMode != resizeMode) ResizeMode = resizeMode;
 
         var isDark = _descriptor.SnapshotPayload.TryGetProperty("theme", out var theme) && theme.GetString() == "dark";
         _isDark = isDark;

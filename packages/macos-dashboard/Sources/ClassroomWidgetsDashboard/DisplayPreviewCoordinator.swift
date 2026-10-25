@@ -32,6 +32,7 @@ final class DisplayPreviewCoordinator: NSObject {
     var frameRecovery = DisplayPreviewFrameRecovery()
     var captureOrder = DisplayPreviewCaptureOrder()
     var recoveryTask: Task<Void, Never>?
+    var captureResizeTask: Task<Void, Never>?
     var reconnect: DisplayPreviewReconnectPolicy
     var reconnectTask: Task<Void, Never>?
     let reconnectDebounceNanoseconds: UInt64
@@ -179,6 +180,8 @@ final class DisplayPreviewCoordinator: NSObject {
         reconnectTask?.cancel()
         cancelDeferredRestarts()
         cancelFrameRecovery()
+        cancelCaptureResize()
+        session?.cancel()
         intent.pause()
         clearFrame(status: "Paused while Classroom Widgets quits.")
         logDisplayTransition(
@@ -236,6 +239,7 @@ final class DisplayPreviewCoordinator: NSObject {
             self?.persist(frame: frame)
             self?.validateWindowPlacement()
         }
+        controller.onViewportChanged = { [weak self] in self?.scheduleCaptureResize() }
         controller.onVisibilityChanged = { [weak self] visible in self?.visibilityChanged(visible) }
         controller.previewView.onCompletedPrimaryClick = { [weak self] point, _ in self?.warp(from: point) }
     }

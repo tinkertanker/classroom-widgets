@@ -8,6 +8,39 @@ import XCTest
 // screen, or the new frame is not saved.
 final class WidgetPanelSnapTests: XCTestCase {
     @MainActor
+    func testChangedPresentationStillUpdatesNativeConstraintsAndAspect() throws {
+        _ = NSApplication.shared
+        let id = UUID().uuidString
+        func descriptor(title: String, resizable: Bool, maximum: WidgetPanelDescriptor.Size?, aspect: CGFloat?) -> WidgetPanelDescriptor {
+            WidgetPanelDescriptor(id: id, title: title, preferredContentSize: .init(width: 360, height: 210),
+                minimumContentSize: .init(width: 271, height: 193), maximumContentSize: maximum,
+                isResizable: resizable, aspectRatio: aspect, snapshotPayload: [:])
+        }
+        let controller = WidgetPanelController(
+            descriptor: descriptor(title: "Before", resizable: true, maximum: nil, aspect: nil),
+            webViewFactory: WidgetPanelWebViewFactory(), backgroundOpacity: 1, keepOnAllSpaces: true)
+        defer { controller.closePermanently() }
+        let window = try XCTUnwrap(controller.window)
+        controller.apply(descriptor: descriptor(title: "Changed", resizable: true,
+            maximum: .init(width: 643, height: 517), aspect: 2))
+        XCTAssertEqual(window.title, "Changed")
+        XCTAssertEqual(window.contentMinSize, NSSize(width: 271, height: 203))
+        XCTAssertEqual(window.contentMaxSize, NSSize(width: 643, height: 527))
+        window.orderFrontRegardless()
+        let frame = try XCTUnwrap(controller.snapFrame(for: .leftHalf))
+        let content = window.contentRect(forFrameRect: frame)
+        XCTAssertEqual(content.width / (content.height - WidgetPanelContentLayout.topGap), 2, accuracy: 0.01)
+        controller.apply(descriptor: descriptor(title: "Fixed", resizable: false, maximum: nil, aspect: nil))
+        XCTAssertEqual(window.contentMinSize, NSSize(width: 360, height: 220))
+        XCTAssertEqual(window.contentMaxSize, window.contentMinSize)
+        controller.apply(descriptor: descriptor(title: "Uncapped", resizable: true, maximum: nil, aspect: nil))
+        XCTAssertEqual(window.contentMinSize, NSSize(width: 271, height: 203))
+        XCTAssertGreaterThan(window.contentMaxSize.width, 100_000)
+        XCTAssertTrue(window.standardWindowButton(.zoomButton)?.isEnabled == true)
+        print("PASS #213 changed title/min/max/fixed-size/unbounded/aspect presentation on a real NSPanel")
+    }
+
+    @MainActor
     func testPresetsPlaceRealPanelsOnTheirScreenWithinTheirLimits() throws {
         _ = NSApplication.shared
         let panels = WidgetPanelCoordinator()

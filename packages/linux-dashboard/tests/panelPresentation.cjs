@@ -2,13 +2,15 @@
 // presentation must not touch its native window, its chrome or the tray menu.
 // Build the teacher app (vite build) and this package first, then from the
 // repository root:
-// CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=<dir> xvfb-run -a packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/panelPresentation.cjs
+// Run with an X11 window manager (e.g. Openbox), xprop, xdotool and ffmpeg installed:
+// CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=<dir> packages/linux-dashboard/node_modules/.bin/electron --no-sandbox --disable-gpu packages/linux-dashboard/tests/panelPresentation.cjs
 // Evidence: panel-presentation.txt (per-step counts) and dark-panels.png.
-const { app, BrowserWindow, globalShortcut, nativeTheme, Tray } = require('electron');
+const { app, BrowserWindow, globalShortcut, nativeTheme, screen, Tray } = require('electron');
 const assert = require('node:assert/strict');
 const { mkdirSync, mkdtempSync, rmSync, writeFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join, resolve } = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 const root = resolve(__dirname, '..');
 const evidence = resolve(process.env.CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR
@@ -30,6 +32,13 @@ registerPrivilegedScheme();
 const lines = [];
 const record = message => { lines.push(message); console.log(message); };
 const delay = ms => new Promise(done => setTimeout(done, ms));
+// BrowserWindow.capturePage omits its child WebContentsView. Capture the actual
+// desktop so evidence includes both the native stacking and rendered widget.
+const capture = name => {
+  const { width, height } = screen.getPrimaryDisplay().size;
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'x11grab', '-video_size', `${width}x${height}`,
+    '-i', process.env.DISPLAY, '-frames:v', '1', join(evidence, name)]);
+};
 async function until(label, check) {
   for (let i = 0; i < 300; i++) {
     const value = await check();
@@ -121,9 +130,26 @@ app.whenReady().then(async () => {
       if (child && (await texts(child))[0] === 'Row') return child;
     }
   });
-  // The seeding inventory above is every panel's first apply(), which sets
-  // all fields once (the constructor leaves the aspect ratio unset).
-  await delay(1000);
+  const listWindow = panelWindows().find(win => win.contentView.children[0]?.webContents === view);
+  const ids = new Set(panelWindows().map(win => win.getNativeWindowHandle().readUInt32LE(0)));
+  const order = () => (execFileSync('xprop', ['-root', '_NET_CLIENT_LIST_STACKING'], { encoding: 'utf8' })
+    .match(/0x[0-9a-f]+/g) ?? []).map(value => parseInt(value, 16)).filter(id => ids.has(id));
+  for (const [index, win] of panelWindows().entries()) win.setPosition(100 + index * 45, 80 + index * 35);
+  listWindow.focus();
+  // Move a real pointer over neighboring panels and back to the List editor.
+  const [lx, ly] = listWindow.getPosition();
+  for (const [x, y] of [[140, 100], [200, 240], [lx + 150, ly + 130]]) {
+    const start = screen.getCursorScreenPoint();
+    for (let step = 1; step <= 10; step++) {
+      execFileSync('xdotool', ['mousemove', '--sync', String(Math.round(start.x + (x - start.x) * step / 10)),
+        String(Math.round(start.y + (y - start.y) * step / 10))]);
+      await delay(80);
+    }
+  }
+  await delay(1600);
+  const beforeOrder = order();
+  assert.equal(beforeOrder.length, 6, 'six native windows must be represented in the X11 stack');
+  assert.equal(beforeOrder.at(-1), listWindow.getNativeWindowHandle().readUInt32LE(0), 'List must start on top');
 
   // 1. Typing: one inventory per key, nothing presented changes.
   resetCounts();
@@ -133,11 +159,19 @@ app.whenReady().then(async () => {
     view.sendInputEvent({ type: 'char', keyCode: key });
     await until(`edit ${index}`, () => inventory(host).widgets.find(widget => widget.id === listId)
       ?.snapshotPayload.state?.inputs?.[0] === `Row${'ABCDE'.slice(0, index + 1)}`);
+    assert.deepEqual(order(), beforeOrder, 'accepted List edits must preserve native stacking order');
+    await delay(150);
   }
   await delay(500);
   const typed = summary();
   const inventories = inventory(host).revision - startRevision;
   record(`typing 5 keys into one of 6 panels: inventories=${inventories} setters=${typed.setters} chromeUpdates=${typed.chrome} trayMenus=${typed.trayMenus} calls=${JSON.stringify(typed.calls)}`);
+  record(`stable X11 stacking order: ${JSON.stringify(beforeOrder)}`);
+  capture('edited-list.png');
+  assert.ok(inventories >= 5, 'each key sends an inventory');
+  assert.equal(typed.setters, 0, 'typing must not call native window setters');
+  assert.equal(typed.chrome, 0, 'typing must not resend panel chrome');
+  assert.equal(typed.trayMenus, 0, 'typing must not rebuild the tray menu');
 
   // 2. Theme: every panel's chrome must follow, still without native setters.
   resetCounts();
@@ -151,7 +185,42 @@ app.whenReady().then(async () => {
   await delay(500);
   const themed = summary();
   record(`theme light->dark: setters=${themed.setters} chromeUpdates=${themed.chrome} trayMenus=${themed.trayMenus} calls=${JSON.stringify(themed.calls)}`);
-  writeFileSync(join(evidence, 'dark-panels.png'), (await panelWindows()[0].capturePage()).toPNG());
+  capture('dark-panels.png');
+
+  // Change native fields with the same content revisions. Presentation and
+  // snapshot deduplication must be independent, including aspect on creation.
+  const panel = host.panelCoordinator.panels.get(listId);
+  const original = inventory(host).widgets.find(widget => widget.id === listId);
+  resetCounts();
+  panel.apply({ ...original, title: 'Renamed List' });
+  assert.equal(listWindow.getTitle(), 'Renamed List');
+  assert.deepEqual(summary().calls, { setTitle: 1 });
+  assert.equal(summary().chrome, 1);
+  await until('updated chrome title', () => listWindow.webContents.executeJavaScript(
+    `document.getElementById('title').textContent === 'Renamed List'`));
+  resetCounts();
+  panel.apply({ ...original, title: 'Renamed List', minimumContentSize: { width: 271, height: 193 },
+    maximumContentSize: { width: 643, height: 517 }, aspectRatio: 2 });
+  assert.deepEqual(listWindow.getMinimumSize(), [271, 223]);
+  assert.deepEqual(listWindow.getMaximumSize(), [643, 547]);
+  assert.deepEqual(summary().calls, { setMinimumSize: 1, setMaximumSize: 1, setAspectRatio: 1 });
+  assert.equal(summary().chrome, 0);
+  const aspectFrame = panel.snapConstraints();
+  assert.equal(aspectFrame.aspect, 2);
+  panel.apply({ ...original, isResizable: false });
+  assert.equal(listWindow.isResizable(), false);
+  panel.apply({ ...original, minimumContentSize: { width: 283, height: 201 },
+    maximumContentSize: { width: 701, height: 563 } });
+  assert.equal(listWindow.isResizable(), true);
+  assert.deepEqual(listWindow.getMinimumSize(), [283, 231], 'new limits survive re-enabling resize');
+  assert.deepEqual(listWindow.getMaximumSize(), [701, 593]);
+  panel.apply(original);
+  assert.deepEqual(listWindow.getMaximumSize(), [100000, 100000], 'removing the cap restores unlimited size');
+  panel.applyPresentationSettings(0.65, true);
+  await until('changed opacity', () => listWindow.webContents.executeJavaScript(
+    `document.getElementById('chrome').style.backgroundColor.includes('0.65')`));
+  panel.applyPresentationSettings(1, true);
+  record('PASS changed title/min/max/resizable/aspect/opacity apply independently of content revisions');
 
   // 3. Hide and show the Timer: the tray menu must still follow visibility.
   resetCounts();
@@ -177,6 +246,18 @@ app.whenReady().then(async () => {
     return title === expectedTitle && title !== '' && dark;
   });
   record(`reload a panel chrome: title "${expectedTitle}" and dark theme restored`);
+  reloaded.focus();
+  await until('explicit raise', () => order().at(-1) === reloaded.getNativeWindowHandle().readUInt32LE(0));
+  reloaded.hide();
+  host.panelCoordinator.activate();
+  assert.equal(reloaded.isVisible(), true, 'activation recovers an ordered-out window');
+  await host.reloadWidgets();
+  await until('replacement panels shown', () => panelWindows().length === 6 && panelWindows().every(win => win.isVisible()));
+  await until('List restored after reload', async () => {
+    for (const win of panelWindows()) if ((await texts(win.contentView.children[0].webContents))[0] === 'RowABCDE') return true;
+    return false;
+  });
+  record('PASS explicit raise, hidden-window recovery and host reload retain edited List');
 
   // 4. Arrange in a row, then drag a panel: the tray's layout radio must
   // return to Free Placement without waiting for a panel to appear or go.
@@ -199,10 +280,6 @@ app.whenReady().then(async () => {
   const arrangeEnabled = lastMenu.items.find(item => item.label === 'Arrange Widgets').enabled;
   record(`close all panels: trayMenus=${trayMenus} arrangeEnabled=${arrangeEnabled}`);
 
-  assert.ok(inventories >= 5, 'each key sends an inventory');
-  assert.equal(typed.setters, 0, 'typing must not call native window setters');
-  assert.equal(typed.chrome, 0, 'typing must not resend panel chrome');
-  assert.equal(typed.trayMenus, 0, 'typing must not rebuild the tray menu');
   assert.equal(themed.setters, 0, 'a theme change must not call size or title setters');
   assert.equal(themed.chrome, 6, 'a theme change updates each panel chrome once');
   assert.ok(afterHide >= 1, 'hiding a panel rebuilds the tray menu');

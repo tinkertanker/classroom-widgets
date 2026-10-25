@@ -53,14 +53,18 @@ enum DisplayCaptureWindowLookupPolicy {
 
 final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
     typealias ContentDiscovery = (_ onScreenWindowsOnly: Bool) async throws -> SCShareableContent
+    typealias ConfigurationUpdate = @MainActor (SCStream, SCStreamConfiguration) async throws -> Void
 
     let sourceID: CGDirectDisplayID
     private let outputQueue = DispatchQueue(label: "sg.tk.classroomwidgets.display-preview.frames")
     private let delivery: FrameDelivery
     private let contentDiscovery: ContentDiscovery
+    private let configurationUpdate: ConfigurationUpdate
     private let stateLock = NSLock()
     private var stream: SCStream?
     private var startInProgress = false
+    private var configurationUpdateInProgress = false
+    private var configuredOutputSize: CGSize?
     private var cancelled = false
     private var gapReported = false
     private var terminalReported = false
@@ -78,12 +82,16 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
 
     init(
         sourceID: CGDirectDisplayID,
+        configurationUpdate: @escaping ConfigurationUpdate = { stream, configuration in
+            try await stream.updateConfiguration(configuration)
+        },
         contentDiscovery: @escaping ContentDiscovery = { onScreenWindowsOnly in
             try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: onScreenWindowsOnly)
         }
     ) {
         self.sourceID = sourceID
         self.contentDiscovery = contentDiscovery
+        self.configurationUpdate = configurationUpdate
         delivery = FrameDelivery()
         super.init()
         delivery.owner = self
@@ -98,6 +106,53 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         if wasAlreadyCancelled { throw CancellationError() }
         let (display, window) = try await discoverDisplayAndWindow(excludingWindowID: excludingWindowID)
         let filter = SCContentFilter(display: display, excludingWindows: [window])
+        let configuration = Self.configuration(outputSize: outputSize)
+        let stream = SCStream(filter: filter, configuration: configuration, delegate: self)
+        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
+        let wasCancelled = stateLock.withLock {
+            guard !cancelled else { return true }
+            self.stream = stream
+            configuredOutputSize = CGSize(width: configuration.width, height: configuration.height)
+            return false
+        }
+        if wasCancelled { throw CancellationError() }
+        try await stream.startCapture()
+        try checkCancellation()
+    }
+
+    /// One configuration at a time, including across cancelled debounce tasks.
+    /// SCStream may complete an update after its caller is cancelled; stop waits
+    /// for that completion and no later request may acquire the cancelled session.
+    @MainActor
+    func updateOutputSize(_ outputSize: CGSize) async throws {
+        while true {
+            try Task.checkCancellation()
+            try checkCancellation()
+            let acquired = stateLock.withLock {
+                guard !startInProgress, !configurationUpdateInProgress else { return false }
+                configurationUpdateInProgress = true
+                return true
+            }
+            if acquired { break }
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+        defer { stateLock.withLock { configurationUpdateInProgress = false } }
+        let configuration = Self.configuration(outputSize: outputSize)
+        let size = CGSize(width: configuration.width, height: configuration.height)
+        let target = stateLock.withLock { () -> SCStream? in
+            guard !cancelled, configuredOutputSize != size else { return nil }
+            return stream
+        }
+        guard let target else { try checkCancellation(); return }
+        try Task.checkCancellation()
+        try await configurationUpdate(target, configuration)
+        // Remember a successful native update even if its debounce task was
+        // superseded. The next request must compare against what actually ran.
+        try checkCancellation()
+        stateLock.withLock { configuredOutputSize = size }
+    }
+
+    private static func configuration(outputSize: CGSize) -> SCStreamConfiguration {
         let configuration = SCStreamConfiguration()
         configuration.width = max(2, Int(outputSize.width.rounded(.down)))
         configuration.height = max(2, Int(outputSize.height.rounded(.down)))
@@ -106,17 +161,7 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
         configuration.showsCursor = true
         configuration.capturesAudio = false
-
-        let stream = SCStream(filter: filter, configuration: configuration, delegate: self)
-        try stream.addStreamOutput(self, type: .screen, sampleHandlerQueue: outputQueue)
-        let wasCancelled = stateLock.withLock {
-            guard !cancelled else { return true }
-            self.stream = stream
-            return false
-        }
-        if wasCancelled { throw CancellationError() }
-        try await stream.startCapture()
-        try checkCancellation()
+        return configuration
     }
 
     private func discoverDisplayAndWindow(excludingWindowID: CGWindowID) async throws -> (SCDisplay, SCWindow) {
@@ -151,7 +196,9 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
 
     func stop() async throws {
         cancel()
-        while isStartInProgress { try await Task.sleep(nanoseconds: 10_000_000) }
+        while stateLock.withLock({ startInProgress || configurationUpdateInProgress }) {
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
         let stream = stateLock.withLock { self.stream }
         guard let stream else { delivery.clear(); return }
         try await stream.stopCapture()
@@ -306,10 +353,6 @@ final class DisplayCaptureSession: NSObject, SCStreamOutput, SCStreamDelegate {
             terminalReported = false
             activityReported = false
         }
-    }
-
-    private var isStartInProgress: Bool {
-        stateLock.withLock { startInProgress }
     }
 
     private func checkCancellation() throws {

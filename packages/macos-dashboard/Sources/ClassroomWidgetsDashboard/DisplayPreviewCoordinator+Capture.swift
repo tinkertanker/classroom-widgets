@@ -237,6 +237,7 @@ extension DisplayPreviewCoordinator {
             self.intent.pause()
             self.stopCurrent(message: message)
         }
+        window.contentView?.layoutSubtreeIfNeeded()
         let outputSize = captureOutputSize(for: source, view: controller.previewView)
         Task { @MainActor [weak self, weak capture] in
             guard let self, let capture else { return }
@@ -255,8 +256,15 @@ extension DisplayPreviewCoordinator {
                     return
                 }
                 self.beginFirstFrameTimeout(generation: generation, sourceID: source.id, capture: capture)
+                // A layout or backing change can settle while discovery/start is
+                // suspended. Re-read the viewport once the stream is running.
+                self.scheduleCaptureResize()
             } catch {
-                if self.stopLifecycle.release(capture) { self.session = nil }
+                capture.cancel()
+                if self.stopLifecycle.release(capture) {
+                    self.cancelCaptureResize()
+                    self.session = nil
+                }
                 guard self.intent.accepts(generation: generation, sourceID: source.id) else { return }
                 self.logDisplayTransition(
                     .startFailed,
@@ -335,12 +343,47 @@ extension DisplayPreviewCoordinator {
         }
     }
 
+    func cancelCaptureResize() {
+        captureResizeTask?.cancel()
+        captureResizeTask = nil
+    }
+
+    /// Never clear the retained image or reset frame recovery for a resize: a
+    /// static source may remain idle after the native configuration completes.
+    func scheduleCaptureResize() {
+        cancelCaptureResize()
+        guard let capture = session, let source = selectedSource,
+              let controller = windowController, controller.window?.inLiveResize == false,
+              intent.wantsCapture, !stopLifecycle.isStopping, !stopLifecycle.isBlocked
+        else { return }
+        let generation = intent.generation
+        captureResizeTask = Task { @MainActor [weak self, weak capture, weak controller] in
+            do {
+                try await Task.sleep(nanoseconds: 250_000_000)
+                guard let self, let capture, let controller,
+                      self.session === capture, self.windowController === controller,
+                      self.intent.accepts(generation: generation, sourceID: source.id),
+                      self.catalog.currentMatching(source) != nil,
+                      controller.window?.inLiveResize == false
+                else { return }
+                try await capture.updateOutputSize(self.captureOutputSize(for: source, view: controller.previewView))
+            } catch is CancellationError {
+                // Superseded viewport, source selection, pause, close or teardown.
+            } catch {
+                guard !Task.isCancelled, let self, let capture, self.session === capture,
+                      self.intent.accepts(generation: generation, sourceID: source.id)
+                else { return }
+                // Keep the working stream/image; a later viewport change can retry.
+                let code = (error as NSError).code
+                DashboardLog.windowing.error("Display Preview resize configuration failed: code=\(code)")
+            }
+        }
+    }
+
     private func captureOutputSize(for source: DisplayDescriptor, view: NSView) -> CGSize {
-        let backing = view.convertToBacking(view.bounds).size
-        let desiredLongEdge = min(max(backing.width, backing.height), 1920)
-        let aspect = source.bounds.width / source.bounds.height
-        return aspect >= 1
-            ? CGSize(width: desiredLongEdge, height: desiredLongEdge / aspect)
-            : CGSize(width: desiredLongEdge * aspect, height: desiredLongEdge)
+        DisplayPreviewGeometry.captureOutputSize(
+            sourceSize: source.bounds.size,
+            viewportPixels: view.convertToBacking(view.bounds).size
+        )
     }
 }

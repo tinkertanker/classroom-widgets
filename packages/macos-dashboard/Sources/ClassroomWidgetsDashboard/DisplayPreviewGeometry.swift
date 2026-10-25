@@ -8,6 +8,19 @@ struct DisplayPreviewFrameGeometry: Equatable {
 }
 
 enum DisplayPreviewGeometry {
+    /// Fit the source into the actual backing-pixel viewport, not its letterbox
+    /// space. Integer dimensions also deduplicate subpixel layout notifications.
+    static func captureOutputSize(sourceSize: CGSize, viewportPixels: CGSize) -> CGSize {
+        guard let fitted = aspectFit(contentSize: sourceSize, in: CGRect(origin: .zero, size: viewportPixels)) else {
+            return CGSize(width: 2, height: 2)
+        }
+        let capScale = min(1, 1920 / max(fitted.width, fitted.height))
+        return CGSize(
+            width: max(2, (fitted.width * capScale).rounded(.down)),
+            height: max(2, (fitted.height * capScale).rounded(.down))
+        )
+    }
+
     static func aspectFit(contentSize: CGSize, in bounds: CGRect) -> CGRect? {
         guard contentSize.isFinitePositive, bounds.isFinitePositive else { return nil }
         let scale = min(bounds.width / contentSize.width, bounds.height / contentSize.height)
