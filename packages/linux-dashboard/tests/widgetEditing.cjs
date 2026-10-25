@@ -157,6 +157,9 @@ app.whenReady().then(async () => {
     await activate(timer, `document.querySelector('[aria-label="Show add time options"]')`);
     await activate(timer, button(label));
   };
+  // Set the seconds first so the minutes edit below must keep them, whatever
+  // the default duration is.
+  await editSegment(2, '10');
   await editSegment(1, '05');
   assert.equal(await displayedTime(), '00:05:10');
   await quickAdd('+1m');

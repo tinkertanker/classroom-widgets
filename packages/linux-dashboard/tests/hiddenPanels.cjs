@@ -37,6 +37,16 @@ const windows = () => BrowserWindow.getAllWindows().filter(win => win.webContent
 const inventory = host => host.panelCoordinator.lastInventory;
 const viewFor = id => windows().find(win => new URL(win.contentView.children[0].webContents.getURL(), ORIGIN).searchParams.get('widgetId') === id);
 const text = view => view.executeJavaScript(`document.querySelector('textarea')?.value`);
+async function setTimerSegment(view, index, value) {
+  await view.executeJavaScript(`document.querySelectorAll('span[title="Click to edit"]')[${index}].click()`);
+  await until('segment editor', () => view.executeJavaScript(`!!document.querySelector('input')`));
+  await view.executeJavaScript(`(() => { const input = document.querySelector('input'); input.focus(); input.select(); })()`);
+  await view.insertText(value);
+  await until('typed segment value', () => view.executeJavaScript(`document.querySelector('input')?.value === ${JSON.stringify(value)}`));
+  view.sendInputEvent({ type: 'keyDown', keyCode: 'Enter' });
+  view.sendInputEvent({ type: 'keyUp', keyCode: 'Enter' });
+  await until('segment edit committed', () => view.executeJavaScript(`!document.querySelector('input')`));
+}
 const hasButton = (view, label) => view.executeJavaScript(`Array.from(document.querySelectorAll('button')).some(b => b.textContent.trim().endsWith(${JSON.stringify(label)}))`);
 const click = (view, label) => view.executeJavaScript(`Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim().endsWith(${JSON.stringify(label)})).click()`);
 const expectWindows = (label, expected) => {
@@ -144,6 +154,10 @@ app.whenReady().then(async () => {
   const timerId = await until('Timer inventory', () => inventory(host).widgets.find(widget => widget.snapshotPayload.widgetType === 1)?.id);
   let timer = await until('Timer window', () => viewFor(timerId));
   await until('Timer Start', () => hasButton(timer.contentView.children[0].webContents, 'Start'));
+  // Timers default to one minute; set ten seconds so the countdown can finish
+  // within the wait below.
+  await setTimerSegment(timer.contentView.children[0].webContents, 1, '00');
+  await setTimerSegment(timer.contentView.children[0].webContents, 2, '10');
   await click(timer.contentView.children[0].webContents, 'Start');
   await until('running Timer', () => hasButton(timer.contentView.children[0].webContents, 'Pause'));
   await host.toggleWidget(1);
