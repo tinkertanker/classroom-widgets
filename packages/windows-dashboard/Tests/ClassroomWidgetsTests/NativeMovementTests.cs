@@ -236,8 +236,12 @@ public sealed class NativeMovementTests
             image.CopyPixels(pixels, image.PixelWidth * 4, 0);
             var marker = Bounds(sourceWindow);
             var color = SyntheticSourceWindow.TopLeft;
+            // Marker bounds are source pixels; the captured bitmap may be preview-sized.
+            var sampleX = (int)((marker.X - destination.Bounds.Left + 20) * image.PixelWidth / destination.Bounds.Width);
+            var sampleY = (int)((marker.Y - destination.Bounds.Top + 20) * image.PixelHeight / destination.Bounds.Height);
+            Console.WriteLine($"D06 resumed: source={destination.Bounds}, frame={image.PixelWidth}x{image.PixelHeight}, sample=({sampleX},{sampleY})");
             Assert.Equal((color.R, color.G, color.B, (byte)255), WpfTestHost.PixelAt(pixels, image.PixelWidth,
-                (int)(marker.X - destination.Bounds.Left + 20), (int)(marker.Y - destination.Bounds.Top + 20)));
+                sampleX, sampleY));
             // The HWND and image state update before the desktop compositor
             // paints. Capture the rendered live state, not its old backing buffer.
             await Task.Delay(200);
