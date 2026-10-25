@@ -99,6 +99,7 @@ export class WidgetPanelWindow extends EventEmitter {
 
   /** Set by the coordinator so the arrange menu can check the active layout. */
   getCurrentLayout: () => WidgetPanelLayout = () => 'freeform';
+  hasMultipleVisiblePanels: () => boolean = () => false;
 
   constructor(descriptor: WidgetPanelDescriptor, backgroundOpacity: number, alwaysOnTop: boolean, appVersion: string, private readonly settings: DashboardSettings) {
     super();
@@ -582,6 +583,7 @@ export class WidgetPanelWindow extends EventEmitter {
         const entry = (label: string, layout: WidgetPanelLayout) => ({
           label,
           type: 'radio' as const,
+          visible: this.hasMultipleVisiblePanels(),
           checked: current === layout,
           click: () => this.emit('layoutRequested', layout),
         });
@@ -593,7 +595,7 @@ export class WidgetPanelWindow extends EventEmitter {
           entry('Free placement', 'freeform'),
           entry('Arrange in a row', 'row'),
           entry('Arrange in a column', 'column'),
-          { type: 'separator' },
+          { type: 'separator', visible: this.hasMultipleVisiblePanels() },
           { label: 'Move this widget', enabled: false },
           snap('left-half'), snap('right-half'), snap('top-half'), snap('bottom-half'),
           { type: 'separator' },

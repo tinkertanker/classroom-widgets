@@ -74,6 +74,7 @@ export class TrayController {
       {
         label: 'Arrange Widgets',
         enabled: coordinator.hasVisiblePanels,
+        visible: coordinator.hasMultipleVisiblePanels,
         submenu: [
           layoutItem('Free Placement', 'freeform'),
           layoutItem('Arrange in a Row', 'row'),

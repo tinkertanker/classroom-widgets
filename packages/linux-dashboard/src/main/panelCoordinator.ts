@@ -130,6 +130,10 @@ export class WidgetPanelCoordinator extends EventEmitter {
     return [...this.panels.values()].some(isPresented);
   }
 
+  get hasMultipleVisiblePanels(): boolean {
+    return [...this.panels.values()].filter(isPresented).length > 1;
+  }
+
   setWidgetCreationOptions(options: CompactWidgetOption[]): void {
     this.options = options;
     for (const panel of this.panels.values()) panel.setWidgetCreationOptions(options);
@@ -203,9 +207,9 @@ export class WidgetPanelCoordinator extends EventEmitter {
     this.active = true;
     if (this.panels.size === 0 && this.lastInventory) this.reconcile(this.lastInventory);
     if (this.panels.size === 0) return false;
-    const wasPresenting = this.hasVisiblePanels;
+    const visibleCount = [...this.panels.values()].filter(isPresented).length;
     for (const panel of this.panels.values()) panel.showPanel();
-    if (this.hasVisiblePanels !== wasPresenting) this.emit('changed');
+    if ([...this.panels.values()].filter(isPresented).length !== visibleCount) this.emit('changed');
     return true;
   }
 
@@ -365,6 +369,7 @@ export class WidgetPanelCoordinator extends EventEmitter {
     const panel = new WidgetPanelWindow(descriptor, this.backgroundOpacity, this.alwaysOnTop, this.appVersion, this.settings);
     panel.setWidgetCreationOptions(this.options);
     panel.getCurrentLayout = () => this.layout;
+    panel.hasMultipleVisiblePanels = () => this.hasMultipleVisiblePanels;
     panel.on('panelStateChanged', (change: WidgetPanelStateChange) => this.emit('panelStateChanged', change));
     panel.on('randomiserListChanged', (change: unknown) => this.emit('randomiserListChanged', change));
     panel.on('removalRequested', (widgetId: string) => {

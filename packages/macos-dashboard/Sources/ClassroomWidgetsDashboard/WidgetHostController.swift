@@ -129,6 +129,7 @@ final class WidgetHostController: NSObject, WKNavigationDelegate, WKUIDelegate {
 
     var widgetPanelLayout: WidgetPanelLayout { widgetPanelCoordinator.layout }
     var hasVisibleWidgetPanels: Bool { widgetPanelCoordinator.hasVisiblePanels }
+    var hasMultipleVisibleWidgetPanels: Bool { widgetPanelCoordinator.hasMultipleVisiblePanels }
 
     func arrangeWidgets(_ layout: WidgetPanelLayout) {
         widgetPanelCoordinator.arrange(layout)
