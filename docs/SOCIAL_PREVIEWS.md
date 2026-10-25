@@ -10,6 +10,35 @@ receiving app, not guaranteed by Open Graph. X deliberately keeps its existing
 `summary_large_image` card; a Player Card would need a separate HTTPS player and
 platform validation. The landing-page demo is unchanged.
 
+## Video delivery
+
+The Cloudflare web Worker handles `/og-video-v2.mp4` before static assets (the
+exact path is in `deploy/cloudflare/web/wrangler.jsonc`). Assets alone returned
+the whole MP4 with 200 for `Range: bytes=0-1`; Apple media clients require byte
+ranges. The Worker serves single bounded, open-ended and suffix ranges with
+206, unsatisfiable ranges with 416, and ignores malformed or multiple ranges.
+Only this small clip is buffered, so its actual bytes determine response lengths;
+there is no pinned file-size fallback. A future video filename must also update
+the Worker route and handler. Keep large videos out of this buffered path.
+
+Apple's [Messages preview guidance](https://developer.apple.com/documentation/technotes/tn3156-create-rich-previews-for-messages)
+supports direct downloadable MP4s. Correct range delivery removes a demonstrated
+transport incompatibility, but is not proof of a particular iMessage preview:
+client version, settings and independently cached previews still need testing.
+Do not infer social-client compatibility from browser playback alone.
+
+Run the real-HTTP regression against `wrangler dev` or production:
+
+```sh
+node deploy/cloudflare/verify-social-preview.mjs https://widgets.tk.sg
+```
+
+It compares full and partial bodies with the checked-in media and checks
+conditional requests, HEAD, static fallback metadata and neighboring routing.
+Evidence goes to `$CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR` (default
+`/tmp/classroom-widgets-social-preview`). The Cloudflare web delivery workflow
+runs the same checks against local workerd on relevant PRs and master changes.
+
 ## Regenerate
 
 From the repository root, after `pnpm install --frozen-lockfile`:

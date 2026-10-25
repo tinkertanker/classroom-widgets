@@ -16,7 +16,8 @@
     "not_found_handling": "single-page-application",
     // /admin*: nginx `location ^~ /admin` (served by the backend, not the SPA).
     // /assets/*: missing hashed bundles get 404, not index.html (src/index.ts).
-    "run_worker_first": ["/admin*", "/assets/*"]
+    // OG video: serve real byte ranges for Apple media clients.
+    "run_worker_first": ["/admin*", "/assets/*", "/og-video-v2.mp4"]
   },
   // Same-account Worker call: keeps Host: widgets.tk.sg for the dashboard's
   // same-origin check, as nginx's `proxy_set_header Host $host` did.

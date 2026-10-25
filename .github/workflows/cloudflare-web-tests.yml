@@ -1,0 +1,57 @@
+name: Cloudflare web delivery tests
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/cloudflare/**'
+      - 'packages/teacher/index.html'
+      - 'packages/teacher/public/og-*'
+      - '.github/workflows/cloudflare-web-tests.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'deploy/cloudflare/**'
+      - 'packages/teacher/index.html'
+      - 'packages/teacher/public/og-*'
+      - '.github/workflows/cloudflare-web-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - uses: ./.github/actions/install-pnpm
+        with:
+          filter: '@classroom-widgets/teacher...'
+      - uses: ./.github/actions/install-pnpm
+        with:
+          working-directory: deploy/cloudflare
+      - name: Typecheck and build
+        working-directory: deploy/cloudflare
+        run: pnpm typecheck && pnpm build:teacher --skip-install
+      - name: Verify real workerd HTTP delivery
+        working-directory: deploy/cloudflare
+        env:
+          CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/social-preview-evidence
+        run: |
+          mkdir -p "$CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR"
+          pnpm exec wrangler dev -c web/wrangler.jsonc --port 8787 --local > "$CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR/workerd.log" 2>&1 &
+          runtime=$!
+          trap 'kill "$runtime"' EXIT
+          node verify-social-preview.mjs http://127.0.0.1:8787
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: social-preview-http-evidence
+          path: ${{ runner.temp }}/social-preview-evidence
+          if-no-files-found: error
