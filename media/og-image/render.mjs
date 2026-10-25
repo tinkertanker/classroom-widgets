@@ -1,7 +1,7 @@
 // Same explicit-time Chromium → PNG → ffmpeg approach as the display demo.
 import { createRequire } from 'node:module';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync, copyFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, rmSync, copyFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -11,8 +11,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const teacher = join(here, '../../packages/teacher');
 const { chromium } = createRequire(join(teacher, 'package.json'))('playwright-core');
 const browsers = join(homedir(), '.agent-browser/browsers');
-const executablePath = process.env.CHROME_PATH || join(browsers,
-  readdirSync(browsers).filter(name => name.startsWith('chrome-')).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).at(-1), 'chrome');
+// Match agent-browser's flat and legacy nested Chrome-for-Testing layouts.
+const macBinary = 'Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing';
+const binaries = ['chrome', 'chrome-linux64/chrome', macBinary,
+  `chrome-mac-arm64/${macBinary}`, `chrome-mac-x64/${macBinary}`, 'chrome.exe', 'chrome-win64/chrome.exe'];
+const executablePath = process.env.CHROME_PATH || (existsSync(browsers)
+  ? readdirSync(browsers).filter(name => name.startsWith('chrome-'))
+    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+    .flatMap(version => binaries.map(binary => join(browsers, version, binary))).find(existsSync)
+  : undefined);
+if (!executablePath) throw new Error('Chrome not found. Run agent-browser install or set CHROME_PATH.');
 const temp = mkdtempSync(join(tmpdir(), 'og-card-'));
 let browser;
 try {
