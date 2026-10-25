@@ -74,6 +74,21 @@ describe('Timer Widget', () => {
     });
   });
 
+  test('defaults to one minute and restarts at one minute', () => {
+    renderWithModal(<Timer />);
+
+    expect(getByExactText('00:01:00')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /start/i }));
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(getByExactText('59')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /restart/i }));
+    expect(getByExactText('00:01:00')).toBeInTheDocument();
+  });
+
   test('treats earlier target times as tomorrow', () => {
     vi.setSystemTime(new Date('2026-03-11T23:45:00'));
 
@@ -138,12 +153,12 @@ describe('Timer Widget', () => {
       vi.advanceTimersByTime(1000);
     });
 
-    expect(getByExactText('9')).toBeInTheDocument();
+    expect(getByExactText('59')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
     fireEvent.click(screen.getByRole('button', { name: /add 1 minute/i }));
 
-    expect(getByExactText('01:09')).toBeInTheDocument();
+    expect(getByExactText('01:59')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
   });
 
@@ -161,7 +176,7 @@ describe('Timer Widget', () => {
     fireEvent.click(screen.getByRole('button', { name: /show add time options/i }));
     fireEvent.click(screen.getByRole('button', { name: /add 2 minutes/i }));
 
-    expect(getByExactText('00:02:07')).toBeInTheDocument();
+    expect(getByExactText('00:02:57')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /resume/i }));
@@ -170,7 +185,7 @@ describe('Timer Widget', () => {
       vi.advanceTimersByTime(1000);
     });
 
-    expect(getByExactText('02:06')).toBeInTheDocument();
+    expect(getByExactText('02:56')).toBeInTheDocument();
   });
 
   test('restart returns to the adjusted duration after a quick-add', () => {
@@ -182,7 +197,7 @@ describe('Timer Widget', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /restart/i }));
 
-    expect(getByExactText('00:05:10')).toBeInTheDocument();
+    expect(getByExactText('00:06:00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
   });
 
@@ -232,7 +247,7 @@ describe('Timer Widget', () => {
     fireEvent.click(screen.getByRole('button', { name: /start/i }));
 
     act(() => {
-      vi.advanceTimersByTime(11000);
+      vi.advanceTimersByTime(61000);
     });
 
     expect(global.HTMLMediaElement.prototype.play).toHaveBeenCalled();
@@ -257,7 +272,7 @@ describe('Timer Widget', () => {
     (global.HTMLMediaElement.prototype.play as ReturnType<typeof vi.fn>).mockClear();
 
     act(() => {
-      vi.advanceTimersByTime(6000);
+      vi.advanceTimersByTime(56000);
     });
 
     expect(screen.getByText("Time's Up!")).toBeInTheDocument();
@@ -292,20 +307,20 @@ describe('Timer Widget', () => {
         vi.advanceTimersByTime(3000);
       });
 
-      expect(getByExactText('7')).toBeInTheDocument();
+      expect(getByExactText('57')).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: /pause/i }));
 
       expect(screen.getByRole('button', { name: /resume/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /pause/i })).not.toBeInTheDocument();
-      expect(getByExactText('00:00:07')).toBeInTheDocument();
+      expect(getByExactText('00:00:57')).toBeInTheDocument();
 
       // A paused timer must not consume its remaining seconds.
       act(() => {
         vi.advanceTimersByTime(5000);
       });
 
-      expect(getByExactText('00:00:07')).toBeInTheDocument();
+      expect(getByExactText('00:00:57')).toBeInTheDocument();
       expect(playSpy()).not.toHaveBeenCalled();
 
       fireEvent.click(screen.getByRole('button', { name: /resume/i }));
@@ -313,7 +328,7 @@ describe('Timer Widget', () => {
       expect(screen.getByRole('button', { name: /pause/i })).toBeInTheDocument();
 
       act(() => {
-        vi.advanceTimersByTime(7000);
+        vi.advanceTimersByTime(57000);
       });
 
       expect(screen.getByText("Time's Up!")).toBeInTheDocument();
@@ -338,7 +353,7 @@ describe('Timer Widget', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /restart/i }));
 
-      expect(getByExactText('00:00:10')).toBeInTheDocument();
+      expect(getByExactText('00:01:00')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
 
       act(() => {
@@ -361,7 +376,7 @@ describe('Timer Widget', () => {
       fireEvent.click(screen.getByRole('button', { name: /pause/i }));
       fireEvent.click(screen.getByRole('button', { name: /restart/i }));
 
-      expect(getByExactText('00:00:10')).toBeInTheDocument();
+      expect(getByExactText('00:01:00')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
 
       act(() => {
@@ -377,14 +392,14 @@ describe('Timer Widget', () => {
       fireEvent.click(screen.getByRole('button', { name: /start/i }));
 
       act(() => {
-        vi.advanceTimersByTime(11000);
+        vi.advanceTimersByTime(61000);
       });
 
       expect(playSpy()).toHaveBeenCalledTimes(1);
 
       fireEvent.click(screen.getByRole('button', { name: /restart/i }));
 
-      expect(getByExactText('00:00:10')).toBeInTheDocument();
+      expect(getByExactText('00:01:00')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
 
       act(() => {

@@ -301,7 +301,7 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
   });
 
   const segmentEditor = useTimeSegmentEditor({
-    initialValues: savedState?.segmentValues ?? ['00', '00', '10'],
+    initialValues: savedState?.segmentValues,
     isRunning,
     onValuesChange: () => {
       // Edited values are read directly from the segment editor when starting or resuming.

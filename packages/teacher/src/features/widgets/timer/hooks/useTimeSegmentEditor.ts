@@ -12,7 +12,7 @@ interface UseTimeSegmentEditorProps {
  * Handles keyboard navigation, validation, and input management
  */
 export function useTimeSegmentEditor({ 
-  initialValues = ['00', '00', '10'],
+  initialValues = ['00', '01', '00'],
   isRunning,
   onValuesChange 
 }: UseTimeSegmentEditorProps) {

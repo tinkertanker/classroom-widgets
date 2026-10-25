@@ -92,13 +92,13 @@ export function useTimerCountdown({ onTimeUp, restoredState }: UseTimerCountdown
 
   const restored = getInitialState();
 
-  const [initialTime, setInitialTime] = useState(restored?.initialTime ?? 10);
-  const [time, setTime] = useState(restored?.time ?? 10);
+  const [initialTime, setInitialTime] = useState(restored?.initialTime ?? 60);
+  const [time, setTime] = useState(restored?.time ?? 60);
   const [status, setStatus] = useState<TimerStatus>(restored?.status ?? { kind: 'idle' });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const startTimeRef = useRef<number | null>(restored?.status.kind === 'running' ? Date.now() : null);
   const pausedTimeRef = useRef<number>(restored?.time ?? 0);
-  const originalTimeRef = useRef<number>(restored?.originalTime ?? 10);
+  const originalTimeRef = useRef<number>(restored?.originalTime ?? 60);
 
   const isRunning = status.kind === 'running';
   const isPaused = status.kind === 'paused';
