@@ -15,6 +15,8 @@ extension DisplayPreviewCoordinator {
         message: String,
         completionPresentation: DisplayPreviewPresentation? = nil
     ) {
+        cancelCaptureResize()
+        session?.cancel()
         pendingStopPresentation.update(
             generation: intent.generation,
             message: message,
@@ -159,6 +161,8 @@ extension DisplayPreviewCoordinator {
     @discardableResult
     func reconcileTerminalStop(of capture: DisplayCaptureSession) -> Bool {
         guard stopLifecycle.terminalStopConfirmed(for: capture) else { return false }
+        cancelCaptureResize()
+        capture.cancel()
         let operation = stopOperation?.matches(capture) == true ? stopOperation : nil
         session = nil
         stopOperation = nil
