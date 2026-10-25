@@ -19,6 +19,7 @@ enum DisplayPreviewGeometry {
             width: max(2, (fitted.width * capScale).rounded(.down)),
             height: max(2, (fitted.height * capScale).rounded(.down))
         )
+    }
 
     static func aspectFit(contentSize: CGSize, in bounds: CGRect) -> CGRect? {
         guard contentSize.isFinitePositive, bounds.isFinitePositive else { return nil }
