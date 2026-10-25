@@ -47,6 +47,7 @@ Tray.prototype.setContextMenu = function (menu) {
   return setContextMenu.call(this, menu);
 };
 let popped = null;
+const popup = Menu.prototype.popup;
 Menu.prototype.popup = function () { popped = this; }; // Use the real items without grabbing the pointer.
 const item = (label) => menus[menus.length - 1].items.find((entry) => entry.label === label);
 const arrangeItem = (label) => item('Arrange Widgets').submenu.items.find((entry) => entry.label === label);
@@ -75,6 +76,23 @@ function snapshot(name) {
 }
 
 const EXPECTED = ['Left Half', 'Right Half', 'Top Half', 'Bottom Half', 'Top Left', 'Top Right', 'Bottom Left', 'Bottom Right', 'Centre', 'Fill Screen'];
+async function assertArrangementMenu(multiple) {
+  popped = null;
+  await panels.Timer.webContents.executeJavaScript("document.getElementById('arrange').click()");
+  const menu = await waitFor('Timer arrange menu', () => popped);
+  const visible = menu.items.filter((entry) => entry.visible);
+  const layouts = visible.filter((entry) => entry.type === 'radio').map((entry) => entry.label);
+  assert.deepEqual(layouts, multiple ? ['Free placement', 'Arrange in a row', 'Arrange in a column'] : []);
+  assert.notEqual(visible[0].type, 'separator', 'no orphan leading separator');
+  assert.deepEqual(visible.filter((entry) => entry.enabled && entry.type !== 'separator' && entry.type !== 'radio').map((entry) => entry.label), EXPECTED);
+  assert.equal(item('Arrange Widgets').visible, multiple, 'tray arrangement follows visible widget count');
+  log.push(`Arrangement ${multiple ? 'shown' : 'hidden'}; single-widget presets retained`);
+  popup.call(menu, { window: panels.Timer, x: 100, y: 30 });
+  await settle();
+  snapshot(multiple ? 'two-widget-menu' : 'one-widget-menu');
+  menu.closePopup();
+}
+
 async function snap(title, label, display) {
   const win = panels[title];
   popped = null;
@@ -101,9 +119,13 @@ require('../out/main/main.js');
 app.whenReady().then(async () => {
   try {
     await waitFor('widget options in the tray', () => item('⏱️  Timer'));
+    assert.equal(item('Arrange Widgets').visible, false, 'no arrangement with zero widgets');
     await open('⏱️  Timer', 'Timer');
+    await assertArrangementMenu(false);
+    await snap('Timer', 'Centre', LEFT);
     await open('🚦  Traffic Light', 'Traffic Light');
     await settle();
+    await assertArrangementMenu(true);
     // A row layout first: a preset must take the panel back to free placement.
     arrangeItem('Arrange in a Row').click();
     await settle();
@@ -138,6 +160,16 @@ app.whenReady().then(async () => {
       assert.deepEqual([centred.bounds.width, centred.bounds.height], [fill.bounds.width, fill.bounds.height], 'Centre keeps the size');
       snapshot(`${title.replace(' ', '-').toLowerCase()}-centre`);
     }
+
+    const atHide = new Promise((done) => panels['Traffic Light'].once('hide', () => process.nextTick(() => {
+      done({ removed: panels['Traffic Light'].isDestroyed(), arrangementVisible: item('Arrange Widgets').visible });
+    })));
+    await panels['Traffic Light'].webContents.executeJavaScript("document.getElementById('close').click()");
+    assert.deepEqual(await atHide, { removed: false, arrangementVisible: false }, 'hide arrangement before the host removes the closed widget');
+    await waitFor('Traffic Light closed', () => panels['Traffic Light'].isDestroyed() || !panels['Traffic Light'].isVisible());
+    await assertArrangementMenu(false);
+    await open('🚦  Traffic Light', 'Traffic Light');
+    await assertArrangementMenu(true);
 
     log.push('PASS');
     writeFileSync(join(evidence, 'widget-snap.txt'), log.join('\n') + '\n');

@@ -56,6 +56,8 @@ public partial class WidgetPanelWindow : Window
     public event Action<string, Rect>? FrameChanged;
     public event Action? OpenSettingsRequested;
 
+    public Func<bool> HasMultipleVisiblePanels { get; set; } = () => false;
+
     public string WidgetId => _descriptor.Id;
     public bool IsResizable => _descriptor.IsResizable;
     public bool IsHidden => _descriptor.Hidden;
@@ -75,7 +77,6 @@ public partial class WidgetPanelWindow : Window
         _backgroundOpacity = Math.Clamp(backgroundOpacity, 0, 1);
         _settings = settings;
         InitializeComponent();
-        AddSnapItems();
         Topmost = alwaysOnTop;
         ApplyDescriptorPresentation();
         UpdateVolumeButton();

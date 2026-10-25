@@ -193,6 +193,8 @@ final class WidgetPanelCoordinator: NSObject {
 
     var hasVisiblePanels: Bool { panelControllers.values.contains(where: isPresented) }
 
+    var hasMultipleVisiblePanels: Bool { panelControllers.values.filter(isPresented).count > 1 }
+
     func arrange(_ layout: WidgetPanelLayout, on screen: NSScreen? = nil) {
         let previousLayout = self.layout
         self.layout = layout
@@ -310,6 +312,7 @@ final class WidgetPanelCoordinator: NSObject {
             keepOnAllSpaces: panelsJoinAllSpaces
         )
         controller.setWidgetCreationOptions(widgetCreationOptions)
+        controller.hasMultipleVisiblePanels = { [weak self] in self?.hasMultipleVisiblePanels == true }
         controller.onStateChange = { [weak self] stateChange in
             guard let self, self.compactPresentationActive else { return }
             self.onPanelStateChange?(stateChange)

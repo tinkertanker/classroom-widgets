@@ -35,6 +35,7 @@ public sealed class WidgetPanelCoordinator
     }
 
     public bool HasVisiblePanels => _panels.Values.Any(IsPresented);
+    public bool HasMultipleVisiblePanels => _panels.Values.Count(IsPresented) > 1;
     public WidgetPanelLayout Layout => _layout;
 
     public void SetWidgetCreationOptions(IReadOnlyList<CompactWidgetOption> options)
@@ -267,6 +268,7 @@ public sealed class WidgetPanelCoordinator
         PerfLog.Mark("panel.create", descriptor.Id, descriptor.PerfWidgetType, detail: descriptor.Hidden ? "hidden" : null);
         var panel = new WidgetPanelWindow(descriptor, _backgroundOpacity, _alwaysOnTop, _settings);
         panel.SetWidgetCreationOptions(_options);
+        panel.HasMultipleVisiblePanels = () => HasMultipleVisiblePanels;
         panel.PanelStateChanged += change => PanelStateChanged?.Invoke(change);
         panel.RandomiserListChanged += change => RandomiserListChanged?.Invoke(change);
         panel.RemovalRequested += widgetId => WidgetRemovalRequested?.Invoke(widgetId);

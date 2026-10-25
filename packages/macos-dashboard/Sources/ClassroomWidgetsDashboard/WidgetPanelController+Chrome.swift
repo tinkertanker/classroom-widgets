@@ -203,7 +203,7 @@ extension WidgetPanelController {
             ("Arrange in Row", .row),
             ("Arrange in Column", .column)
         ]
-        for itemLayout in layouts {
+        for itemLayout in layouts where hasMultipleVisiblePanels() {
             let item = NSMenuItem(title: itemLayout.title, action: #selector(requestLayout(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = itemLayout.layout.rawValue
@@ -215,7 +215,7 @@ extension WidgetPanelController {
 
     /// Position presets for this widget alone, below the layouts that move every widget.
     func addSnapItems(to menu: NSMenu) {
-        menu.addItem(.separator())
+        if !menu.items.isEmpty { menu.addItem(.separator()) }
         let header = NSMenuItem(title: "Move This Widget", action: nil, keyEquivalent: "")
         header.isEnabled = false
         menu.addItem(header)
