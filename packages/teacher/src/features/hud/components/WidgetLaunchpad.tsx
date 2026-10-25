@@ -146,7 +146,7 @@ const WidgetLaunchpad: React.FC<WidgetLaunchpadProps> = ({
             onChange={event => setSearchQuery(event.target.value)}
             onKeyDown={handleSearchKeyDown}
             placeholder="Search all widgets…"
-            className="widget-launchpad-search w-full rounded-lg border border-warm-gray-200 bg-transparent py-2 pl-10 pr-10 text-sm text-warm-gray-800 placeholder-warm-gray-400 focus:border-sage-500 focus:outline-none focus:ring-2 focus:ring-sage-500/20 dark:border-warm-gray-600 dark:text-warm-gray-100"
+            className="widget-launchpad-search w-full rounded-lg border border-warm-gray-200 bg-transparent py-2 pl-10 pr-10 text-base sm:text-sm text-warm-gray-800 placeholder-warm-gray-400 focus:border-sage-500 focus:outline-none focus:ring-2 focus:ring-sage-500/20 dark:border-warm-gray-600 dark:text-warm-gray-100"
           />
           {searchQuery && (
             <button type="button" aria-label="Clear search" onClick={() => {
