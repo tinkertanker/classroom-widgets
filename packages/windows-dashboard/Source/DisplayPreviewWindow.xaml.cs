@@ -94,7 +94,7 @@ public partial class DisplayPreviewWindow : Window
 
     public void ShowMenu(ContextMenu menu, UIElement? placementTarget = null)
     {
-        menu.PlacementTarget = placementTarget ?? PowerButton;
+        menu.PlacementTarget = placementTarget ?? MenuButton;
         menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Top;
         menu.IsOpen = true;
     }
