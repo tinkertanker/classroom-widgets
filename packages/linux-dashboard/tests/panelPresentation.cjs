@@ -137,10 +137,15 @@ app.whenReady().then(async () => {
   for (const [index, win] of panelWindows().entries()) win.setPosition(100 + index * 45, 80 + index * 35);
   listWindow.focus();
   // Move a real pointer over neighboring panels and back to the List editor.
-  execFileSync('xdotool', ['mousemove', '--sync', '550', '350']);
-  await delay(300);
   const [lx, ly] = listWindow.getPosition();
-  execFileSync('xdotool', ['mousemove', '--sync', String(lx + 150), String(ly + 130)]);
+  for (const [x, y] of [[550, 350], [lx + 150, ly + 130]]) {
+    const start = screen.getCursorScreenPoint();
+    for (let step = 1; step <= 10; step++) {
+      execFileSync('xdotool', ['mousemove', '--sync', String(Math.round(start.x + (x - start.x) * step / 10)),
+        String(Math.round(start.y + (y - start.y) * step / 10))]);
+      await delay(80);
+    }
+  }
   await delay(1600);
   const beforeOrder = order();
   assert.equal(beforeOrder.length, 6, 'six native windows must be represented in the X11 stack');
@@ -155,6 +160,7 @@ app.whenReady().then(async () => {
     await until(`edit ${index}`, () => inventory(host).widgets.find(widget => widget.id === listId)
       ?.snapshotPayload.state?.inputs?.[0] === `Row${'ABCDE'.slice(0, index + 1)}`);
     assert.deepEqual(order(), beforeOrder, 'accepted List edits must preserve native stacking order');
+    await delay(150);
   }
   await delay(500);
   const typed = summary();
