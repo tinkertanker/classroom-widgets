@@ -34,26 +34,34 @@ final class WidgetCheckpointTests: XCTestCase {
             let entries = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
             return entries.compactMap { $0[kCGWindowNumber as String] as? Int }.filter { ids.contains($0) }
         }
+        // Ordering is committed asynchronously by WindowServer, independently
+        // of the AppKit call returning. Settle explicit setup before measuring.
+        try await waitUntil { order().count == 4 && order().first == window.windowNumber }
         let before = order()
         XCTAssertEqual(before.count, 4, "All four native panels must be visible to WindowServer")
         XCTAssertEqual(before.first, window.windowNumber)
         try await waitUntil { (try? await list.evaluateJavaScript("!!document.querySelector('textarea')")) as? Bool == true }
+        var observedOrders: [String] = []
         for text in ["A", "AB", "ABC", "ABCD", "ABCDE"] {
             try await type(text, in: list)
             try await waitUntil { try await self.hostContains(text, host: host) }
-            XCTAssertEqual(order(), before, "Accepted List edit \(text) must not reorder visible panels")
+            let after = order()
+            observedOrders.append("\(text): \(after)")
+            XCTAssertEqual(after, before, "Accepted List edit \(text) must not reorder visible panels")
         }
         let other = try XCTUnwrap(windows.last)
         other.makeKeyAndOrderFront(nil)
+        try await waitUntil { order().first == other.windowNumber }
         XCTAssertEqual(order().first, other.windowNumber, "Explicit user raises must still work")
         other.orderOut(nil)
+        try await waitUntil { !other.isVisible && !order().contains(other.windowNumber) }
         XCTAssertFalse(other.isVisible)
         panels.activate()
-        try await waitUntil { other.isVisible }
+        try await waitUntil { other.isVisible && order().contains(other.windowNumber) }
         host.reloadWidgets()
         try await waitUntil { self.panelWebView(title: "List").map { $0 !== list } == true }
         try await waitUntil { (try? await self.panelWebView(title: "List")?.evaluateJavaScript("document.querySelector('textarea')?.value")) as? String == "ABCDE" }
-        let evidence = "PASS five accepted List edits preserve panel order \(before); explicit raise, order-out recovery and reload retain ABCDE\n"
+        let evidence = "Initial order: \(before)\nObserved edits: \(observedOrders.joined(separator: "; "))\nCompleted explicit raise, order-out recovery and reload with ABCDE\n"
         print(evidence)
         if let directory = ProcessInfo.processInfo.environment["CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR"] {
             try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
