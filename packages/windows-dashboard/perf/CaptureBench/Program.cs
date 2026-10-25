@@ -10,19 +10,19 @@
 // 480x360 DIP preview at 150% scaling). The live phase sizes its window to it and then
 // targets the image area it actually got, as the app does.
 //
-// To measure a baseline, keep this folder and the csproj and swap in the old capture code:
+// To measure a phase-1 baseline, keep this folder/csproj and swap in its capture code:
 //   git checkout <base> -- packages/windows-dashboard/Source
-// Builds without the target-size constructor ignore --preview and capture at source size;
-// summary.json records which constructor ran. Capture-to-presentation latency starts when
+// The target-size constructor is required to timestamp each capture request accurately.
+// Capture-to-presentation latency starts when
 // the session samples the preview size and ends at FrameReady, on both sync and async builds.
 // It includes worker/dispatcher scheduling but not the 66 ms inter-frame delay. WPF's render
 // thread and GPU upload show up in live CPU and input latency. --moving-source starts a
 // separate animated-source process, excluded from the measured capture-process CPU.
 //
-// Phases, all on one STA dispatcher like the app:
+// Phases, hosted on one STA dispatcher like the app:
 //   1. idle:      dispatcher latency with no capture, for a baseline.
 //   2. capture:   --captures completed frames; Start need not emit a frame synchronously.
-//   3. live:      the real 66 ms capture timer feeding an Image in a preview-sized window for
+//   3. live:      the real session feeding an Image in a preview-sized window for
 //                 --seconds, while a worker thread posts an Input-priority item every 16 ms
 //                 and records how late it runs (what a click or key press would feel).
 //   4. gdi:       GDI object count before, during and after --cycles start/stop sessions.
@@ -76,6 +76,8 @@ internal static class Program
             result["capture"] = Captures(options);
             result["live"] = Live(dispatcher, options);
             result["gdi"] = GdiCycles(options);
+            if (source is { HasExited: true })
+                throw new InvalidOperationException("The moving source exited during measurement; discard this run.");
         }
         finally
         {
@@ -137,10 +139,9 @@ internal static class Program
 
     private static DisplayCaptureSession Create(Options options, Func<Size> target)
     {
-        var withTarget = TargetConstructor();
-        return withTarget is not null
-            ? (DisplayCaptureSession)withTarget.Invoke(new object?[] { options.Source, null, target })
-            : new DisplayCaptureSession(options.Source);
+        var withTarget = TargetConstructor()
+            ?? throw new NotSupportedException("Capture timing requires the phase-1 target-size constructor or later.");
+        return (DisplayCaptureSession)withTarget.Invoke(new object?[] { options.Source, null, target });
     }
 
     private static object Captures(Options options)
