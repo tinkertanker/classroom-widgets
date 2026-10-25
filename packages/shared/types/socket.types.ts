@@ -291,8 +291,10 @@ export interface SessionRTFeedbackResetData {
 
 export interface Question {
   id: string;
-  studentId: string;
-  studentName: string;
+  /** Teacher copy only: students never receive who asked a question */
+  studentId?: string;
+  /** Teacher copy only: students never receive who asked a question */
+  studentName?: string;
   text: string;
   timestamp: number;
   answered: boolean;

@@ -65,7 +65,13 @@ function createMockIO() {
   const broadcasts = [];
   return {
     on: (event, handler) => { if (event === 'connection') connectionHandler = handler; },
-    to: (target) => ({ emit: (...args) => broadcasts.push({ target, event: args[0], data: args[1] }) }),
+    to: (target) => {
+      const op = (except) => ({
+        emit: (...args) => broadcasts.push({ target, ...(except && { except }), event: args[0], data: args[1] }),
+        except: (id) => op(id)
+      });
+      return op(undefined);
+    },
     sockets: { adapter: { rooms: new Map() }, sockets: new Map() },
     broadcasts,
     connect: (socket) => connectionHandler(socket)

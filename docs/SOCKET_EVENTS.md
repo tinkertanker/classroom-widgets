@@ -60,7 +60,7 @@ switching and role separation; it closes its sessions and writes `session-identi
 
 *   `Teacher → Server`: `session:createRoom` with `{ sessionCode, roomType, widgetId }`
 *   `Server → Teacher`: (callback) with `{ success, isExisting?, error? }`
-*   `Server → Students`: `session:roomCreated` with `{ roomType, widgetId, roomData }`
+*   `Server → Students`: `session:roomCreated` with `{ roomType, widgetId, roomData }`, where `roomData` is the student view of the room (no question askers, link submissions or activity answers). The creating host gets the same event with the full room.
 
 **Teacher Closes/Deletes a Widget**
 
@@ -241,9 +241,12 @@ For Poll widgets specifically:
 **Submissions**
 
 *   `Student → Server`: `session:questions:submit` with `{ sessionCode, widgetId, question, studentName }`
-*   `Server → Student`: `session:questions:submitted` with `{ success, error? }`
-*   `Server → All`: `questions:questionAdded` with `{ id, studentName, text, timestamp, answered, widgetId }`
     - Note: Student sends `question` field, but server broadcasts as `text` field
+*   `Server → Student`: `session:questions:submitted` with `{ success, questionId?, error? }`
+*   `Server → Teacher`: `questions:questionAdded` with `{ id, studentId, studentName, text, timestamp, answered, widgetId }`
+*   `Server → Students`: `questions:questionAdded` with `{ id, text, timestamp, answered, widgetId }`. Students see every question in the room but never who asked it; `questions:requestState` likewise returns questions without `studentId` or `studentName` to students.
+*   `Client → Server`: `questions:requestState` with `{ sessionCode, widgetId }` (the host or a joined student only)
+*   `Server → Client`: `questions:stateUpdate` with `{ isActive, questions, widgetId }`. The host's `questions` carry `studentId` and `studentName`; a student's do not.
 
 **Management**
 

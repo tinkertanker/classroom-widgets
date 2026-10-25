@@ -83,18 +83,20 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     // Send confirmation to student
     socket.emit(EVENTS.QUESTIONS.SUBMITTED, createSuccessResponse({ questionId: question.id }));
 
-    // Notify all in the room
-    const questionData = {
-      id: question.id,
-      text: question.text,
-      studentId: question.studentId,
-      studentName: question.studentName,
-      timestamp: question.timestamp,
-      answered: question.answered,
-      widgetId: data.widgetId
-    };
-
-    io.to(`${session.code}:${questionsRoomId}`).emit(EVENTS.QUESTIONS.QUESTION_ADDED, questionData);
+    // Students see every question in the room, but not who asked it; only
+    // the teacher receives the asker's name and id.
+    const roomName = `${session.code}:${questionsRoomId}`;
+    const studentQuestion = { ...QuestionsRoom.toStudentQuestion(question), widgetId: data.widgetId };
+    if (session.hostSocketId) {
+      io.to(roomName).except(session.hostSocketId).emit(EVENTS.QUESTIONS.QUESTION_ADDED, studentQuestion);
+      io.to(session.hostSocketId).emit(EVENTS.QUESTIONS.QUESTION_ADDED, {
+        ...studentQuestion,
+        studentId: question.studentId,
+        studentName: question.studentName
+      });
+    } else {
+      io.to(roomName).emit(EVENTS.QUESTIONS.QUESTION_ADDED, studentQuestion);
+    }
 
     session.updateActivity();
   });
@@ -216,9 +218,10 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
 
     const { ok, room } = resolveReadableRoom(sessionManager, socket, sessionCode, 'questions', QuestionsRoom, widgetId);
     if (ok) {
+      const session = sessionManager.getSession(sessionCode);
       socket.emit(EVENTS.QUESTIONS.STATE_UPDATE, {
         isActive: room.isActive,
-        questions: room.getQuestions(),
+        questions: session.isHost(socket.id) ? room.getQuestions() : room.getStudentQuestions(),
         widgetId: widgetId
       });
     }

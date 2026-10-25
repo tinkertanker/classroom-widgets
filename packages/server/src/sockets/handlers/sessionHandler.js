@@ -368,11 +368,15 @@ module.exports = function sessionHandler(io, socket, sessionManager, getCurrentS
         logger.info('[SessionHandler] Is current socket in session room?', socketsInRoom?.has(socket.id));
       }
 
-      io.to(sessionRoomName).emit('session:roomCreated', {
-        roomType,
-        widgetId,
-        roomData: room.toJSON()
+      // Students get the student view of the room (no question askers, link
+      // submissions or activity answers); only the host gets the full room.
+      // A new room is empty today, but this keeps that from being load-bearing.
+      const roomCreated = { roomType, widgetId };
+      io.to(sessionRoomName).except(socket.id).emit('session:roomCreated', {
+        ...roomCreated,
+        roomData: room.toStudentJSON()
       });
+      socket.emit('session:roomCreated', { ...roomCreated, roomData: room.toJSON() });
       if (SESSION_DEBUG) {
         logger.info('[SessionHandler] Room creation complete, returning success');
       }

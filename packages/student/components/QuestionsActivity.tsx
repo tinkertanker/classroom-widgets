@@ -227,7 +227,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
           {sortedQuestions.length > 0 && (
             <div className="mt-4">
               <h3 className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300 mb-2">
-                Your Submissions ({sortedQuestions.length})
+                Class Questions ({sortedQuestions.length})
               </h3>
               <div className="space-y-2 max-h-[200px] overflow-y-auto">
                 {sortedQuestions.map((question, index) => {

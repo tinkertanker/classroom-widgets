@@ -23,6 +23,9 @@
 //   limit; or the cap drops a present student's answer, or locks out new
 //   students while departed students' answers fill it.
 // - A host cycling through rooms grows the read budgets without limit.
+// - A classmate's question reaches students with the asker's name or id,
+//   live or in a state read; or students stop seeing classmates' questions;
+//   or the teacher loses the asker's name.
 // - A long whitespace-flexible answer typed with extra indentation is cut
 //   before whitespace is collapsed and graded wrong; or an exact-mode answer
 //   escapes the length cap.
@@ -182,6 +185,52 @@ async function join(code, name) {
       mallory.emit('questions:requestState', { sessionCode: code, widgetId: 'q-1' });
       await delay(300);
       assert.equal(questions.lastActivity, before);
+    });
+
+    await check('classmates see each question without the asker\'s name or id; the teacher sees the name', async () => {
+      const bob = await join(code, 'Bob Lim');
+      const QUESTION = 'Can we have more time?';
+      const toBob = waitFor(bob, 'questions:questionAdded', d => d.text === QUESTION);
+      const toAsker = waitFor(alice, 'questions:questionAdded', d => d.text === QUESTION);
+      const toTeacher = waitFor(teacher, 'questions:questionAdded', d => d.text === QUESTION);
+      const asked = waitFor(alice, 'session:questions:submitted');
+      alice.emit('session:questions:submit', { sessionCode: code, widgetId: 'q-1', question: QUESTION, studentName: 'Alice Tan' });
+      assert.equal((await asked).success, true);
+      for (const [who, live] of [['classmate', await toBob], ['asker', await toAsker]]) {
+        assert.deepEqual(Object.keys(live).sort(), ['answered', 'id', 'text', 'timestamp', 'widgetId'], `${who} live keys`);
+      }
+      const teacherCopy = await toTeacher;
+      assert.equal(teacherCopy.studentName, 'Alice Tan');
+      assert.equal(teacherCopy.studentId, alice.id);
+      await delay(200);
+      const teacherCopies = teacher.inbox.filter(([e, d]) => e === 'questions:questionAdded' && d?.text === QUESTION);
+      assert.equal(teacherCopies.length, 1, 'the teacher got the question more than once');
+      const state = waitFor(bob, 'questions:stateUpdate', d => d.widgetId === 'q-1');
+      bob.emit('questions:requestState', { sessionCode: code, widgetId: 'q-1' });
+      const { questions } = await state;
+      const read = questions.find(q => q.text === QUESTION);
+      assert.ok(read, 'classmate no longer sees the question');
+      assert.deepEqual(Object.keys(read).sort(), ['answered', 'id', 'text', 'timestamp'], 'state read keys');
+      assert.ok(!JSON.stringify(questions).includes('Alice Tan'), 'a name reached a student in a state read');
+      const hostState = waitFor(teacher, 'questions:stateUpdate', d => d.widgetId === 'q-1');
+      teacher.emit('questions:requestState', { sessionCode: code, widgetId: 'q-1' });
+      assert.equal((await hostState).questions.find(q => q.text === QUESTION).studentName, 'Alice Tan');
+      bob.disconnect();
+    });
+
+    await check('a late joiner gets no earlier asker, and a new room reaches students as the student view', async () => {
+      const watcher = await join(code, 'Cara Ng');
+      const toStudent = waitFor(watcher, 'session:roomCreated', d => d.widgetId === 'q-new');
+      const toTeacher = waitFor(teacher, 'session:roomCreated', d => d.widgetId === 'q-new');
+      const created = await teacher.timeout(3000).emitWithAck('session:createRoom', { sessionCode: code, roomType: 'questions', widgetId: 'q-new' });
+      assert.equal(created.success, true, `createRoom q-new: ${created.error}`);
+      assert.ok(!('questions' in (await toStudent).roomData), 'student roomCreated carries the questions list');
+      assert.deepEqual((await toTeacher).roomData.questions, []);
+      // Everything this late joiner received, join snapshot included, is free of the earlier asker
+      const inbox = JSON.stringify(watcher.inbox);
+      assert.ok(inbox.includes('session:joined'), 'join snapshot not recorded');
+      assert.ok(!inbox.includes('Alice Tan') && !inbox.includes(alice.id), 'an asker reached a late joiner');
+      watcher.disconnect();
     });
 
     await check('a joined student reads all six rooms, and the host reads its own', async () => {

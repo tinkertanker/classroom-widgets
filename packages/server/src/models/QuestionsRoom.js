@@ -67,6 +67,21 @@ class QuestionsRoom extends Room {
   }
 
   /**
+   * The questions as students see them: classmates' questions without who
+   * asked them. The asker's name and id stay with the teacher.
+   */
+  getStudentQuestions() {
+    return this.questions.map(QuestionsRoom.toStudentQuestion);
+  }
+
+  /**
+   * One question without the asker's name or id
+   */
+  static toStudentQuestion({ id, text, timestamp, answered }) {
+    return { id, text, timestamp, answered };
+  }
+
+  /**
    * Get question count
    */
   getQuestionCount() {
