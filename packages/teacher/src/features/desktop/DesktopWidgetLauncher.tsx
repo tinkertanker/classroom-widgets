@@ -45,7 +45,7 @@ const DesktopWidgetLauncher = () => {
   }, []);
 
   const extraItems: LaunchpadExtraItem[] = [
-    { id: 'display-preview', name: 'Display', icon: FaDisplay, onSelect: openDisplayPreview }
+    { id: 'display-preview', name: 'Display', description: 'Preview a display', icon: FaDisplay, onSelect: openDisplayPreview }
   ];
 
   return (
@@ -54,9 +54,6 @@ const DesktopWidgetLauncher = () => {
         <header className="flex items-start justify-between gap-4 border-b border-warm-gray-200 px-4 py-4 dark:border-warm-gray-700 sm:px-6">
           <div>
             <h1 className="text-xl font-semibold">Add a widget</h1>
-            <p className="mt-1 text-sm text-warm-gray-500 dark:text-warm-gray-400">
-              Choose a widget to open. Closing this launcher keeps your widgets running.
-            </p>
           </div>
           <button
             type="button"
@@ -68,7 +65,7 @@ const DesktopWidgetLauncher = () => {
           </button>
         </header>
         <div className="min-h-0 flex-1">
-          <WidgetLaunchpad compactOnly groupByCategory={false} extraItems={extraItems} onClose={close} onSelectWidget={addWidget} />
+          <WidgetLaunchpad compactOnly extraItems={extraItems} onClose={close} onSelectWidget={addWidget} />
         </div>
       </section>
     </main>

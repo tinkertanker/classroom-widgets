@@ -1,0 +1,157 @@
+.widget-launchpad {
+  --chooser-surface: white;
+  --chooser-fade: theme('colors.warm-gray.100');
+  container: widget-chooser / inline-size;
+  display: flex;
+  flex-direction: column;
+  height: min(590px, calc(100dvh - 7rem));
+  min-height: 0;
+  background: var(--chooser-surface);
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.dark .widget-launchpad {
+  --chooser-surface: theme('colors.warm-gray.800');
+  --chooser-fade: theme('colors.warm-gray.700');
+}
+
+.widget-launchpad--compact {
+  height: 100%;
+}
+
+.widget-launchpad-columns {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 0 1rem 1rem;
+  scrollbar-width: thin;
+}
+
+.widget-launchpad-column + .widget-launchpad-column {
+  margin-top: 1rem;
+  border-top: 1px solid var(--chooser-fade);
+  padding-top: 1rem;
+}
+
+.widget-launchpad-heading {
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem 0.75rem;
+}
+
+.widget-launchpad-item {
+  @apply text-warm-gray-700 dark:text-warm-gray-200;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.625rem 0.5rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.widget-launchpad-item:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.widget-launchpad-item:focus-visible,
+.widget-launchpad-item--match:not(:disabled) {
+  @apply bg-sage-50 text-sage-800 dark:bg-sage-900/30 dark:text-sage-100;
+  outline: 2px solid theme('colors.sage.500');
+  outline-offset: -2px;
+}
+
+@media (hover: hover) {
+  .widget-launchpad-item:hover:not(:disabled) {
+    @apply bg-sage-50 text-sage-800 dark:bg-sage-900/30 dark:text-sage-100;
+  }
+}
+
+/* Container width, rather than screen width, also handles native windows and zoom.
+   Below these thresholds the categories share one scroller with no nested lists. */
+@container widget-chooser (min-width: 640px) {
+  .widget-launchpad--compact .widget-launchpad-columns {
+    --chooser-columns: 3;
+    display: grid;
+  }
+}
+
+@container widget-chooser (min-width: 900px) {
+  .widget-launchpad-columns {
+    --chooser-columns: 4;
+    display: grid;
+  }
+}
+
+@container widget-chooser (min-width: 640px) {
+  .widget-launchpad--compact .widget-launchpad-columns {
+    grid-template-columns: repeat(var(--chooser-columns), minmax(0, 1fr));
+    overflow: hidden;
+    padding: 0 1rem 1rem;
+  }
+
+  .widget-launchpad--compact .widget-launchpad-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0.5rem;
+    border-top: 0;
+  }
+
+  .widget-launchpad--compact .widget-launchpad-column + .widget-launchpad-column {
+    border-left: 1px solid var(--chooser-fade);
+  }
+
+  .widget-launchpad--compact .widget-launchpad-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.warm-gray.400') transparent;
+    background:
+      linear-gradient(to top, var(--chooser-surface) 60%, transparent) bottom / 100% 40px no-repeat local,
+      linear-gradient(to top, var(--chooser-fade), transparent) bottom / 100% 16px no-repeat scroll;
+  }
+}
+
+@container widget-chooser (min-width: 900px) {
+  .widget-launchpad-columns {
+    grid-template-columns: repeat(var(--chooser-columns), minmax(0, 1fr));
+    overflow: hidden;
+    padding: 0 1rem 1rem;
+  }
+
+  .widget-launchpad-column {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    margin: 0;
+    padding: 0 0.5rem;
+    border-top: 0;
+  }
+
+  .widget-launchpad-column + .widget-launchpad-column {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+    border-left: 1px solid var(--chooser-fade);
+  }
+
+  .widget-launchpad-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.warm-gray.400') transparent;
+    background:
+      linear-gradient(to top, var(--chooser-surface) 60%, transparent) bottom / 100% 40px no-repeat local,
+      linear-gradient(to top, var(--chooser-fade), transparent) bottom / 100% 16px no-repeat scroll;
+  }
+}
