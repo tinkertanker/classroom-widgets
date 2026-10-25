@@ -123,6 +123,7 @@ extension AppDelegate {
         arrangeItem.image = WidgetMenu.symbol(named: "square.grid.2x2", description: "Arrange Widgets")
         arrangeItem.submenu = makeArrangeMenu()
         arrangeItem.isEnabled = controller?.hasVisibleWidgetPanels == true
+        arrangeItem.isHidden = controller?.hasMultipleVisibleWidgetPanels != true
         menu.addItem(arrangeItem)
 
         let openLauncherItem = NSMenuItem(title: "Open Widget Launcher", action: #selector(openLauncher), keyEquivalent: "")

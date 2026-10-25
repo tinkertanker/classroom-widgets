@@ -75,11 +75,7 @@
                     </Button>
                     <Button x:Name="ArrangeButton" Style="{StaticResource ChromeButton}" Content="&#xE80A;" ToolTip="Arrange widgets" Click="ArrangeButton_Click">
                         <Button.ContextMenu>
-                            <ContextMenu x:Name="ArrangeMenu">
-                                <MenuItem Header="Free placement" Tag="Freeform" Click="ArrangeMenuItem_Click" />
-                                <MenuItem Header="Arrange in a row" Tag="Row" Click="ArrangeMenuItem_Click" />
-                                <MenuItem Header="Arrange in a column" Tag="Column" Click="ArrangeMenuItem_Click" />
-                            </ContextMenu>
+                            <ContextMenu x:Name="ArrangeMenu" Opened="ArrangeMenu_Opened" />
                         </Button.ContextMenu>
                     </Button>
                     <Button x:Name="AddButton" Style="{StaticResource ChromeButton}" Content="&#xE710;" ToolTip="Add widget" Click="AddButton_Click">

@@ -57,6 +57,26 @@ public partial class WidgetPanelWindow
 
     private void ArrangeButton_Click(object sender, RoutedEventArgs args) => OpenMenu(ArrangeButton, ArrangeMenu);
 
+    private void ArrangeMenu_Opened(object sender, RoutedEventArgs args)
+    {
+        ArrangeMenu.Items.Clear();
+        if (HasMultipleVisiblePanels())
+        {
+            foreach (var (label, layout) in new[]
+            {
+                ("Free placement", WidgetPanelLayout.Freeform),
+                ("Arrange in a row", WidgetPanelLayout.Row),
+                ("Arrange in a column", WidgetPanelLayout.Column)
+            })
+            {
+                var item = new MenuItem { Header = label, Tag = layout.ToString() };
+                item.Click += ArrangeMenuItem_Click;
+                ArrangeMenu.Items.Add(item);
+            }
+        }
+        AddSnapItems();
+    }
+
     private void VolumeButton_Click(object sender, RoutedEventArgs args) => OpenMenu(VolumeButton, VolumeMenu);
 
     private void VolumeMenu_Opened(object sender, RoutedEventArgs args)
@@ -99,7 +119,7 @@ public partial class WidgetPanelWindow
     /// <summary>Position presets for this widget alone, below the layouts that move every widget.</summary>
     private void AddSnapItems()
     {
-        ArrangeMenu.Items.Add(new Separator());
+        if (ArrangeMenu.Items.Count > 0) ArrangeMenu.Items.Add(new Separator());
         ArrangeMenu.Items.Add(new MenuItem { Header = "Move this widget", IsEnabled = false });
         for (var index = 0; index < WindowSnapGeometry.Groups.Length; index++)
         {

@@ -187,6 +187,7 @@ public sealed class TrayController : IDisposable
             _arrangeMenu.DropDownItems.Add(item);
         }
         _arrangeMenu.Enabled = _host.Coordinator.HasVisiblePanels;
+        _arrangeMenu.Visible = _host.Coordinator.HasMultipleVisiblePanels;
     }
 
     private void ShowMenu()

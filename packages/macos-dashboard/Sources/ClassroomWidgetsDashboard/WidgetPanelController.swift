@@ -27,6 +27,7 @@ final class WidgetPanelController: NSWindowController, NSWindowDelegate, WKNavig
     private var isProgrammaticallyChangingFrame = false
     private var isClosingPermanently = false
     var widgetCreationOptions: [CompactWidgetOption] = []
+    var hasMultipleVisiblePanels: () -> Bool = { false }
     weak var volumeButton: NSButton?
     private var backgroundOpacity: Double
     private var contentReady = false
