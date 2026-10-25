@@ -11,8 +11,7 @@
   body { font-family: 'Poppins', sans-serif; -webkit-font-smoothing: antialiased; color: #fffdf8; background: #88501d; }
   .bg { position: absolute; inset: -40px; width: 1280px; height: 710px; object-fit: cover; }
   .shade { position: absolute; inset: 0; background: linear-gradient(100deg, #482307b8, #6c350838 65%, #c5892420); }
-  .copy { position: absolute; left: 64px; top: 66px; }
-  .eyebrow { margin: 0 0 22px; font-size: 19px; font-weight: 600; letter-spacing: 3px; color: #ffe5bc; }
+  .copy { position: absolute; left: 64px; top: 110px; }
   h1 { margin: 0; font-size: 78px; line-height: 1.13; letter-spacing: -3px; font-weight: 700; }
   .subtitle { margin: 25px 0 0; font-size: 27px; line-height: 1.6; color: #ffe8ca; font-weight: 500; }
   .link { position: absolute; left: 64px; bottom: 92px; padding: 12px 28px; border-radius: 22px; background: #fff4de; color: #653914; font-size: 36px; font-weight: 700; letter-spacing: -.8px; box-shadow: 0 8px 24px #3d210326; }
@@ -25,11 +24,10 @@
   <img class="bg" src="../display-widget-demo/pipeline/assets/lowpoly-bg-blur.jpg" alt="">
   <div class="shade"></div>
   <div class="copy">
-    <p class="eyebrow">LITTLE TOOLS. BIG CLASSROOM ENERGY.</p>
     <h1>Classroom<br>Widgets</h1>
     <p class="subtitle">Free timers, polls, Q&amp;A &amp; more.<br>No logins. Just teach.</p>
   </div>
-  <div class="link">widgets.tk.sg <span aria-hidden="true">↗</span></div>
+  <div class="link" id="site-link">widgets.tk.sg <span aria-hidden="true">↗</span></div>
   <div class="platforms">Web app · macOS · Windows · Linux</div>
   <svg class="scene" viewBox="0 0 510 540" role="img" aria-label="Our hamster starts a rainbow timer and brings a live poll to life">
     <defs>
@@ -98,7 +96,13 @@ window.renderAt = seconds => {
   if (active < .55) el('dial').before(el('mascot'));
   else el('dial').after(el('mascot'));
   const peek = 20 * (1 - ease(t, 0, .6) + reset);
-  el('mascot').setAttribute('transform', `translate(${265 - active * 105} ${152 + active * 12 + peek - Math.sin(active * Math.PI) * 85}) rotate(${-32 * active}) scale(12)`);
+  // Rotate around the dial centre, keeping the hamster tangent to the track.
+  const slide = -34 * (ease(t, 3.1, 3.85) - ease(t, 4.0, 4.8));
+  const x = 265 - active * 105;
+  const y = 152 + active * 12 + peek - Math.sin(active * Math.PI) * 85;
+  el('mascot').setAttribute('transform', `translate(270 265) rotate(${slide}) translate(${x - 270} ${y - 265}) rotate(${-32 * active}) scale(12)`);
+  const pop = Math.sin(Math.PI * ease(t, 3.6, 4.8));
+  el('site-link').style.transform = `translateY(${-5 * pop}px) scale(${1 + .08 * pop})`;
   el('head').setAttribute('transform', `rotate(${nod} -4 -1.5)`);
   const blink = t > 3.25 && t < 3.4 ? .12 : 1;
   el('eyes').setAttribute('transform', `translate(0 -1.5) scale(1 ${blink}) translate(0 1.5)`);
