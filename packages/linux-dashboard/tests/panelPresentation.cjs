@@ -138,7 +138,7 @@ app.whenReady().then(async () => {
   listWindow.focus();
   // Move a real pointer over neighboring panels and back to the List editor.
   const [lx, ly] = listWindow.getPosition();
-  for (const [x, y] of [[550, 350], [lx + 150, ly + 130]]) {
+  for (const [x, y] of [[140, 100], [200, 240], [lx + 150, ly + 130]]) {
     const start = screen.getCursorScreenPoint();
     for (let step = 1; step <= 10; step++) {
       execFileSync('xdotool', ['mousemove', '--sync', String(Math.round(start.x + (x - start.x) * step / 10)),
