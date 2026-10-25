@@ -27,8 +27,15 @@ final class WidgetCheckpointTests: XCTestCase {
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
         let ids = Set(windows.map(\.windowNumber))
-        func order() -> [Int] { NSApp.orderedWindows.map(\.windowNumber).filter { ids.contains($0) } }
+        // XCTest is not a bundled foreground application: NSApp.orderedWindows
+        // can be empty even while its panels are visible. Read WindowServer's
+        // front-to-back order and restrict it to this fixture's native windows.
+        func order() -> [Int] {
+            let entries = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+            return entries.compactMap { $0[kCGWindowNumber as String] as? Int }.filter { ids.contains($0) }
+        }
         let before = order()
+        XCTAssertEqual(before.count, 4, "All four native panels must be visible to WindowServer")
         XCTAssertEqual(before.first, window.windowNumber)
         try await waitUntil { (try? await list.evaluateJavaScript("!!document.querySelector('textarea')")) as? Bool == true }
         for text in ["A", "AB", "ABC", "ABCD", "ABCDE"] {
