@@ -2,19 +2,29 @@
 // Usage: node render.mjs [--stills t1,t2,...] [--out out/video_noaudio.mp4] [--from s --to s]
 import { chromium } from 'playwright';
 import { spawn } from 'child_process';
+import { pipeline } from 'stream';
 import http from 'http'; import fs from 'fs'; import path from 'path';
 const args = Object.fromEntries(process.argv.slice(2).reduce((a, v, i, arr) => (v.startsWith('--') ? a.push([v.slice(2), arr[i + 1]]) : 0, a), []));
 const root = path.resolve('.');
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.ttf': 'font/ttf' };
-// Local-only static server for compose/ and assets/: loopback, confined to the pipeline folder.
+// Loopback is not a browser-origin boundary. Serve only composition inputs,
+// never the downloaded TTS model or outputs, and stream with backpressure.
 const HOST = '127.0.0.1';
 const server = http.createServer((req, res) => {
   let rel;
   try { rel = decodeURIComponent(req.url.split('?')[0]); } catch { rel = null; }
   if (rel === null || rel.includes('\0')) { res.writeHead(400); res.end(); return; }
   const f = path.resolve(root, '.' + path.sep + rel);
-  if (f !== root && !f.startsWith(root + path.sep)) { res.writeHead(403); res.end(); return; }
-  fs.readFile(f, (e, d) => { if (e) { res.writeHead(404); res.end(); return; } res.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' }); res.end(d); });
+  const relative = path.relative(root, f);
+  if (relative !== 'timeline.json' && !relative.startsWith(`compose${path.sep}`) && !relative.startsWith(`assets${path.sep}`)) {
+    res.writeHead(403); res.end(); return;
+  }
+  fs.stat(f, (error, stat) => {
+    if (error || !stat.isFile()) { res.writeHead(404); res.end(); return; }
+    res.writeHead(200, { 'Content-Type': types[path.extname(f)] || 'application/octet-stream' });
+    // pipeline also destroys the file stream when the browser disconnects.
+    pipeline(fs.createReadStream(f), res, () => {});
+  });
 });
 await new Promise((ok, fail) => server.once('error', fail).listen(0, HOST, ok));
 const port = server.address().port;

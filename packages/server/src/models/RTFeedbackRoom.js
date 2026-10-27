@@ -140,6 +140,11 @@ class RTFeedbackRoom extends Room {
       responseCount: this.getResponseCount()
     };
   }
+
+  toStudentJSON() {
+    // Base room metadata only; feedback aggregates belong to the teacher.
+    return super.toJSON();
+  }
 }
 
 module.exports = RTFeedbackRoom;

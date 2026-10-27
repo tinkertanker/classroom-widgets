@@ -6,7 +6,7 @@ import fs from 'fs';
 const OUT = 'assets/timer'; fs.mkdirSync(OUT, { recursive: true });
 const FPS = 15, RUN_SECONDS = Number(process.env.RUN_SECONDS || 32), CHROME_SECONDS = 4;
 const b = await chromium.launch();
-const ctx = await b.newContext({ viewport: { width: 350, height: 415 }, deviceScaleFactor: 1.5, ignoreHTTPSErrors: true });
+const ctx = await b.newContext({ viewport: { width: 350, height: 415 }, deviceScaleFactor: 1.5 });
 const p = await ctx.newPage();
 p.on('pageerror', e => console.log('err:', e.message));
 await p.clock.install({ time: new Date('2026-09-30T09:00:00') });

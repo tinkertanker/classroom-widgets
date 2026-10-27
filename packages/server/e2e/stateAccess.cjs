@@ -29,6 +29,12 @@
 // - A long whitespace-flexible answer typed with extra indentation is cut
 //   before whitespace is collapsed and graded wrong; or an exact-mode answer
 //   escapes the length cap.
+// - Hidden answer IDs or visible draggables earn credit for typed targets;
+//   a forged placement takes priority over a valid typed answer; legitimate
+//   drop-zone answers stop working when placement validation is tightened.
+// - Late join snapshots expose feedback aggregates, while teacher state loses
+//   them if the student serializer changes the full serializer by mistake.
+// - An unsupported roomType injects a physical line into the error log.
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const net = require('node:net');
@@ -159,6 +165,74 @@ async function join(code, name) {
     const outsider = await connect();
     const otherTeacher = await host();
     const mallory = await join(otherTeacher.code, 'Mallory');
+
+    await check('unsupported room types cannot forge a log line', async () => {
+      const errors = [];
+      const originalError = console.error;
+      console.error = (...args) => errors.push(require('node:util').format(...args));
+      try {
+        const result = await teacher.timeout(3000).emitWithAck('session:createRoom', {
+          sessionCode: code, roomType: 'invalid\r\nFORGED_ROOM_RECORD', widgetId: 'invalid'
+        });
+        assert.equal(result.success, false);
+        assert.ok(errors.length > 0);
+        assert.ok(!errors.join('\n').includes('\nFORGED_ROOM_RECORD'));
+      } finally {
+        console.error = originalError;
+      }
+    });
+
+    await check('typed targets reject placements while typed and drag answers still grade correctly', async () => {
+      await room(teacher, 'activity', 'mixed-input');
+      const updated = waitFor(teacher, 'activity:stateUpdate', d => d.widgetId === 'mixed-input');
+      teacher.emit('session:activity:update', { sessionCode: code, widgetId: 'mixed-input', activity: {
+        type: 'code-fill-blank',
+        items: [{ id: 'hidden', content: 'secret code' }, { id: 'visible', content: 'word' }],
+        targets: [
+          { id: 'typed', accepts: ['hidden', 'visible'] },
+          { id: 'drag', accepts: ['visible', 'hidden'] }
+        ],
+        uiRecipe: [{ type: 'container', children: [
+          { type: 'text-input', props: { targetId: 'typed' } },
+          { type: 'drop-zone', props: { targetId: 'drag' } },
+          { type: 'draggable-item', props: { itemId: 'visible' } }
+        ] }]
+      } });
+      await updated;
+      for (const [itemId, textInputs, expected] of [
+        ['hidden', {}, []],
+        ['visible', {}, ['drag']],
+        ['hidden', { typed: 'secret code' }, ['typed']],
+        ['visible', { typed: 'secret code' }, ['typed', 'drag']]
+      ]) {
+        const student = await join(code, 'Input contract');
+        const result = await student.timeout(3000).emitWithAck('session:activity:submit', {
+          sessionCode: code, widgetId: 'mixed-input', answers: {
+            placements: [{ targetId: 'typed', itemId }, { targetId: 'drag', itemId }], textInputs
+          }
+        });
+        assert.equal(result.success, true);
+        assert.deepEqual(result.results.correct, expected);
+        student.disconnect();
+      }
+    });
+
+    await check('late join snapshots exclude feedback metrics but preserve teacher aggregates', async () => {
+      const submitted = waitFor(alice, 'session:rtfeedback:submitted');
+      const aggregate = waitFor(teacher, 'rtfeedback:dataUpdate', d => d.widgetId === 'fb-1');
+      alice.emit('session:rtfeedback:submit', { sessionCode: code, widgetId: 'fb-1', value: 4.5 });
+      assert.equal((await submitted).success, true);
+      assert.equal((await aggregate).totalResponses, 1);
+      const watcher = await join(code, 'Feedback watcher');
+      const snapshot = watcher.inbox.find(([event]) => event === 'session:joined')[1];
+      const feedback = snapshot.activeRooms.find(entry => entry.widgetId === 'fb-1').room;
+      for (const field of ['feedbackData', 'averageUnderstanding', 'responseCount']) {
+        assert.ok(!(field in feedback), `${field} leaked to a student`);
+      }
+      assert.equal(feedback.isActive, true);
+      assert.equal(sessionManager.getSession(code).getRoom('rtfeedback', 'fb-1').toJSON().averageUnderstanding, 4.5);
+      watcher.disconnect();
+    });
 
     await check('a socket that never joined gets no state from any of the six rooms', async () => {
       for (const [, id, request, reply] of READS) {

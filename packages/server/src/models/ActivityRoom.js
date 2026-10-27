@@ -7,13 +7,13 @@ const MAX_TEXT_INPUT_LENGTH = 2000;
 // whitespace to one space, so this is the text the grader actually compares.
 const collapseWhitespace = (text) => text.trim().replace(/\s+/g, ' ');
 
-// Item IDs the UI recipe renders (draggable word-bank items)
-function collectRecipeItemIds(blocks, ids = new Set()) {
+// The teacher's recipe defines which items and input surfaces students can use.
+function collectRecipeIds(blocks, type, property, ids = new Set()) {
   if (!Array.isArray(blocks)) return ids;
   for (const block of blocks) {
     if (!block || typeof block !== 'object') continue;
-    if (block.props && typeof block.props.itemId === 'string') ids.add(block.props.itemId);
-    collectRecipeItemIds(block.children, ids);
+    if (block.type === type && typeof block.props?.[property] === 'string') ids.add(block.props[property]);
+    collectRecipeIds(block.children, type, property, ids);
   }
   return ids;
 }
@@ -149,6 +149,8 @@ class ActivityRoom extends Room {
     const items = this.activity && Array.isArray(this.activity.items) ? this.activity.items : [];
     const targetIds = new Set(targets.map(target => target && target.id).filter(id => typeof id === 'string'));
     const itemIds = new Set(items.map(item => item && item.id).filter(id => typeof id === 'string'));
+    const draggableIds = collectRecipeIds(this.activity?.uiRecipe, 'draggable-item', 'itemId');
+    const dropTargetIds = collectRecipeIds(this.activity?.uiRecipe, 'drop-zone', 'targetId');
     // Never shorter than a real answer, so the cap cannot turn a right answer wrong
     const maxText = items.reduce(
       (max, item) => Math.max(max, typeof item?.content === 'string' ? item.content.length : 0),
@@ -160,6 +162,7 @@ class ActivityRoom extends Room {
     for (const p of Array.isArray(source.placements) ? source.placements : []) {
       if (placements.length >= targetIds.size) break;
       if (!p || !targetIds.has(p.targetId) || !itemIds.has(p.itemId) || placedTargets.has(p.targetId)) continue;
+      if (!dropTargetIds.has(p.targetId) || !draggableIds.has(p.itemId)) continue;
       placedTargets.add(p.targetId);
       placements.push({ itemId: p.itemId, targetId: p.targetId });
     }
@@ -197,7 +200,7 @@ class ActivityRoom extends Room {
     const items = Array.isArray(this.activity.items) ? this.activity.items : [];
     let visibleItems = items;
     if (!this.answersRevealed) {
-      const shown = collectRecipeItemIds(this.activity.uiRecipe);
+      const shown = collectRecipeIds(this.activity.uiRecipe, 'draggable-item', 'itemId');
       visibleItems = items.filter(item => item && shown.has(item.id));
     }
     return {
@@ -221,11 +224,7 @@ class ActivityRoom extends Room {
 
     // `answers` comes straight from a student socket - never trust its shape.
     // An uncaught throw here would crash the whole server process.
-    const source = answers && typeof answers === 'object' ? answers : {};
-    const placements = Array.isArray(source.placements) ? source.placements : [];
-    const textInputs = source.textInputs && typeof source.textInputs === 'object'
-      ? source.textInputs
-      : {};
+    const { placements, textInputs } = this.normalizeAnswers(answers);
     const targets = Array.isArray(this.activity.targets) ? this.activity.targets : [];
     const items = Array.isArray(this.activity.items) ? this.activity.items : [];
     const correct = [];

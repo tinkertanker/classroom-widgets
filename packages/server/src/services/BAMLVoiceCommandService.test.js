@@ -34,6 +34,22 @@ const OK_RESULT = {
   feedback: { message: 'Starting Snake', type: 'success', shouldSpeak: true }
 };
 
+// Failure mode: transcript CR/LF and terminal escapes become physical log
+// records/control sequences even though the parser still needs the original text.
+test('transcript logging escapes record delimiters without changing the parsed input', async (t) => {
+  const transcript = 'start\r\nFORGED_TRANSCRIPT_RECORD\u001b[2J';
+  const logs = [];
+  t.mock.method(console, 'log', (...args) => logs.push(require('node:util').format(...args)));
+  let parsed;
+  const { service } = makeService((input) => { parsed = input; return OK_RESULT; });
+  await service.processVoiceCommand(transcript);
+  assert.equal(parsed, transcript);
+  const processing = logs.find(line => line.includes('BAML processing:'));
+  assert.ok(processing);
+  assert.ok(!/[\r\n\u001b]/.test(processing));
+  assert.ok(processing.includes('FORGED_TRANSCRIPT_RECORD'));
+});
+
 test('passes the shared widget/action catalog into ParseVoiceCommand', async () => {
   const { service, calls } = makeService(() => OK_RESULT);
 

@@ -112,6 +112,10 @@ describe('Activity Socket Handler Integration', () => {
         { id: 'blank-0', accepts: ['item-0'] },
         { id: 'blank-1', accepts: ['item-1'] }
       ],
+      uiRecipe: [
+        ...['item-0', 'item-1'].map(itemId => ({ type: 'draggable-item', props: { itemId } })),
+        ...['blank-0', 'blank-1'].map(targetId => ({ type: 'drop-zone', props: { targetId } }))
+      ],
       ...overrides
     });
     room.isActive = true;
