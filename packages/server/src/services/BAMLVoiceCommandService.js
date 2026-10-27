@@ -65,7 +65,7 @@ class BAMLVoiceCommandService {
    */
   async processVoiceCommand(transcript, context = {}) {
     const startTime = Date.now();
-    console.log(`🎯 BAML processing: "${transcript}"`);
+    console.log(`🎯 BAML processing: ${JSON.stringify(transcript)}`);
 
     try {
       // Lazy-load the BAML client

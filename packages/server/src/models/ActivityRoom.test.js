@@ -59,6 +59,10 @@ describe('ActivityRoom', () => {
         targets: [
           { id: 'blank-0', accepts: ['item-0'] },
           { id: 'blank-1', accepts: ['item-1'] }
+        ],
+        uiRecipe: [
+          ...['item-0', 'item-1', 'item-2'].map(itemId => ({ type: 'draggable-item', props: { itemId } })),
+          ...['blank-0', 'blank-1'].map(targetId => ({ type: 'drop-zone', props: { targetId } }))
         ]
       });
     });
@@ -193,7 +197,11 @@ describe('ActivityRoom', () => {
       room.setActivity({
         type: 'fill-blank',
         items: [{ id: 'item-0', content: 'test' }],
-        targets: [{ id: 'blank-0', accepts: ['item-0'] }]
+        targets: [{ id: 'blank-0', accepts: ['item-0'] }],
+        uiRecipe: [
+          { type: 'draggable-item', props: { itemId: 'item-0' } },
+          { type: 'drop-zone', props: { targetId: 'blank-0' } }
+        ]
       });
       room.isActive = true;
     });
@@ -221,7 +229,11 @@ describe('ActivityRoom', () => {
       room.setActivity({
         type: 'fill-blank',
         items: [{ id: 'item-0', content: 'test' }],
-        targets: [{ id: 'blank-0', accepts: ['item-0'] }]
+        targets: [{ id: 'blank-0', accepts: ['item-0'] }],
+        uiRecipe: [
+          { type: 'draggable-item', props: { itemId: 'item-0' } },
+          { type: 'drop-zone', props: { targetId: 'blank-0' } }
+        ]
       });
       room.isActive = true;
     });

@@ -74,7 +74,7 @@ class PatternMatchingService {
 
   async processVoiceCommand(transcript, context) {
     if (VOICE_COMMAND_DEBUG) {
-      console.log(`🔍 PatternMatchingService processing: "${transcript}"`);
+      console.log(`🔍 PatternMatchingService processing: ${JSON.stringify(transcript)}`);
       console.log('🗂️ Context provided:', context);
     }
 

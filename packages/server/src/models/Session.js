@@ -205,7 +205,7 @@ class Session {
         room = new ActivityRoom(this.code, widgetId);
         break;
       default:
-        throw new Error(`Unknown room type: ${roomType}`);
+        throw new Error('Unknown room type');
     }
     
     room.hostSocketId = this.hostSocketId;
