@@ -49,7 +49,8 @@ function run(file, args, env) {
     const identity = await run('e2e/sessionIdentity.cjs', [url], env);
     // stateAccess starts its own in-process server so it can read room state.
     const stateAccess = await run('e2e/stateAccess.cjs', [], env);
-    process.exitCode = identity || stateAccess;
+    const voiceLogging = await run('e2e/voiceLogging.cjs', [], env);
+    process.exitCode = identity || stateAccess || voiceLogging;
   } catch (error) {
     console.error(`E2E run failed: ${error.message}`);
     process.exitCode = 1;

@@ -21,6 +21,9 @@ let bamlClient = null;
 async function getBamlClient() {
   if (!bamlClient) {
     try {
+      // Native BAML logs include prompts and model replies and bypass console.
+      // Encode those records before loading the generated runtime.
+      require('@boundaryml/baml/logging').setLogJsonMode(true);
       // Try to use tsx to load TypeScript files
       require('tsx/cjs');
       const baml = require('../../baml_client');

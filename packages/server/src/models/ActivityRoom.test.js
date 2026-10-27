@@ -306,7 +306,11 @@ describe('ActivityRoom', () => {
       room.setActivity({
         type: 'fill-blank',
         items: [{ id: 'item-0', content: 'test' }],
-        targets: [{ id: 'blank-0' }] // no accepts
+        targets: [{ id: 'blank-0' }], // no accepts
+        uiRecipe: [
+          { type: 'draggable-item', props: { itemId: 'item-0' } },
+          { type: 'drop-zone', props: { targetId: 'blank-0' } }
+        ]
       });
 
       const result = room.submitAnswer('socket-1', {
