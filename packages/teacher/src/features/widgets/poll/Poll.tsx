@@ -329,7 +329,7 @@ function Poll({ widgetId, savedState, onStateChange }: WidgetProps) {
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-warm-gray-700 dark:text-warm-gray-300">{option}</span>
                         <span className="text-warm-gray-500 dark:text-warm-gray-400">
-                          {results.votes[index] || 0} votes
+                          {results.votes[index] || 0} {(results.votes[index] || 0) === 1 ? 'vote' : 'votes'}
                         </span>
                       </div>
                       <div className="h-6 bg-warm-gray-200 dark:bg-warm-gray-700 rounded-full overflow-hidden">

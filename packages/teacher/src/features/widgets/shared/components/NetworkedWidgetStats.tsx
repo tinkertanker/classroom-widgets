@@ -12,8 +12,8 @@ interface NetworkedWidgetStatsProps {
  */
 export const NetworkedWidgetStats: React.FC<NetworkedWidgetStatsProps> = ({ children, label }) => {
   return (
-    <div className="absolute top-3 right-3 z-20">
-      <span className="text-sm text-warm-gray-500 dark:text-warm-gray-400">
+    <div className="absolute top-3 right-3 left-3 z-20 flex justify-end pointer-events-none">
+      <span className="truncate text-sm text-warm-gray-500 dark:text-warm-gray-400">
         {label && <span className="font-medium">{label} · </span>}
         {children}
       </span>

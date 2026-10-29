@@ -80,7 +80,8 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
       setCode(rawValue);
     } else {
       // Only allow safe characters for normal codes
-      const value = rawValue.replace(UNSAFE_CHARACTERS, '');
+      // Sanitise before trimming to length so a pasted "ABC 123" keeps all six characters.
+      const value = rawValue.replace(UNSAFE_CHARACTERS, '').slice(0, SESSION_CODE_LENGTH);
       setCode(value);
     }
     // Clear error when user starts typing
@@ -150,7 +151,7 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
         <div className={`flex gap-4 ${isCompact ? 'items-center flex-col sm:flex-row' : 'flex-col sm:flex-row sm:items-end sm:justify-center'}`}>
           {/* Name field - visible in compact mode on mobile, always visible on desktop */}
           <div className={`flex flex-col ${isCompact ? 'flex-1 sm:flex-[0_0_180px] sm:order-1' : 'sm:flex-[0_0_180px] sm:order-1'}`}>
-            <label htmlFor="name" className={`text-sm font-semibold text-warm-gray-700 dark:text-warm-gray-300 mb-2 ${isCompact ? 'hidden' : ''}`}>Your Name <span className="font-normal text-warm-gray-600 dark:text-warm-gray-400 text-xs">(optional)</span></label>
+            <label htmlFor="name" className={`text-sm font-semibold text-warm-gray-700 dark:text-warm-gray-300 mb-2 ${isCompact ? 'hidden' : ''}`}>Your Name <span className="font-normal text-warm-gray-600 dark:text-warm-gray-400 text-xs">(optional, shown to your teacher)</span></label>
             <input
               type="text"
               id="name"
@@ -170,7 +171,6 @@ const JoinForm: React.FC<JoinFormProps> = ({ onJoin, onLeaveSession, currentSess
               type="text"
               id="code"
               className={`border border-warm-gray-300 dark:border-warm-gray-600 rounded-md font-bold transition-all duration-200 outline-none text-warm-gray-800 dark:text-warm-gray-200 text-center uppercase tracking-[0.15em] font-mono focus:border-sage-500 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] ${currentSessionCode ? 'bg-warm-gray-100 dark:bg-warm-gray-600 cursor-not-allowed' : 'bg-[#fafafa] dark:bg-warm-gray-700'} ${isCompact ? 'py-1 px-2 text-sm h-8 sm:py-2.5 sm:px-4 sm:text-[1.125rem] sm:h-auto' : 'py-2.5 px-4 text-[1.125rem]'}`}
-              maxLength={SESSION_CODE_LENGTH}
               pattern={`(ADMIN|${SESSION_CODE_PATTERN_SOURCE})`}
               placeholder={currentSessionCode ? currentSessionCode : "123ABC"}
               value={currentSessionCode || code}

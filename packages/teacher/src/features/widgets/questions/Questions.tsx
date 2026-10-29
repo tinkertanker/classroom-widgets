@@ -72,7 +72,7 @@ const QuestionRow = React.memo(function QuestionRow({ question, isReady, onMarkA
     >
       <div className="flex justify-between items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className={`text-sm font-medium mb-1 ${
+          <p className={`text-sm font-medium mb-1 [overflow-wrap:anywhere] ${
             question.answered
               ? 'text-warm-gray-500 dark:text-warm-gray-400 line-through'
               : 'text-warm-gray-800 dark:text-warm-gray-200'

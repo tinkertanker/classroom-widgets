@@ -65,7 +65,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
       return (
         <>
           <div className="text-xl font-semibold text-warm-gray-400 mb-3 text-center">{pollData.question}</div>
-          <div className="flex flex-col gap-2 opacity-50">
+          <div className="flex flex-col gap-2">
             {pollData.options.map((option, index) => {
               const color = getStudentPollColor(index);
               return (
@@ -73,8 +73,8 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
                 key={index}
                 className={`p-3 border-2 rounded-lg cursor-not-allowed transition-all duration-200 relative overflow-hidden ${
                   selectedOption === index 
-                    ? color.disabled 
-                    : 'border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-50 dark:bg-warm-gray-800'
+                    ? color.selected 
+                    : 'opacity-50 border-warm-gray-300 dark:border-warm-gray-600 bg-warm-gray-50 dark:bg-warm-gray-800'
                 }`}
               >
                 <div className="relative z-[1] text-warm-gray-800 dark:text-warm-gray-200">{option}</div>
@@ -82,6 +82,9 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
               );
             })}
           </div>
+          <p className="mt-3 text-center text-sm text-warm-gray-500 dark:text-warm-gray-400" role="status">
+            {hasVoted ? 'Vote received. Waiting for results…' : 'Sending your vote…'}
+          </p>
         </>
       );
     }

@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const { headerRef, isScrolled } = useCompactHeader();
   const [isConnected, setIsConnected] = useState(false);
   const [hostConnected, setHostConnected] = useState(true);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const [primarySocket, setPrimarySocket] = useState<Socket | null>(null);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
 
@@ -162,6 +163,7 @@ const App: React.FC = () => {
       if (joinData.success && joinData.activeRooms) {
         // Set current session code
         setCurrentSessionCode(code);
+        setSessionEnded(false);
 
         // Join all active rooms in the session
         joinData.activeRooms.forEach((roomData) => {
@@ -281,6 +283,7 @@ const App: React.FC = () => {
       // Clear session state
       setJoinedRooms([]);
       setCurrentSessionCode('');
+      setSessionEnded(true);
       setHostConnected(true);
       // Close socket connections
       socketRefs.current.forEach((socket) => socket.close());
@@ -405,7 +408,11 @@ const App: React.FC = () => {
           {joinedRooms.length === 0 && (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center text-warm-gray-600 dark:text-warm-gray-400">
-                <p className="text-base">No active session. Enter a session code above to get started!</p>
+                <p className="text-base">
+                  {sessionEnded
+                    ? 'Your teacher ended the session. Enter a new code above to join another.'
+                    : 'No active session. Enter a session code above to get started!'}
+                </p>
               </div>
             </div>
           )}

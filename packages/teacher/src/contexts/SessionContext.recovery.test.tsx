@@ -356,7 +356,7 @@ describe('SessionContext recovery with the real session:create handler (#157)', 
     const response = await peer.create(socket.request().data);
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     try {
-      fireEvent.click(screen.getAllByRole('button', { name: 'Close session' })[0]);
+      fireEvent.click(screen.getAllByRole('button', { name: 'End session for all students' })[0]);
     } finally {
       confirm.mockRestore();
     }

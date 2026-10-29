@@ -163,7 +163,7 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
             </code>
             <div className="w-px h-6 min-[540px]:h-8 bg-warm-gray-300 dark:bg-warm-gray-600" />
             <span className="select-text text-sm min-[540px]:text-3xl font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px] min-[540px]:max-w-[420px]">
-              {displayUrl?.replace(/^https?:\/\//, '')}
+              <span className="text-[0.6em] font-normal text-warm-gray-500 dark:text-warm-gray-400">Join at </span>{displayUrl?.replace(/^https?:\/\//, '')}
             </span>
             {connected && (
               <>
@@ -171,7 +171,8 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
                 <button
                   onClick={handleCloseSession}
                   className="text-dusty-rose-600 dark:text-dusty-rose-400 hover:text-dusty-rose-700 dark:hover:text-dusty-rose-300 transition-colors p-1 rounded hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20"
-                  title="Close session"
+                  title="End session for all students"
+                  aria-label="End session for all students"
                 >
                   <FaXmark className="text-xs min-[540px]:text-sm" />
                 </button>
@@ -202,7 +203,7 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
           </code>
           <div className="w-px h-6 bg-warm-gray-300 dark:bg-warm-gray-600" />
           <span className="select-text text-sm font-semibold text-warm-gray-600 dark:text-warm-gray-300 truncate max-w-[160px]">
-            {displayUrl?.replace(/^https?:\/\//, '')}
+            <span className="text-[0.6em] font-normal text-warm-gray-500 dark:text-warm-gray-400">Join at </span>{displayUrl?.replace(/^https?:\/\//, '')}
           </span>
           {connected && (
             <>
@@ -210,7 +211,8 @@ const ActiveSessionBanner: React.FC<ActiveSessionBannerProps> = ({
               <button
                 onClick={handleCloseSession}
                 className="text-dusty-rose-600 dark:text-dusty-rose-400 hover:text-dusty-rose-700 dark:hover:text-dusty-rose-300 transition-colors p-1 rounded hover:bg-dusty-rose-100 dark:hover:bg-dusty-rose-900/20"
-                title="Close session"
+                title="End session for all students"
+                  aria-label="End session for all students"
               >
                 <FaXmark className="text-xs" />
               </button>

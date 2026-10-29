@@ -23,7 +23,7 @@ const About: React.FC = () => {
   const features = [
     {
       icon: FaChartColumn,
-      title: "Live Polls",
+      title: "Poll",
       description: "Create instant polls and see results in real-time as students vote from their devices"
     },
     {
@@ -38,18 +38,18 @@ const About: React.FC = () => {
     },
     {
       icon: FaClock,
-      title: "Classroom Timer",
+      title: "Timer",
       description: "Keep activities on track with a visual timer everyone can see"
     },
     {
       icon: FaComments,
-      title: "Real-time Feedback",
+      title: "RT Feedback",
       description: "Get instant feedback from students with quick reactions and sentiment checks"
     },
     {
       icon: FaDice,
-      title: "Random Picker",
-      description: "Fairly select students, teams, or items with an animated randomizer"
+      title: "Randomiser",
+      description: "Fairly select students, teams, or items with an animated randomiser"
     }
   ];
 
@@ -263,8 +263,8 @@ const About: React.FC = () => {
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[
-              { title: 'Live Poll', href: '/widgets/poll', description: 'Instant votes, live results.', color: 'bg-terracotta-500' },
-              { title: 'Questions & Comments', href: '/widgets/questions', description: 'Anonymous student questions and comments.', color: 'bg-sage-500' },
+              { title: 'Poll', href: '/widgets/poll', description: 'Instant votes, live results.', color: 'bg-terracotta-500' },
+              { title: 'Questions & Comments', href: '/widgets/questions', description: 'Questions classmates can\'t trace back to them.', color: 'bg-sage-500' },
               { title: 'RT Feedback', href: '/widgets/feedback', description: 'Live difficulty gauge.', color: 'bg-dusty-rose-500' },
               { title: 'Handout', href: '/widgets/handout', description: 'Push links to devices instantly.', color: 'bg-terracotta-400' },
             ].map((w) => (
@@ -455,7 +455,7 @@ const About: React.FC = () => {
                   What We Don't Store:
                 </h4>
                 <ul className="text-sm text-warm-gray-600 dark:text-warm-gray-400 space-y-1">
-                  <li>• Your personal data (we don't even ask)</li>
+                  <li>• Accounts or emails (students may add an optional name, which only you see)</li>
                   <li>• Credit cards (we're allergic to money)</li>
                   <li>• Passwords (login? never heard of her)</li>
                 </ul>

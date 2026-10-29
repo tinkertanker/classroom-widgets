@@ -128,8 +128,9 @@ const TopControls: React.FC<TopControlsProps> = ({ onSwitchToCompact }) => {
         ref={topRightRef}
         className={clsx(
           'flex flex-wrap items-start justify-end gap-2 max-w-full self-end',
-          // Recovery needs attention even when the pointer is away from the HUD.
-          hudProximity.wrapper(isNear.topRight || recoveryPending)
+          // Students need to read the join code, and recovery needs attention,
+          // even when the pointer is away from the HUD.
+          hudProximity.wrapper(isNear.topRight || recoveryPending || Boolean(sessionCode))
         )}
       >
         <div className="flex shrink-0 items-start gap-2">
