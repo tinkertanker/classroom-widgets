@@ -14,7 +14,7 @@ interface PollActivityProps {
 const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, initialIsActive, widgetId }) => {
 
   // Use our custom hook for all socket logic
-  const { pollData, isActive, hasVoted, selectedOption, results, handleVote } = usePollSocket({
+  const { pollData, isActive, hasVoted, selectedOption, voteError, results, handleVote } = usePollSocket({
     socket,
     roomCode,
     widgetId,
@@ -111,6 +111,11 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
             );
           })}
         </div>
+        {voteError && (
+          <p className="mt-3 text-center text-sm text-dusty-rose-600 dark:text-dusty-rose-400" role="alert">
+            {voteError}
+          </p>
+        )}
       </>
     );
   };

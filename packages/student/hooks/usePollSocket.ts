@@ -28,6 +28,7 @@ interface UsePollSocketReturn {
   isActive: boolean;
   hasVoted: boolean;
   selectedOption: number | null;
+  voteError: string | null;
   results: Results | null;
   handleVote: (optionIndex: number) => void;
 }
@@ -50,6 +51,7 @@ export const usePollSocket = ({
   const [isActive, setIsActive] = useState(initialIsActive);
   const [hasVoted, setHasVoted] = useState(false);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
+  const [voteError, setVoteError] = useState<string | null>(null);
   const [results, setResults] = useState<Results | null>(null);
   const optionsRef = useRef(initialPollData?.options);
   
@@ -112,11 +114,18 @@ export const usePollSocket = ({
     };
 
     // Vote confirmation
-    const handleVoteConfirmed = (data: { success: boolean; error?: string; widgetId?: string }) => {
+    const handleVoteConfirmed = (data: { success: boolean; widgetId?: string }) => {
       // Only process if this confirmation is for our widget
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
         if (data.success) {
           setHasVoted(true);
+          setVoteError(null);
+        } else {
+          // Rejected (paused, rate limited, invalid). The server also reports a
+          // vote that arrives after a pause as ALREADY_VOTED, so treat every
+          // rejection as retryable rather than as a counted vote.
+          setSelectedOption(null);
+          setVoteError("Your vote didn't go through. Please try again.");
         }
       }
     };
@@ -150,6 +159,7 @@ export const usePollSocket = ({
     if (!socket || hasVoted || !isActive) return;
     
     setSelectedOption(optionIndex);
+    setVoteError(null);
     
     socket.emit('session:poll:vote', { 
       sessionCode: roomCode, 
@@ -163,6 +173,7 @@ export const usePollSocket = ({
     isActive,
     hasVoted,
     selectedOption,
+    voteError,
     results,
     handleVote
   };

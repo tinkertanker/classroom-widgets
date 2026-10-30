@@ -19,6 +19,10 @@ import {
   type SessionWidgetStateChangedEvent
 } from './utils/joinedRooms';
 
+
+// Recovery can fail because the session closed while offline or because the
+// network is down, so don't claim the teacher ended it.
+const SESSION_LOST_MESSAGE = "We couldn't reconnect you to the session. Enter the code again to rejoin.";
 const App: React.FC = () => {
   const [joinedRooms, setJoinedRooms] = useState<JoinedRoom[]>([]);
   const [currentSessionCode, setCurrentSessionCode] = useState<string>(''); // Track current session
@@ -44,7 +48,8 @@ const App: React.FC = () => {
   const { headerRef, isScrolled } = useCompactHeader();
   const [isConnected, setIsConnected] = useState(false);
   const [hostConnected, setHostConnected] = useState(true);
-  const [sessionEnded, setSessionEnded] = useState(false);
+  // Why the student was removed from a session; announced and shown in the empty state.
+  const [sessionEndMessage, setSessionEndMessage] = useState<string | null>(null);
   const [primarySocket, setPrimarySocket] = useState<Socket | null>(null);
   const socketRefs = useRef<Map<string, Socket>>(new Map());
 
@@ -95,6 +100,7 @@ const App: React.FC = () => {
       });
     },
     onSessionLost: () => {
+      setSessionEndMessage(SESSION_LOST_MESSAGE);
       setCurrentSessionCode('');
       setJoinedRooms([]);
       setPrimarySocket(null);
@@ -153,6 +159,10 @@ const App: React.FC = () => {
     socketRefs.current.set(sessionId, newSocket);
     setPrimarySocket(newSocket);
 
+    // A rejoin after a reconnect can fail when the session ended while this
+    // student was offline; the first join's failure is reported by the form.
+    let hasJoined = false;
+
     // Set up socket event handlers
     newSocket.on('connect', () => {
       setIsConnected(true);
@@ -163,7 +173,8 @@ const App: React.FC = () => {
       if (joinData.success && joinData.activeRooms) {
         // Set current session code
         setCurrentSessionCode(code);
-        setSessionEnded(false);
+        setSessionEndMessage(null);
+        hasJoined = true;
 
         // Join all active rooms in the session
         joinData.activeRooms.forEach((roomData) => {
@@ -193,6 +204,10 @@ const App: React.FC = () => {
         socketRefs.current.delete(sessionId);
         setCurrentSessionCode(''); // Clear session code
         setIsConnected(false);
+        if (hasJoined) {
+          setJoinedRooms([]);
+          setSessionEndMessage(SESSION_LOST_MESSAGE);
+        }
       }
     });
 
@@ -283,7 +298,7 @@ const App: React.FC = () => {
       // Clear session state
       setJoinedRooms([]);
       setCurrentSessionCode('');
-      setSessionEnded(true);
+      setSessionEndMessage('Your teacher ended the session. Enter a new code above to join another.');
       setHostConnected(true);
       // Close socket connections
       socketRefs.current.forEach((socket) => socket.close());
@@ -404,14 +419,15 @@ const App: React.FC = () => {
             </div>
           )}
 
+          {/* Stays mounted so screen readers announce the message when it appears */}
+          <p className="sr-only" role="status" aria-live="polite">{sessionEndMessage ?? ''}</p>
+
           {/* Empty state */}
           {joinedRooms.length === 0 && (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center text-warm-gray-600 dark:text-warm-gray-400">
-                <p className="text-base">
-                  {sessionEnded
-                    ? 'Your teacher ended the session. Enter a new code above to join another.'
-                    : 'No active session. Enter a session code above to get started!'}
+                <p className="text-base" aria-hidden={sessionEndMessage ? true : undefined}>
+                  {sessionEndMessage ?? 'No active session. Enter a session code above to get started!'}
                 </p>
               </div>
             </div>
