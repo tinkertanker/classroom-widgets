@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Socket } from 'socket.io-client';
 import { useWidgetStateChange } from './useWidgetStateChange';
+import { initialPollSubmission, pollSubmissionReducer, type PollSubmission, type PollSubmissionEvent } from './pollSubmission';
 
 export interface PollData {
   question: string;
@@ -26,9 +27,8 @@ interface UsePollSocketProps {
 interface UsePollSocketReturn {
   pollData: PollData;
   isActive: boolean;
-  hasVoted: boolean;
-  selectedOption: number | null;
-  voteError: string | null;
+  submission: PollSubmission;
+  isConnected: boolean;
   results: Results | null;
   handleVote: (optionIndex: number) => void;
 }
@@ -49,12 +49,38 @@ export const usePollSocket = ({
     options: []
   });
   const [isActive, setIsActive] = useState(initialIsActive);
-  const [hasVoted, setHasVoted] = useState(false);
-  const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [voteError, setVoteError] = useState<string | null>(null);
+  const [submission, setSubmission] = useState(initialPollSubmission);
+  const submissionRef = useRef(submission);
+  // Advance synchronously: two actions in the same render must not emit twice.
+  const transition = useCallback((event: PollSubmissionEvent) => {
+    const next = pollSubmissionReducer(submissionRef.current, event);
+    submissionRef.current = next;
+    setSubmission(next);
+    return next;
+  }, []);
+  const [isConnected, setIsConnected] = useState(socket.connected);
   const [results, setResults] = useState<Results | null>(null);
   const optionsRef = useRef(initialPollData?.options);
-  
+
+  useEffect(() => {
+    submissionRef.current = initialPollSubmission;
+    setSubmission(initialPollSubmission);
+    setResults(null);
+    optionsRef.current = initialPollData?.options;
+    setPollData(initialPollData || { question: '', options: [] });
+    setIsActive(initialIsActive);
+    setIsConnected(socket.connected);
+    // A different socket/session/widget owns a different submission lifecycle.
+  }, [socket, roomCode, widgetId]);
+
+  useEffect(() => {
+    if (submission.status !== 'sending') return;
+    const timer = setTimeout(() => {
+      // A queued timer cannot affect a newer attempt, even after a reset.
+      if (submissionRef.current === submission) transition({ type: 'timeout' });
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [submission, transition]);
 
   // Use shared hook for widget state changes
   useWidgetStateChange({
@@ -81,8 +107,7 @@ export const usePollSocket = ({
           // The zero-vote broadcast may have been missed while disconnected.
           // Changed options still mean a new poll, even if others voted since.
           if (JSON.stringify(optionsRef.current) !== JSON.stringify(data.pollData.options)) {
-            setHasVoted(false);
-            setSelectedOption(null);
+            transition({ type: 'reset' });
           }
           optionsRef.current = data.pollData.options;
           setPollData(data.pollData);
@@ -92,8 +117,7 @@ export const usePollSocket = ({
           // No votes counted: the teacher changed the options (a new poll) or
           // reset it, so the server lets this student vote again
           if (data.results.totalVotes === 0) {
-            setHasVoted(false);
-            setSelectedOption(null);
+            transition({ type: 'reset' });
           }
         }
       }
@@ -107,8 +131,7 @@ export const usePollSocket = ({
         
         // If total votes is 0, this is a reset - clear the student's selection
         if (data.totalVotes === 0) {
-          setHasVoted(false);
-          setSelectedOption(null);
+          transition({ type: 'reset' });
         }
       }
     };
@@ -117,20 +140,19 @@ export const usePollSocket = ({
     const handleVoteConfirmed = (data: { success: boolean; widgetId?: string }) => {
       // Only process if this confirmation is for our widget
       if (data.widgetId === widgetId || (!data.widgetId && !widgetId)) {
-        if (data.success) {
-          setHasVoted(true);
-          setVoteError(null);
-        } else {
-          // Rejected (paused, rate limited, invalid). The server also reports a
-          // vote that arrives after a pause as ALREADY_VOTED, so treat every
-          // rejection as retryable rather than as a counted vote.
-          setSelectedOption(null);
-          setVoteError("Your vote didn't go through. Please try again.");
-        }
+        transition({ type: 'confirmed', success: data.success });
       }
     };
 
+    const handleDisconnect = () => {
+      setIsConnected(false);
+      transition({ type: 'disconnected' });
+    };
+    const handleConnect = () => setIsConnected(true);
+
     // Register listeners
+    socket.on('disconnect', handleDisconnect);
+    socket.on('connect', handleConnect);
     socket.on('poll:stateUpdate', handleDataUpdate);
     socket.on('poll:voteUpdate', handleVoteUpdate);
     socket.on('session:poll:voteConfirmed', handleVoteConfirmed);
@@ -149,6 +171,8 @@ export const usePollSocket = ({
     // Cleanup
     return () => {
       if (timer) clearTimeout(timer);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('connect', handleConnect);
       socket.off('poll:stateUpdate', handleDataUpdate);
       socket.off('poll:voteUpdate', handleVoteUpdate);
       socket.off('session:poll:voteConfirmed', handleVoteConfirmed);
@@ -156,11 +180,11 @@ export const usePollSocket = ({
   }, [socket, roomCode, widgetId, initialPollData]);
 
   const handleVote = (optionIndex: number) => {
-    if (!socket || hasVoted || !isActive) return;
-    
-    setSelectedOption(optionIndex);
-    setVoteError(null);
-    
+    if (!socket?.connected || !isActive || !Number.isInteger(optionIndex)
+      || optionIndex < 0 || optionIndex >= pollData.options.length) return;
+    const previous = submissionRef.current;
+    if (transition({ type: 'submit', optionIndex }) === previous) return;
+
     socket.emit('session:poll:vote', { 
       sessionCode: roomCode, 
       optionIndex: optionIndex,
@@ -171,9 +195,8 @@ export const usePollSocket = ({
   return {
     pollData,
     isActive,
-    hasVoted,
-    selectedOption,
-    voteError,
+    submission,
+    isConnected,
     results,
     handleVote
   };

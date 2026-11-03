@@ -14,13 +14,15 @@ interface PollActivityProps {
 const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPollData, initialIsActive, widgetId }) => {
 
   // Use our custom hook for all socket logic
-  const { pollData, isActive, hasVoted, selectedOption, voteError, results, handleVote } = usePollSocket({
+  const { pollData, isActive, submission, isConnected, results, handleVote } = usePollSocket({
     socket,
     roomCode,
     widgetId,
     initialPollData,
     initialIsActive
   });
+  const hasVoted = submission.status === 'acknowledged';
+  const selectedOption = submission.optionIndex;
 
   const renderContent = () => {
     
@@ -40,7 +42,7 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
     }
 
     // Poll is not active and student hasn't voted
-    if (!isActive && !hasVoted) {
+    if (!isActive && selectedOption === null) {
       return (
         <div className="flex flex-col items-center justify-center py-8">
           <div className="text-center space-y-2">
@@ -83,7 +85,10 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
             })}
           </div>
           <p className="mt-3 text-center text-sm text-warm-gray-500 dark:text-warm-gray-400" role="status">
-            {hasVoted ? 'Vote received. Waiting for results…' : 'Sending your vote…'}
+            {hasVoted ? 'Vote received. Waiting for results…'
+              : submission.status === 'uncertain'
+                ? 'We couldn’t confirm your vote. It may have been counted. Please wait or ask your teacher to reset the poll before voting again.'
+                : 'Sending your vote…'}
           </p>
         </>
       );
@@ -97,9 +102,11 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
           {pollData.options.map((option, index) => {
             const color = getStudentPollColor(index);
             return (
-            <div
+            <button
               key={index}
-              className={`p-3 border-2 rounded-lg cursor-pointer transition-all duration-200 relative overflow-hidden ${
+              type="button"
+              disabled={!isConnected}
+              className={`w-full text-left p-3 border-2 rounded-lg cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 transition-all duration-200 relative overflow-hidden ${
                 selectedOption === index 
                   ? color.selected 
                   : 'border-warm-gray-300 dark:border-warm-gray-600 bg-white dark:bg-warm-gray-800 hover:bg-warm-gray-50 dark:hover:bg-warm-gray-700'
@@ -107,15 +114,10 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
               onClick={() => handleVote(index)}
             >
               <div className="relative z-[1] text-warm-gray-800 dark:text-warm-gray-200">{option}</div>
-            </div>
+            </button>
             );
           })}
         </div>
-        {voteError && (
-          <p className="mt-3 text-center text-sm text-dusty-rose-600 dark:text-dusty-rose-400" role="alert">
-            {voteError}
-          </p>
-        )}
       </>
     );
   };
@@ -159,6 +161,16 @@ const PollActivity: React.FC<PollActivityProps> = ({ socket, roomCode, initialPo
   return (
     <div className="flex flex-col">
       {renderContent()}
+      {submission.status === 'rejected' && (
+        <p className="mt-3 text-center text-sm text-dusty-rose-600 dark:text-dusty-rose-400" role="alert">
+          Your vote didn't go through. Please try again when the poll is active and connected.
+        </p>
+      )}
+      {!isConnected && (
+        <p className="mt-3 text-center text-sm text-warm-gray-500 dark:text-warm-gray-400" role="status">
+          Connection lost. Waiting to reconnect…
+        </p>
+      )}
     </div>
   );
 };
