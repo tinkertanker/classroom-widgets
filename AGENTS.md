@@ -4,40 +4,32 @@
   styles, and network infrastructure rather than duplicating them.
 - Preserve behaviour across the teacher app, student app, server, and
   `packages/shared` contracts when a change crosses a workspace boundary.
-- Do not discard unrelated worktree changes. Stage files explicitly.
-- Keep topic-specific documentation in [`docs/`](docs/). Use
-  [`README.md`](README.md) and `package.json` for setup and commands.
+- Keep topic-specific documentation in [`docs/`](docs/).
 
-## Layout and verification
+## Packages and verification
 
-- The repo uses pnpm (Node 22.13+, pnpm 11+). The pnpm workspaces, listed in
-  `pnpm-workspace.yaml`, are `packages/{shared,teacher,student,server}`.
-  Add dependencies with `pnpm --filter <package> add`; never create a root
-  `package-lock.json`.
-- `packages/macos-dashboard` (SwiftPM), `packages/windows-dashboard` (.NET)
-  and `packages/linux-dashboard` (Electron) are not pnpm workspaces.
-  `linux-dashboard` keeps its own `package-lock.json` and stays on npm;
-  `scripts/build_linux.sh` installs it.
+- The repo uses pnpm (Node 22.13+, pnpm 11+). Add dependencies with
+  `pnpm --filter <package> add`; never create a root `package-lock.json`.
+- The macOS (SwiftPM), Windows (.NET) and Linux (Electron) dashboards are not
+  pnpm workspaces. The Linux dashboard keeps its own `package-lock.json` and
+  stays on npm; `scripts/build_linux.sh` installs it.
 - pnpm passes `--` through to the script as a literal argument. Pass script
   flags directly, as in `pnpm macos:dmg --distribution`, not
   `pnpm macos:dmg -- --distribution`.
 - `pnpm test` runs the teacher suite only. When you change the server, also run
   `pnpm --filter @classroom-widgets/server test`. `pnpm typecheck` checks the
-  teacher and student apps. The `web-tests.yml` workflow runs both suites on
-  Node 22 and 26, and the typecheck on Node 22, for pull requests that touch
-  the web, server or shared code.
+  teacher and student apps. CI runs both suites on Node 22 and 26 for pull
+  requests that touch the web, server or shared code.
 - `packages/shared/voiceCommandDefinitions.json` is the source of truth for the
-  generated voice-command constants under `packages/shared/constants/` and
-  `packages/server/src/shared/constants/`. Edit the JSON, then run
+  generated voice-command constants in the shared and server packages. Edit the JSON, then run
   `pnpm generate:voice-types` (also runs on `prebuild`). Never edit the
   generated files.
 - `packages/shared/desktopHostScripts.json` is the source of truth for the
   scripts the macOS, Windows and Linux apps inject into their widget web views
-  and the window globals they set. `scripts/generateDesktopHostScripts.cjs`
-  (`pnpm generate:desktop-scripts`, also on `prebuild`) writes the checked-in
-  `Generated/DesktopHostScripts.swift`, `Source/Generated/DesktopHostScripts.cs`
-  and `desktopHostScripts.ts` files; the Linux `npm test` fails when they are
-  stale. Edit the JSON and regenerate; never edit the generated files.
+  and the window globals they set. `pnpm generate:desktop-scripts` (also on
+  `prebuild`) writes the checked-in Swift, C# and TypeScript files; the Linux
+  `npm test` fails when they are stale. Edit the JSON and regenerate; never
+  edit the generated files.
 
 ## Testing
 
