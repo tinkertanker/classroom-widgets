@@ -8,8 +8,9 @@
 
 ## Packages and verification
 
-- The repo uses pnpm (Node 22.13+, pnpm 11+). Add dependencies with
-  `pnpm --filter <package> add`; never create a root `package-lock.json`.
+- The repo uses pnpm (Node 22.13+, pnpm 11+). The pnpm workspaces are
+  `shared`, `teacher`, `student` and `server`; add their dependencies with
+  `pnpm --filter <package> add`. Never create a root `package-lock.json`.
 - The macOS (SwiftPM), Windows (.NET) and Linux (Electron) dashboards are not
   pnpm workspaces. The Linux dashboard keeps its own `package-lock.json` and
   stays on npm; `scripts/build_linux.sh` installs it.
