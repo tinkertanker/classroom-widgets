@@ -86,8 +86,13 @@ try {
     const a = cards.nth(0), b = cards.nth(1);
     await b.locator('textarea').waitFor();
     await waitUntil(() => transport, 'WebSocket upgrade');
-    await a.locator('textarea').fill('A deliberately submitted');
-    await b.locator('textarea').fill('B unsent draft must remain');
+    // Fill the real class list: short examples cannot expose clipped recovery.
+    const limit = kind === 'questions' ? 480 : 260;
+    const firstDraft = ('A deliberately submitted. ' + 'A longer classroom question. '.repeat(14)).slice(0, limit);
+    const nextDraft = ('A next attempt. ' + 'Another longer classroom question. '.repeat(13)).slice(0, limit);
+    const unsentDraft = ('B unsent draft must remain. ' + 'A third longer classroom question. '.repeat(13)).slice(0, limit);
+    await a.locator('textarea').fill(firstDraft);
+    await b.locator('textarea').fill(unsentDraft);
     await student.screenshot({ path: join(evidence, `${kind}-ready.png`) });
     for (const target of [b.locator('textarea'), b.getByRole('button', { name: 'Submit', exact: true }), a.locator('textarea')]) {
       const box = await target.boundingBox();
@@ -96,7 +101,7 @@ try {
     await a.getByRole('button', { name: 'Submit', exact: true }).click();
     await waitUntil(async () => (await a.locator('textarea').inputValue()) === '', 'accepted card clears its own draft');
     assert.equal(await a.locator('textarea').inputValue(), '', 'accepted card clears its own draft');
-    assert.equal(await b.locator('textarea').inputValue(), 'B unsent draft must remain', 'another card must retain its unsent draft');
+    assert.equal(await b.locator('textarea').inputValue(), unsentDraft, 'another card must retain its unsent draft');
     assert.equal(await b.getByText('✓ Submitted successfully!', { exact: true }).count(), 0, 'unsent card must not claim success');
     const aWidgetId = requests.values().next().value;
     assert.ok(ids.includes(aWidgetId));
@@ -104,7 +109,7 @@ try {
 
     await student.waitForTimeout(3100); // Questions permits two submissions per three seconds.
     hold = true;
-    await a.locator('textarea').fill('A next attempt');
+    await a.locator('textarea').fill(nextDraft);
     await a.getByRole('button', { name: 'Submit', exact: true }).click();
     await a.locator('form').evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
     await b.getByRole('button', { name: 'Submit', exact: true }).click();
@@ -115,7 +120,7 @@ try {
     transport.send(replyB);
     await waitUntil(async () => (await b.locator('textarea').inputValue()) === '', 'B accepted independently');
     assert.equal(await b.locator('textarea').inputValue(), '');
-    assert.equal(await a.locator('textarea').inputValue(), 'A next attempt');
+    assert.equal(await a.locator('textarea').inputValue(), nextDraft);
     await a.getByRole('status').filter({ hasText: /couldn’t confirm/ }).waitFor({ timeout: 15000 });
     const before = sends;
     await a.locator('form').evaluate(form => { form.requestSubmit(); form.requestSubmit(); });
@@ -124,6 +129,16 @@ try {
     await student.setViewportSize({ width: 390, height: 844 });
     assert.equal(await student.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'narrow feedback must not overflow');
     await a.screenshot({ path: join(evidence, `${kind}-uncertain-narrow.png`) });
+    const recoveryClipped = await a.getByRole('button', { name: 'Teacher checked — write another' }).evaluate(button => {
+      const bounds = button.getBoundingClientRect();
+      for (let parent = button.parentElement; parent; parent = parent.parentElement) {
+        if (!['hidden', 'clip'].includes(getComputedStyle(parent).overflowY)) continue;
+        const clip = parent.getBoundingClientRect();
+        if (bounds.top < clip.top || bounds.bottom > clip.bottom) return true;
+      }
+      return false;
+    });
+    assert.equal(recoveryClipped, false, 'recovery must be fully discoverable with a crowded class list, without scrolling a hidden ancestor');
     await student.setViewportSize({ width: 1100, height: 900 });
     transport.send(replyA);
     await a.getByRole('status').filter({ hasText: 'Submitted successfully' }).waitFor();
@@ -226,6 +241,32 @@ try {
     assert.equal(await a.locator('textarea').inputValue(), 'Fresh card must keep this draft');
     assert.equal(await a.getByText('✓ Submitted successfully!', { exact: true }).count(), 0);
     step(`PASS ${kind}: removed card's late acceptance cannot affect a new lifecycle`);
+
+    // A sleeping tab can still report connected=true after its heartbeat expired.
+    // Access the real socket through React only to inject that transport fault;
+    // observe the public result: rejoin must not replay the attempted submission.
+    const beforeExpiredHeartbeat = sends, joinsBeforeHeartbeat = joins;
+    let heartbeatSubmissions = 0;
+    // Outgoing observation also covers replay over HTTP polling, before upgrade.
+    await student.exposeBinding('recordHeartbeatOutgoing', (_, event) => {
+      if (event === `session:${kind}:submit`) heartbeatSubmissions++;
+    });
+    await a.locator('form').evaluate(form => {
+      let fiber = form[Object.keys(form).find(key => key.startsWith('__reactFiber$'))];
+      while (fiber && !fiber.memoizedProps?.socket) fiber = fiber.return;
+      const socket = fiber?.memoizedProps.socket;
+      if (!socket?.connected || !socket.io.engine?._pingTimeoutTime) throw new Error('Expected a live socket heartbeat');
+      socket.onAnyOutgoing(event => window.recordHeartbeatOutgoing(event));
+      socket.io.engine._pingTimeoutTime = Date.now() - 1;
+      form.requestSubmit();
+    });
+    await waitUntil(() => joins > joinsBeforeHeartbeat, 'rejoin after expired heartbeat');
+    await student.waitForTimeout(200);
+    assert.equal(heartbeatSubmissions, 0, 'expired heartbeat must not replay a submission over either transport');
+    assert.equal(sends, beforeExpiredHeartbeat, 'expired heartbeat must not buffer a submission for reconnect');
+    assert.equal(await a.locator('textarea').inputValue(), 'Fresh card must keep this draft');
+    assert.equal(await a.getByText('✓ Submitted successfully!', { exact: true }).count(), 0);
+    step(`PASS ${kind}: expired heartbeat while connected does not queue or replay a submission`);
 
     if (kind === 'linkShare') {
       teacher.emit('session:linkShare:setAcceptMode', { sessionCode: code, widgetId: aWidgetId, acceptMode: 'links' });

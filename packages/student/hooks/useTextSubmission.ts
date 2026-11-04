@@ -51,7 +51,9 @@ export function useTextSubmission(socket: Socket, sessionCode: string, widgetId:
 
   const submit = (payload: Record<string, unknown>, validationError?: string) => {
     if (attempt.current) return;
-    if (!socket.connected || validationError) {
+    // Match Socket.IO's synchronous liveness check: a sleeping tab may still
+    // report connected while emit would instead buffer until reconnection.
+    if (!socket.connected || socket.io.engine._hasPingExpired() || validationError) {
       setSubmission({ status: 'rejected', error: validationError || 'Connection lost. Wait to reconnect before submitting.' });
       return;
     }

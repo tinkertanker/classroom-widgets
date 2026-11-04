@@ -130,6 +130,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
 
   return (
     <div className="relative">
+      <SubmissionFeedback submission={submission} isConnected={isConnected} onStartAnother={startAnother} />
       {!isActive ? (
         // Waiting state when teacher has stopped accepting questions
         <div className="flex flex-col items-center justify-center py-8">
@@ -218,7 +219,6 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
 
         </>
       )}
-      <SubmissionFeedback submission={submission} isConnected={isConnected} onStartAnother={startAnother} />
     </div>
   );
 };
