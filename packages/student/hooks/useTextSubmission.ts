@@ -51,9 +51,7 @@ export function useTextSubmission(socket: Socket, sessionCode: string, widgetId:
 
   const submit = (payload: Record<string, unknown>, validationError?: string) => {
     if (attempt.current) return;
-    // Match Socket.IO's synchronous liveness check: a sleeping tab may still
-    // report connected while emit would instead buffer until reconnection.
-    if (!socket.connected || socket.io.engine._hasPingExpired() || validationError) {
+    if (!socket.connected || validationError) {
       setSubmission({ status: 'rejected', error: validationError || 'Connection lost. Wait to reconnect before submitting.' });
       return;
     }
@@ -65,7 +63,8 @@ export function useTextSubmission(socket: Socket, sessionCode: string, widgetId:
     setSubmission({ status: 'sending' });
     // Keep accepting a late, correlated response after the feedback deadline,
     // but bound Socket.IO callback retention even when no reply ever arrives.
-    socket.timeout(60000).emit(event, { ...payload, sessionCode, widgetId }, (error: Error | null,
+    const request = { ...payload, sessionCode, widgetId };
+    socket.timeout(60000).emit(event, request, (error: Error | null,
       response?: SessionQuestionsSubmittedResponse | SessionLinkShareSubmittedResponse) => {
       if (attempt.current !== pending) return;
       clearTimeout(pending.timer);
@@ -83,6 +82,14 @@ export function useTextSubmission(socket: Socket, sessionCode: string, widgetId:
         setSubmission({ status: 'rejected', error: message || 'Submission was rejected. Please try again.' });
       }
     });
+    // emit checks heartbeat expiry itself and may buffer despite connected=true.
+    // Cancel only this unsent packet synchronously, before reconnect can flush it.
+    const queued = socket.sendBuffer.findIndex(packet => packet.data[1] === request);
+    if (queued !== -1) {
+      socket.sendBuffer.splice(queued, 1);
+      abandon();
+      setSubmission({ status: 'rejected', error: 'Connection lost. Wait to reconnect before submitting.' });
+    }
   };
 
   const startAnother = () => {

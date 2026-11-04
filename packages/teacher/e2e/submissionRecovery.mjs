@@ -246,10 +246,11 @@ try {
     // Access the real socket through React only to inject that transport fault;
     // observe the public result: rejoin must not replay the attempted submission.
     const beforeExpiredHeartbeat = sends, joinsBeforeHeartbeat = joins;
-    let heartbeatSubmissions = 0;
+    let heartbeatSubmissions = 0, preservedPackets = 0;
     // Outgoing observation also covers replay over HTTP polling, before upgrade.
     await student.exposeBinding('recordHeartbeatOutgoing', (_, event) => {
       if (event === `session:${kind}:submit`) heartbeatSubmissions++;
+      if (event === 'e2e:unrelated-buffered-packet') preservedPackets++;
     });
     await a.locator('form').evaluate(form => {
       let fiber = form[Object.keys(form).find(key => key.startsWith('__reactFiber$'))];
@@ -257,12 +258,15 @@ try {
       const socket = fiber?.memoizedProps.socket;
       if (!socket?.connected || !socket.io.engine?._pingTimeoutTime) throw new Error('Expected a live socket heartbeat');
       socket.onAnyOutgoing(event => window.recordHeartbeatOutgoing(event));
+      // Cancellation must not clear packets owned by another socket consumer.
+      socket.sendBuffer.push({ type: 2, data: ['e2e:unrelated-buffered-packet'] });
       socket.io.engine._pingTimeoutTime = Date.now() - 1;
       form.requestSubmit();
     });
     await waitUntil(() => joins > joinsBeforeHeartbeat, 'rejoin after expired heartbeat');
     await student.waitForTimeout(200);
     assert.equal(heartbeatSubmissions, 0, 'expired heartbeat must not replay a submission over either transport');
+    assert.equal(preservedPackets, 1, 'cancel only the owned submission, not another consumer’s queued packet');
     assert.equal(sends, beforeExpiredHeartbeat, 'expired heartbeat must not buffer a submission for reconnect');
     assert.equal(await a.locator('textarea').inputValue(), 'Fresh card must keep this draft');
     assert.equal(await a.getByText('✓ Submitted successfully!', { exact: true }).count(), 0);
