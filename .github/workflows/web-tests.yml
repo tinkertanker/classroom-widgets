@@ -59,16 +59,21 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - uses: ./.github/actions/install-pnpm
-      # Type errors do not depend on the Node version.
-      - name: Typecheck the teacher and student apps
-        if: matrix.node == 22
-        run: pnpm typecheck
-      - name: Teacher tests
-        run: pnpm test --run
-      - name: Server tests
+      # Overlap the independent suites without another runner or dependency restore.
+      # Keep every result: a failed check must not cancel the other checks/evidence.
+      - name: Run independent web checks
         env:
+          NODE_VERSION: ${{ matrix.node }}
           CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/server-test-evidence
-        run: pnpm --filter @classroom-widgets/server test
+        run: |
+          checks=("pnpm test --run" "pnpm --filter @classroom-widgets/server test")
+          names=teacher,server
+          # Type errors do not depend on the Node version.
+          if [[ "$NODE_VERSION" == 22 ]]; then
+            checks+=("pnpm typecheck")
+            names+=,types
+          fi
+          pnpm exec concurrently --success all --names "$names" --timings "${checks[@]}"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
