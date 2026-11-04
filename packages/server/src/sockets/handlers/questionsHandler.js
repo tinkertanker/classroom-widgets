@@ -12,45 +12,49 @@ const { resolveRoom, resolveHostRoom, isHostRejection, resolveParticipantSession
 module.exports = function questionsHandler(io, socket, sessionManager, getCurrentSessionCode) {
 
   // Student submits a question
-  socket.on(EVENTS.QUESTIONS.SUBMIT, (data) => {
+  socket.on(EVENTS.QUESTIONS.SUBMIT, (data, callback) => {
+    // New clients own the per-request callback. Keep event replies for older
+    // clients, whose payload and response contract are unchanged.
+    const respond = response => typeof callback === 'function'
+      ? callback(response) : socket.emit(EVENTS.QUESTIONS.SUBMITTED, response);
     // Check rate limit
     const rateLimitResult = eventRateLimiter(socket, EVENTS.QUESTIONS.SUBMIT);
     if (!rateLimitResult.allowed) {
-      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createRateLimitResponse(rateLimitResult.retryAfter));
+      respond(createRateLimitResponse(rateLimitResult.retryAfter));
       return;
     }
 
     // Only a student who joined this session may ask (finding 9)
     const session = resolveParticipantSession(sessionManager, socket, data.sessionCode, getCurrentSessionCode);
     if (!session) {
-      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('NOT_PARTICIPANT'));
+      respond(createErrorResponse('NOT_PARTICIPANT'));
       return;
     }
 
     // Validate widget ID
     const widgetValidation = validators.widgetId(data.widgetId);
     if (!widgetValidation.valid) {
-      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('INVALID_INPUT', widgetValidation.error));
+      respond(createErrorResponse('INVALID_INPUT', widgetValidation.error));
       return;
     }
 
     const guard = resolveRoom(session, 'questions', QuestionsRoom, data.widgetId);
     if (!guard.ok) {
-      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('ROOM_NOT_FOUND'));
+      respond(createErrorResponse('ROOM_NOT_FOUND'));
       return;
     }
     const { room, roomId: questionsRoomId } = guard;
 
     // Check if questions are being accepted
     if (!room.isActive) {
-      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('WIDGET_PAUSED'));
+      respond(createErrorResponse('WIDGET_PAUSED'));
       return;
     }
 
     // Validate question text
     const questionValidation = validators.question(data.question);
     if (!questionValidation.valid) {
-      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('INVALID_INPUT', questionValidation.error));
+      respond(createErrorResponse('INVALID_INPUT', questionValidation.error));
       return;
     }
 
@@ -60,7 +64,7 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     if (data.studentName) {
       const nameValidation = validators.studentName(data.studentName);
       if (!nameValidation.valid) {
-        socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('INVALID_INPUT', nameValidation.error));
+        respond(createErrorResponse('INVALID_INPUT', nameValidation.error));
         return;
       }
     }
@@ -76,12 +80,12 @@ module.exports = function questionsHandler(io, socket, sessionManager, getCurren
     );
 
     if (!question) {
-      socket.emit(EVENTS.QUESTIONS.SUBMITTED, createErrorResponse('ROOM_FULL'));
+      respond(createErrorResponse('ROOM_FULL'));
       return;
     }
 
     // Send confirmation to student
-    socket.emit(EVENTS.QUESTIONS.SUBMITTED, createSuccessResponse({ questionId: question.id }));
+    respond(createSuccessResponse({ questionId: question.id }));
 
     // Students see every question in the room, but not who asked it; only
     // the teacher receives the asker's name and id.
