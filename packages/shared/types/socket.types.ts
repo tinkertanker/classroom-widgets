@@ -202,12 +202,13 @@ export interface SessionLinkShareSubmitData {
   sessionCode: string;
   widgetId: string;
   studentName: string;
-  link: string;
+  content?: string;
+  link?: string; // Legacy clients
 }
 
 export interface SessionLinkShareSubmittedResponse {
   success: boolean;
-  error?: string;
+  error?: string | { code: string; message: string };
 }
 
 export interface LinkShareNewSubmissionData extends LinkSubmission {
@@ -309,7 +310,8 @@ export interface SessionQuestionsSubmitData {
 
 export interface SessionQuestionsSubmittedResponse {
   success: boolean;
-  error?: string;
+  questionId?: string;
+  error?: string | { code: string; message: string };
 }
 
 export interface QuestionsNewQuestionData extends Question {
@@ -589,7 +591,7 @@ export interface ClientToServerEvents {
   'poll:requestState': (data: PollRequestStateData) => void;
 
   // Link Share events
-  'session:linkShare:submit': (data: SessionLinkShareSubmitData, callback: (response: SessionLinkShareSubmittedResponse) => void) => void;
+  'session:linkShare:submit': (data: SessionLinkShareSubmitData, callback?: (response: SessionLinkShareSubmittedResponse) => void) => void;
   'session:linkShare:delete': (data: SessionLinkShareDeleteData) => void;
   'session:linkShare:setAcceptMode': (data: SessionLinkShareSetAcceptModeData) => void;
   'linkShare:requestState': (data: LinkShareRequestStateData) => void;
@@ -600,7 +602,7 @@ export interface ClientToServerEvents {
   'rtfeedback:requestState': (data: RTFeedbackRequestStateData) => void;
 
   // Questions events
-  'session:questions:submit': (data: SessionQuestionsSubmitData, callback: (response: SessionQuestionsSubmittedResponse) => void) => void;
+  'session:questions:submit': (data: SessionQuestionsSubmitData, callback?: (response: SessionQuestionsSubmittedResponse) => void) => void;
   'session:questions:markAnswered': (data: SessionQuestionsMarkAnsweredData) => void;
   'session:questions:delete': (data: SessionQuestionsDeleteData) => void;
   'session:questions:clearAll': (data: SessionQuestionsClearAllData) => void;

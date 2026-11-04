@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useId } from 'react';
 import { Socket } from 'socket.io-client';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
+import { useTextSubmission } from '../hooks/useTextSubmission';
+import SubmissionFeedback from './SubmissionFeedback';
 import type { LinkShareStateChangedData } from '@shared/types/socket.types';
 
 interface LinkShareActivityProps {
@@ -22,11 +24,10 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
   initialIsActive = false,
   initialAcceptMode = 'all'
 }) => {
-  const [content, setContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [submissionCount, setSubmissionCount] = useState(0);
+  const { text: content, edit, submission, isConnected, submissionCount, submit, startAnother } =
+    useTextSubmission(socket, roomCode, widgetId, 'session:linkShare:submit');
+  const isSubmitting = submission.status === 'sending' || submission.status === 'uncertain';
+  const inputId = useId();
   const [isActive, setIsActive] = useState(initialIsActive);
   const [acceptMode, setAcceptMode] = useState<'links' | 'all'>(initialAcceptMode);
 
@@ -46,63 +47,18 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
     }
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    if (!isActive) return;
     const trimmedContent = content.trim();
-    if (!trimmedContent) {
-      setError(acceptMode === 'links' ? 'Please enter a link to share' : 'Please enter something to share');
-      return;
-    }
-
-    // Client-side validation for text length
-    if (acceptMode === 'all' && trimmedContent.length > MAX_TEXT_LENGTH) {
-      setError(`Text must be ${MAX_TEXT_LENGTH} characters or less`);
-      return;
-    }
-
-    setIsSubmitting(true);
-    setError('');
-
-    socket.emit('session:linkShare:submit', {
-      sessionCode: roomCode,
+    const validationError = !trimmedContent
+      ? (acceptMode === 'links' ? 'Please enter a link to share' : 'Please enter something to share')
+      : acceptMode === 'all' && trimmedContent.length > MAX_TEXT_LENGTH
+        ? `Text must be ${MAX_TEXT_LENGTH} characters or less` : undefined;
+    submit({
       studentName: studentName || 'Anonymous',
-      content: trimmedContent,
-      widgetId
-    });
-
-    const responseEvent = 'session:linkShare:submitted';
-
-    // Set up timeout
-    const timeoutId = setTimeout(() => {
-      setIsSubmitting(false);
-      setError('Connection timeout. Please try again.');
-      // Remove only this submission's listener: other Drop Box cards share the socket
-      socket.off(responseEvent, handleResponse);
-    }, 10000);
-
-    const handleResponse = (response: { success: boolean; error?: string | { code?: string; message?: string } }) => {
-      // Clear the timeout since we got a response
-      clearTimeout(timeoutId);
-      setIsSubmitting(false);
-
-      if (response.success) {
-        setContent(''); // Clear the input for next submission
-        setError('');
-        setShowSuccess(true);
-        setSubmissionCount(prev => prev + 1);
-        // Hide success message after 3 seconds
-        setTimeout(() => setShowSuccess(false), 3000);
-      } else {
-        // Handle both old (string) and new ({ code, message }) error formats
-        const errorMessage = typeof response.error === 'object'
-          ? response.error?.message
-          : response.error;
-        setError(errorMessage || 'Failed to submit. Please try again.');
-      }
-    };
-
-    socket.once(responseEvent, handleResponse);
+      content: trimmedContent
+    }, validationError);
   };
 
   // Check if content exceeds limit
@@ -126,19 +82,10 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
       ) : (
         // Active state
         <>
-          {/* Success message overlay */}
-          <div className={`absolute inset-x-0 top-0 z-10 transition-all duration-300 ease-in-out ${
-            showSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
-          }`}>
-            <div className="bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300 p-3 text-center font-medium text-sm shadow-md border border-sage-200 dark:border-sage-700">
-              ✓ Submitted successfully!
-            </div>
-          </div>
-          
           <form onSubmit={handleSubmit} className="mb-4">
             <div className="mb-3">
               <div className="flex justify-between items-center mb-1">
-                <label htmlFor="shareContent" className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">
+                <label htmlFor={inputId} className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">
                   {acceptMode === 'links' ? 'Share a Link' : 'Share a Link or Text'}
                 </label>
                 {submissionCount > 0 && (
@@ -150,23 +97,23 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
               {acceptMode === 'links' ? (
                 <input
                   type="text"
-                  id="shareContent"
+                  id={inputId}
                   placeholder="example.com or https://example.com"
                   value={content}
-                  onChange={(e) => setContent(e.target.value)}
+                  onChange={(e) => edit(e.target.value)}
                   required
-                  disabled={!isActive}
+                  disabled={isSubmitting}
                   className="w-full py-2 px-3 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md text-sm bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               ) : (
                 <div className="relative">
                   <textarea
-                    id="shareContent"
+                    id={inputId}
                     placeholder="Paste a link or type a short message..."
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                    onChange={(e) => edit(e.target.value)}
                     required
-                    disabled={!isActive}
+                    disabled={isSubmitting}
                     rows={3}
                     className={`w-full py-2 px-3 border rounded-md text-sm bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 focus:outline-none focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] disabled:opacity-50 disabled:cursor-not-allowed resize-none ${
                       isOverLimit
@@ -188,15 +135,15 @@ const LinkShareActivity: React.FC<LinkShareActivityProps> = ({
             </div>
             <button
               type="submit"
-              disabled={isSubmitting || !isActive || isOverLimit}
+              disabled={isSubmitting || !isConnected || !isActive || isOverLimit || !content.trim()}
               className="mt-3 w-3/4 mx-auto block bg-terracotta-500 dark:bg-terracotta-400 text-white hover:bg-terracotta-600 dark:hover:bg-terracotta-500 py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Submitting...' : 'Submit'}
+              {submission.status === 'sending' ? 'Submitting...' : 'Submit'}
             </button>
-            {error && <div className="mt-2 bg-dusty-rose-50 dark:bg-dusty-rose-900/30 text-dusty-rose-700 dark:text-dusty-rose-300 p-2 rounded-md text-sm border border-dusty-rose-200 dark:border-dusty-rose-700">{error}</div>}
           </form>
         </>
       )}
+      <SubmissionFeedback submission={submission} isConnected={isConnected} onStartAnother={startAnother} />
     </div>
   );
 };

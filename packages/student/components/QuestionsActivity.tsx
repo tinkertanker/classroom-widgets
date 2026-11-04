@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useId } from 'react';
 import { Socket } from 'socket.io-client';
 import { getStudentQuestionColor } from '@shared/constants/studentQuestionColors';
 import { useWidgetStateChange } from '../hooks/useWidgetStateChange';
+import { useTextSubmission } from '../hooks/useTextSubmission';
+import SubmissionFeedback from './SubmissionFeedback';
 
 interface Question {
   id: string;
@@ -28,11 +30,11 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
   initialIsActive
 }) => {
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [questionText, setQuestionText] = useState('');
+  const { text: questionText, edit, submission, isConnected, submit, startAnother } =
+    useTextSubmission(socket, sessionCode, widgetId, 'session:questions:submit');
+  const isSubmitting = submission.status === 'sending' || submission.status === 'uncertain';
+  const inputId = useId();
   const [isActive, setIsActive] = useState(initialIsActive ?? false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
 
   // Listen for widget state changes using shared hook
   useWidgetStateChange({
@@ -92,28 +94,12 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
       }
     };
 
-    // Handle submission response
-    const handleSubmitted = (data: { success: boolean; error?: string | { message?: string } }) => {
-      setIsSubmitting(false);
-      if (data.success) {
-        setQuestionText('');
-        setError('');
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
-      } else if (data.error) {
-        // Handle both old and new error formats
-        const errorMessage = typeof data.error === 'object' ? data.error.message : data.error;
-        setError(errorMessage);
-      }
-    };
-
     // Register event listeners
     socket.on('questions:stateUpdate', handleStateUpdate);
     socket.on('questions:questionAdded', handleQuestionAdded);
     socket.on('questions:questionAnswered', handleQuestionAnswered);
     socket.on('questions:questionDeleted', handleQuestionDeleted);
     socket.on('questions:allCleared', handleAllCleared);
-    socket.on('session:questions:submitted', handleSubmitted);
 
     return () => {
       socket.off('questions:stateUpdate', handleStateUpdate);
@@ -121,31 +107,16 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
       socket.off('questions:questionAnswered', handleQuestionAnswered);
       socket.off('questions:questionDeleted', handleQuestionDeleted);
       socket.off('questions:allCleared', handleAllCleared);
-      socket.off('session:questions:submitted', handleSubmitted);
     };
   }, [socket, sessionCode, studentId, widgetId]);
 
   const handleSubmitQuestion = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!questionText.trim()) {
-      setError('Please enter a question or comment');
-      return;
-    }
-
-    // Socket is always available in this component
-
-    setIsSubmitting(true);
-    setError('');
-
-    // Don't add question locally - wait for server confirmation
-
-    socket.emit('session:questions:submit', {
-      sessionCode,
+    if (!isActive) return;
+    submit({
       question: questionText.trim(),
-      studentName: studentName || 'Anonymous',
-      widgetId
-    });
+      studentName: studentName || 'Anonymous'
+    }, questionText.trim() ? undefined : 'Please enter a question or comment');
   };
 
   // Sort questions by timestamp (newest first)
@@ -159,6 +130,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
 
   return (
     <div className="relative">
+      <SubmissionFeedback submission={submission} isConnected={isConnected} onStartAnother={startAnother} />
       {!isActive ? (
         // Waiting state when teacher has stopped accepting questions
         <div className="flex flex-col items-center justify-center py-8">
@@ -179,7 +151,7 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
             <div className="space-y-3">
               <div>
                 <div className="flex justify-between items-baseline mb-1">
-                  <label htmlFor="question" className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">
+                  <label htmlFor={inputId} className="text-sm font-medium text-warm-gray-700 dark:text-warm-gray-300">
                     Your Question or Comment
                   </label>
                   <span className="text-xs text-warm-gray-500 dark:text-warm-gray-400">
@@ -187,9 +159,9 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
                   </span>
                 </div>
                 <textarea
-                  id="question"
+                  id={inputId}
                   value={questionText}
-                  onChange={(e) => setQuestionText(e.target.value)}
+                  onChange={(e) => edit(e.target.value)}
                   className="w-full py-2 px-3 border border-warm-gray-300 dark:border-warm-gray-600 rounded-md text-sm bg-white dark:bg-warm-gray-700 text-warm-gray-800 dark:text-warm-gray-200 focus:outline-none focus:border-sage-500 dark:focus:border-sage-400 focus:shadow-[0_0_0_2px_rgba(94,139,94,0.2)] resize-none"
                   placeholder="Ask a question or share a comment..."
                   rows={3}
@@ -198,30 +170,15 @@ const QuestionsActivity: React.FC<QuestionsActivityProps> = ({
                 />
               </div>
 
-              {error && (
-                <div className="bg-dusty-rose-50 dark:bg-dusty-rose-900/30 text-dusty-rose-700 dark:text-dusty-rose-300 p-2 rounded-md text-sm border border-dusty-rose-200 dark:border-dusty-rose-700">
-                  {error}
-                </div>
-              )}
-
               <button
                 type="submit"
-                disabled={isSubmitting || !questionText.trim()}
+                disabled={isSubmitting || !isConnected || !questionText.trim()}
                 className="w-3/4 mx-auto block bg-sky-500 dark:bg-sky-400 text-white hover:bg-sky-600 dark:hover:bg-sky-500 py-2 px-3 rounded-md text-sm font-medium cursor-pointer transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? 'Submitting...' : 'Submit'}
+                {submission.status === 'sending' ? 'Submitting...' : 'Submit'}
               </button>
             </div>
           </form>
-
-          {/* Success message overlay */}
-          <div className={`absolute inset-x-0 top-0 z-10 transition-all duration-300 ease-in-out ${
-            showSuccess ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
-          }`}>
-            <div className="bg-sage-100 dark:bg-sage-900/30 text-sage-700 dark:text-sage-300 p-3 text-center font-medium text-sm shadow-md border border-sage-200 dark:border-sage-700">
-              ✓ Submitted successfully!
-            </div>
-          </div>
 
           {/* Submitted questions */}
           {sortedQuestions.length > 0 && (

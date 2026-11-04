@@ -93,7 +93,7 @@ try {
 
   for (const student of STUDENTS) {
     const studentPage = await joinAsStudent(browser, studentUrl, code, student.name);
-    await studentPage.locator('#shareContent').fill(student.content);
+    await studentPage.getByRole('textbox', { name: 'Share a Link or Text' }).fill(student.content);
     await studentPage.getByRole('button', { name: 'Submit' }).click();
     await studentPage.getByText('Submitted successfully!').waitFor();
     await studentPage.close();

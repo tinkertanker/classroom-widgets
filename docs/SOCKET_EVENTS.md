@@ -212,8 +212,8 @@ For Poll widgets specifically:
 
 **Submissions**
 
-*   `Student → Server`: `session:linkShare:submit` with `{ sessionCode, widgetId, studentName, link }`
-*   `Server → Student`: `session:linkShare:submitted` with `{ success, error? }`
+*   `Student → Server`: `session:linkShare:submit` with `{ sessionCode, widgetId, studentName, content }` (legacy `link` is still accepted)
+*   `Server → Student`: the per-request acknowledgement callback receives `{ success, error? }`. Without a callback, older clients still receive `session:linkShare:submitted`.
 *   `Server → All`: `linkShare:submissionAdded` with `{ id, studentName, link, timestamp, widgetId }`
 *   `Teacher → Server`: `session:linkShare:delete` with `{ sessionCode, widgetId, submissionId }`
 *   `Server → All`: `linkShare:submissionDeleted` with `{ submissionId, widgetId }`
@@ -242,7 +242,7 @@ For Poll widgets specifically:
 
 *   `Student → Server`: `session:questions:submit` with `{ sessionCode, widgetId, question, studentName }`
     - Note: Student sends `question` field, but server broadcasts as `text` field
-*   `Server → Student`: `session:questions:submitted` with `{ success, questionId?, error? }`
+*   `Server → Student`: the per-request acknowledgement callback receives `{ success, questionId?, error? }`. Without a callback, older clients still receive `session:questions:submitted`.
 *   `Server → Teacher`: `questions:questionAdded` with `{ id, studentId, studentName, text, timestamp, answered, widgetId }`
 *   `Server → Students`: `questions:questionAdded` with `{ id, text, timestamp, answered, widgetId }`. Students see every question in the room but never who asked it; `questions:requestState` likewise returns questions without `studentId` or `studentName` to students.
 *   `Client → Server`: `questions:requestState` with `{ sessionCode, widgetId }` (the host or a joined student only)
@@ -256,6 +256,43 @@ For Poll widgets specifically:
 *   `Server → All`: `questions:questionDeleted` with `{ questionId, widgetId }`
 *   `Teacher → Server`: `session:questions:clearAll` with `{ sessionCode, widgetId }`
 *   `Server → All`: `questions:allCleared` with `{ widgetId }`
+
+### Questions and Drop Box submission recovery
+
+Each student card owns its draft and one in-flight callback. States are idle,
+sending, acknowledged, rejected and uncertain. Only that attempt's callback can
+clear its draft or show success; shared legacy events and aggregate updates
+cannot confirm a submission. Rejections retain the draft and allow deliberate
+retry. `error` may be a legacy string or `{ code, message }`.
+
+After ten seconds without confirmation, or a disconnect, the card retains and
+locks the draft as uncertain: the server may already have accepted it. There is
+no automatic resend or offline queue. A correlated late reply can resolve a
+same-connection timeout for up to sixty seconds; disconnect removes Socket.IO's
+callback, so reconnect alone does not prove delivery. “Teacher checked — write
+another” explicitly abandons that attempt and clears its draft. Late replies
+after abandonment or card removal cannot confirm a newer draft. This is not
+server deduplication: deliberate new submissions can still duplicate content.
+
+Deploy the callback-capable server before (or atomically with) the new student
+bundle. Existing no-callback clients keep their event response. A new student
+against an old server will remain uncertain rather than trusting an uncorrelated
+event. No teacher recovery, participant identity or RT Feedback replay policy
+changes are required.
+
+Run the real-stack regression from the repository root (set `CHROME_BIN` if
+using an existing Chromium install):
+
+```sh
+CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR=/tmp/submission-recovery \
+  pnpm --filter @classroom-widgets/teacher e2e:submission-recovery
+```
+
+It writes `submission-recovery.txt`, screenshots and a video per widget kind.
+It covers independent/concurrent cards, reversed/duplicate/late replies,
+uncertainty, repeated actions, offline/rejoin without replay, explicit abandonment,
+unmount, paused rejection/retry and Drop Box links-only validation. Existing server
+E2Es cover legacy event clients, membership and teacher-only submission privacy.
 
 ## Usage Events
 
