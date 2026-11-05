@@ -4,6 +4,7 @@
   styles, and network infrastructure rather than duplicating them.
 - Preserve behaviour across the teacher app, student app, server, and
   `packages/shared` contracts when a change crosses a workspace boundary.
+- Do not discard unrelated worktree changes. Stage files explicitly.
 - Keep topic-specific documentation in [`docs/`](docs/).
 
 ## Packages and verification
