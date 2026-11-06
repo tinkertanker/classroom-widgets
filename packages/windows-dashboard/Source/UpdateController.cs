@@ -57,6 +57,17 @@ public sealed class UpdateController
             UpdateAvailable?.Invoke(availableVersion);
             if (!manual) return;
 
+            if (!CanWriteToInstallDirectory())
+            {
+                var location = Path.GetFullPath(AppContext.BaseDirectory).TrimEnd(Path.DirectorySeparatorChar);
+                MessageBox.Show(
+                    $"Classroom Widgets is installed in\n{location}\nwhich this account cannot modify, so the automatic update would fail and roll back.\n\nReinstall to the default per-user location (no administrator rights needed), or run the new installer manually as administrator.",
+                    "Unable to update Classroom Widgets",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                return;
+            }
+
             var choice = MessageBox.Show(
                 $"Classroom Widgets {availableVersion} is available.\n\nYou are using version {App.AppVersion}. The update will be downloaded and the app will restart.",
                 "Update available",
@@ -80,7 +91,7 @@ public sealed class UpdateController
             }
 
             if (isInstalled)
-                StartInstalledUpdate(downloadPath);
+                StartInstalledUpdate(downloadPath, availableVersion);
             else
                 StartPortableUpdate(downloadPath);
             handoffStarted = true;
@@ -177,17 +188,49 @@ public sealed class UpdateController
         }
     }
 
-    private static void StartInstalledUpdate(string installer)
+    private static bool CanWriteToInstallDirectory()
     {
+        try
+        {
+            var probe = Path.Combine(AppContext.BaseDirectory, $".write-test-{Guid.NewGuid():N}");
+            File.WriteAllBytes(probe, Array.Empty<byte>());
+            File.Delete(probe);
+            return true;
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            DashboardLog.Warn($"Install directory is not writable, automatic update would roll back: {error.Message}");
+            return false;
+        }
+    }
+
+    private static void StartInstalledUpdate(string installer, string version)
+    {
+        // Inno's own log records which file or process blocked the install; the
+        // app log only learns the exit code after the app has already quit.
+        var logFile = Path.Combine(DashboardSettings.DataDirectory, $"update-{version}-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+        Directory.CreateDirectory(DashboardSettings.DataDirectory);
+        var appLog = Path.Combine(DashboardSettings.DataDirectory, "classroom-widgets.log");
+        var appExe = Environment.ProcessPath ?? Path.Combine(AppContext.BaseDirectory, "ClassroomWidgets.exe");
         var script = Path.Combine(Path.GetTempPath(), $"classroom-widgets-update-{Guid.NewGuid():N}.ps1");
         File.WriteAllText(script, """
-            param([int]$ProcessId, [string]$Installer)
+            param([int]$ProcessId, [string]$Installer, [string]$LogFile, [string]$AppLog, [string]$AppExe)
             Wait-Process -Id $ProcessId -ErrorAction SilentlyContinue
-            Start-Process -FilePath $Installer -ArgumentList '/SILENT /SUPPRESSMSGBOXES /CLOSEAPPLICATIONS' -Wait
-            Remove-Item -LiteralPath $Installer, $PSCommandPath -Force -ErrorAction SilentlyContinue
+            $setup = Start-Process -FilePath $Installer -Wait -PassThru -ArgumentList @(
+              '/SILENT', '/SUPPRESSMSGBOXES', '/CLOSEAPPLICATIONS', '/LOGCLOSEAPPLICATIONS', "/LOG=`"$LogFile`"")
+            if ($setup.ExitCode -eq 0) {
+              Remove-Item -LiteralPath $Installer, $LogFile, $PSCommandPath -Force -ErrorAction SilentlyContinue
+              return
+            }
+            $stamp = Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff'
+            Add-Content -LiteralPath $AppLog -Value "$stamp [ERROR] Update installer exited with code $($setup.ExitCode); see $LogFile" -ErrorAction SilentlyContinue
+            if (Test-Path -LiteralPath $AppExe) { Start-Process -FilePath $AppExe -ArgumentList '--background' }
+            $message = "The Classroom Widgets update failed and was rolled back (installer exit code $($setup.ExitCode)).`n`nInstaller log:`n$LogFile`n`nThe installer was kept at $Installer - run it manually to see the error. If the app lives outside your user profile (e.g. Program Files), reinstall it to the default location to enable automatic updates."
+            [void](New-Object -ComObject WScript.Shell).Popup($message, 0, 'Classroom Widgets update failed', 48)
+            Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
             """);
         var start = new ProcessStartInfo("powershell.exe") { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = Path.GetTempPath() };
-        foreach (var argument in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-ProcessId", Environment.ProcessId.ToString(), "-Installer", installer })
+        foreach (var argument in new[] { "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script, "-ProcessId", Environment.ProcessId.ToString(), "-Installer", installer, "-LogFile", logFile, "-AppLog", appLog, "-AppExe", appExe })
             start.ArgumentList.Add(argument);
         Process.Start(start);
     }
