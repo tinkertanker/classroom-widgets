@@ -216,8 +216,10 @@ public sealed class UpdateController
         File.WriteAllText(script, """
             param([int]$ProcessId, [string]$Installer, [string]$LogFile, [string]$AppLog, [string]$AppExe)
             Wait-Process -Id $ProcessId -ErrorAction SilentlyContinue
-            $setup = Start-Process -FilePath $Installer -Wait -PassThru -ArgumentList @(
+            $setup = Start-Process -FilePath $Installer -PassThru -ArgumentList @(
               '/SILENT', '/SUPPRESSMSGBOXES', '/CLOSEAPPLICATIONS', '/LOGCLOSEAPPLICATIONS', "/LOG=`"$LogFile`"")
+            # -Wait would also block on the app the installer relaunches on success.
+            $setup.WaitForExit()
             if ($setup.ExitCode -eq 0) {
               Remove-Item -LiteralPath $Installer, $LogFile, $PSCommandPath -Force -ErrorAction SilentlyContinue
               return
