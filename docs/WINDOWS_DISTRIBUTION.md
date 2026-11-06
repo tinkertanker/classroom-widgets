@@ -173,6 +173,12 @@ before downloading and verifies GitHub's published SHA-256 digest before running
 the update.
 
 Installed builds run the existing per-user installer silently, preserve the
-current launch-at-login choice, and restart. Portable builds download the new
-portable ZIP, replace the files beside the running executable after it exits, and
-restart from the same location.
+current launch-at-login choice, and restart. The installer writes a log to
+`%LOCALAPPDATA%\ClassroomWidgets\update-<version>-<timestamp>.log`; a failed
+install rolls back, reports its exit code in `classroom-widgets.log`, keeps the
+downloaded installer for a manual run, and shows a message. Auto-update also
+refuses to start when the install directory isn't writable (e.g. the app was
+installed under `C:\Program Files` — reinstall to the default location so
+updates can run without administrator rights). Portable builds download the new
+portable ZIP, replace the files beside the running executable after it exits,
+and restart from the same location.
