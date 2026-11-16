@@ -22,6 +22,14 @@ import {
 import timerEndSound2 from "./timer-end-2.wav";
 import timerEndSound3 from "./timer-end-3.mp3";
 
+// The Short end sound is picked at random from the original tune plus every
+// MP3 in short-tunes/, so adding a tune only needs a file dropped in there.
+const extraShortTunes = Object.values(
+  import.meta.glob<string>('./short-tunes/*.mp3', { eager: true, import: 'default' })
+);
+const SHORT_TUNES = [timerEndSound2, ...extraShortTunes];
+const LONG_TUNES = [timerEndSound3];
+
 type SoundMode = 'short' | 'long';
 
 // Persisted with the workspace. Older saves may lack any of these, and used
@@ -226,12 +234,12 @@ const Timer: React.FC<TimerProps> = ({ savedState, onStateChange, renderTheme })
   // Mute gates playback rather than the hooks' enabled flag, so the Audio
   // element stays alive (and preloaded) across mute toggles.
   const { playSound: playSound2, stopSound: stopSound2 } = useTimerAudio({
-    soundUrl: timerEndSound2,
+    soundUrls: SHORT_TUNES,
     enabled: soundMode === 'short'
   });
 
   const { playSound: playSound3, stopSound: stopSound3 } = useTimerAudio({
-    soundUrl: timerEndSound3,
+    soundUrls: LONG_TUNES,
     enabled: soundMode === 'long'
   });
 
