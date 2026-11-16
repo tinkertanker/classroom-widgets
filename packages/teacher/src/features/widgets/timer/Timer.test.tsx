@@ -19,7 +19,7 @@ Object.defineProperty(globalThis, 'localStorage', {
   configurable: true
 });
 
-vi.mock('./timer-end-2.wav', () => ({ default: 'timer-end-2.wav' }));
+vi.mock('./timer-end-2.mp3', () => ({ default: 'timer-end-2.mp3' }));
 vi.mock('./timer-end-3.mp3', () => ({ default: 'timer-end-3.mp3' }));
 vi.mock('./components/CreatureAnimation', () => ({
   CreatureAnimation: () => null

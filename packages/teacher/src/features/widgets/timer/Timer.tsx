@@ -19,7 +19,7 @@ import {
   secondsToTimeSegments,
   type ClockTimeSelection
 } from './clockTime';
-import timerEndSound2 from "./timer-end-2.wav";
+import timerEndSound2 from "./timer-end-2.mp3";
 import timerEndSound3 from "./timer-end-3.mp3";
 
 // The Short end sound is picked at random from the original tune plus every
