@@ -18,6 +18,11 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  # Only newer revisions of the same PR cancel earlier runs.
+  group: cloudflare-web-tests-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   delivery:
     runs-on: ubuntu-latest
