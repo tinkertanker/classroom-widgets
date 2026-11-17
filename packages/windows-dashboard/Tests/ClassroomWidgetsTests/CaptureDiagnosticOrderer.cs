@@ -29,7 +29,7 @@ public sealed class CaptureDiagnosticOrderer : ITestCollectionOrderer
         {
             "default" => [],
             "capture-first" => [nameof(DisplayCaptureSessionTests)],
-            "webview-first" => [nameof(WebViewRecoveryTests), nameof(DisplayCaptureSessionTests)],
+            "webview-first" => [nameof(WebViewRecoveryTests), nameof(DisplayCaptureSessionTests), .. FailedRunOrder],
             "replay-failure" => FailedRunOrder,
             _ => throw new InvalidOperationException($"Unknown diagnostic order: {mode}")
         };
@@ -38,7 +38,8 @@ public sealed class CaptureDiagnosticOrderer : ITestCollectionOrderer
             var index = Array.FindIndex(priority, name => collection.DisplayName.EndsWith("." + name, StringComparison.Ordinal));
             return index < 0 ? int.MaxValue : index;
         }).ToArray();
-        var report = $"Diagnostic order: {mode}; process={Environment.ProcessId}; UTC={DateTime.UtcNow:O}\n"
+        var control = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL") ?? "baseline";
+        var report = $"Diagnostic order: {mode}; control={control}; process={Environment.ProcessId}; UTC={DateTime.UtcNow:O}\n"
             + string.Join("\n", ordered.Select((collection, index) => $"{index + 1}: {collection.DisplayName}"));
         Console.WriteLine(report);
         WpfTestHost.SaveEvidenceText("collection-order.txt", report);

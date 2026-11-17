@@ -92,6 +92,9 @@ public sealed class WebViewRecoveryTests
     private static extern nint GetTopWindow(nint parent);
     [System.Runtime.InteropServices.DllImport("user32.dll")]
     private static extern nint GetWindow(nint window, uint command);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    [return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+    private static extern bool IsWindow(nint window);
 
     // Failure modes: navigating a browser's closed control never restores the
     // host; a launcher's ready flag hides a crashed renderer; one failed panel
@@ -456,13 +459,58 @@ public sealed class WebViewRecoveryTests
             }
             finally
             {
-                host.Coordinator.Deactivate();
-                View(host).Dispose();
-                View(launcher).Dispose();
-                Field<Window>(host, "_hostWindow").Hide();
-                Field<Window>(launcher, "_window").Hide();
-                WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(300));
-                DashboardSettings.UseDataDirectory(original);
+                var control = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL") ?? "baseline";
+                var teardown = control is "teardown" or "both";
+                var hostWindow = Field<Window>(host, "_hostWindow");
+                var launcherWindow = Field<Window>(launcher, "_window");
+                var hostHandle = new System.Windows.Interop.WindowInteropHelper(hostWindow).Handle;
+                var launcherHandle = new System.Windows.Interop.WindowInteropHelper(launcherWindow).Handle;
+                var browsers = new List<(uint Id, CoreWebView2Environment Environment)>();
+                foreach (var view in new[] { View(host), View(launcher) }.Concat(Panels(host).Select(View)))
+                    if (BrowserId(view) is uint id && browsers.All(browser => browser.Id != id))
+                        browsers.Add((id, view.CoreWebView2.Environment));
+                var exited = new HashSet<uint>();
+                void BrowserExited(object? sender, CoreWebView2BrowserProcessExitedEventArgs args)
+                {
+                    exited.Add(args.BrowserProcessId);
+                    Log($"cleanup browser-exited PID={args.BrowserProcessId}, kind={args.BrowserProcessExitKind}");
+                }
+                foreach (var browser in browsers) browser.Environment.BrowserProcessExited += BrowserExited;
+                var started = Stopwatch.StartNew();
+                try
+                {
+                    host.Coordinator.Deactivate(); // Already closes and disposes all panels.
+                    View(host).Dispose();
+                    View(launcher).Dispose();
+                    if (teardown)
+                    {
+                        // Test-owned windows normally cancel Close to hide instead.
+                        // Override only these instances, not App.IsShuttingDown.
+                        hostWindow.Closing += (_, args) => args.Cancel = false;
+                        launcherWindow.Closing += (_, args) => args.Cancel = false;
+                        hostWindow.Close();
+                        launcherWindow.Close();
+                    }
+                    else
+                    {
+                        hostWindow.Hide();
+                        launcherWindow.Hide();
+                    }
+                    WpfTestHost.PumpFor(TimeSpan.FromMilliseconds(300));
+                    if (teardown)
+                    {
+                        WpfTestHost.PumpUntil(() => browsers.All(browser => exited.Contains(browser.Id)),
+                            TimeSpan.FromSeconds(5), "diagnostic WebView2 browser-process teardown");
+                        Assert.False(IsWindow(hostHandle), "Diagnostic teardown must destroy the host HWND.");
+                        Assert.False(IsWindow(launcherHandle), "Diagnostic teardown must destroy the launcher HWND.");
+                    }
+                }
+                finally
+                {
+                    Log($"cleanup control={control}, elapsedMs={started.ElapsedMilliseconds}, browserPids={string.Join(",", browsers.Select(browser => browser.Id))}, exitedPids={string.Join(",", exited)}, hostAlive={IsWindow(hostHandle)}, launcherAlive={IsWindow(launcherHandle)}");
+                    foreach (var browser in browsers) browser.Environment.BrowserProcessExited -= BrowserExited;
+                    DashboardSettings.UseDataDirectory(original);
+                }
             }
         });
         // Keep a failed run's isolated profile for diagnosis. No real user

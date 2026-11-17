@@ -16,14 +16,16 @@ $summary = @()
 $anyFailure = $false
 $originalEvidenceDirectory = $env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR
 $originalOrder = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER
+$originalControl = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL
 try {
-    foreach ($order in @('default', 'capture-first', 'webview-first', 'replay-failure')) {
-        $directory = Join-Path $EvidenceDirectory $order
+    foreach ($control in @('baseline', 'activate', 'teardown', 'both')) {
+        $directory = Join-Path $EvidenceDirectory $control
         New-Item -ItemType Directory -Force $directory | Out-Null
         $env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR = $directory
-        $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER = $order
+        $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER = 'webview-first'
+        $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL = $control
         $started = [DateTime]::UtcNow
-        Write-Host "::group::Full Windows suite: $order"
+        Write-Host "::group::Full Windows suite: webview-first / $control"
         dotnet test $project --configuration Release --no-build --no-restore `
             --logger 'trx;LogFileName=windows.trx' --results-directory $directory
         $code = $LASTEXITCODE
@@ -45,7 +47,7 @@ try {
             if ($total -ne 119 -or $failed -ne 0) { $anyFailure = $true }
         } else { $anyFailure = $true }
         $summary += [pscustomobject]@{
-            order = $order; startedUtc = $started.ToString('O'); seconds = $seconds
+            order = 'webview-first'; control = $control; startedUtc = $started.ToString('O'); seconds = $seconds
             exitCode = $code; total = $total; passed = $passed; failed = $failed
         }
         $summary | ConvertTo-Json | Out-File (Join-Path $EvidenceDirectory 'summary.json')
@@ -53,8 +55,10 @@ try {
 } finally {
     $env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR = $originalEvidenceDirectory
     $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER = $originalOrder
+    $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL = $originalControl
 }
 $summary | Format-Table
 # Continue collecting controls after a failure, but never turn a later pass into
-# a green result for the failed run. No assertions, skips or retries are changed.
+# a green result for the failed run. Existing capture assertions, skips and
+# retry behaviour are unchanged; controls additionally assert their intervention.
 if ($anyFailure) { exit 1 }

@@ -72,6 +72,14 @@ internal sealed class SyntheticSourceWindow : Window
     {
         Show();
         var handle = new WindowInteropHelper(this).Handle;
+        var control = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL") ?? "baseline";
+        if (control is "activate" or "both")
+        {
+            var activated = Activate();
+            Console.WriteLine($"Activation control={control}, returned={activated}, active={IsActive}, foregroundMatches={GetForegroundWindow() == handle}.");
+            if (!activated || GetForegroundWindow() != handle)
+                throw new InvalidOperationException("Diagnostic activation control did not obtain foreground ownership.");
+        }
         var points = SamplePoints();
         var started = DateTime.UtcNow;
         var deadline = started + (timeout ?? TimeSpan.FromSeconds(5));
