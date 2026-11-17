@@ -43,10 +43,18 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Test application assembly and native controls
+        if: github.ref != 'refs/heads/ci/windows-capture-diagnostics'
         env:
           CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/windows-test-evidence
           CLASSROOM_WIDGETS_WEB_ROOT: ${{ github.workspace }}/packages/teacher/build
         run: dotnet test packages/windows-dashboard/Tests/ClassroomWidgetsTests --configuration Release --logger "trx;LogFileName=windows.trx" --results-directory "${{ runner.temp }}/windows-test-evidence"
+      # Temporary diagnostic branch only; never merge this experiment.
+      - name: Diagnose capture presentation across full-suite orders
+        if: github.ref == 'refs/heads/ci/windows-capture-diagnostics'
+        env:
+          CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR: ${{ runner.temp }}/windows-test-evidence
+          CLASSROOM_WIDGETS_WEB_ROOT: ${{ github.workspace }}/packages/teacher/build
+        run: ./packages/windows-dashboard/Tests/Invoke-CaptureDiagnostics.ps1 -EvidenceDirectory $env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -54,6 +62,7 @@ jobs:
           path: ${{ runner.temp }}/windows-test-evidence
 
   macos:
+    if: github.ref != 'refs/heads/ci/windows-capture-diagnostics'
     name: macOS native tests
     runs-on: macos-latest
     timeout-minutes: 15
@@ -81,6 +90,7 @@ jobs:
           path: ${{ runner.temp }}/macos-test-evidence
 
   linux:
+    if: github.ref != 'refs/heads/ci/windows-capture-diagnostics'
     name: Linux unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -1,10 +1,12 @@
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace ClassroomWidgetsTests;
 
@@ -73,12 +75,15 @@ internal sealed class SyntheticSourceWindow : Window
         var points = SamplePoints();
         var started = DateTime.UtcNow;
         var deadline = started + (timeout ?? TimeSpan.FromSeconds(5));
+        int? lastFlushResult = null;
+        var failedFlushes = 0;
         while (true)
         {
             WpfTestHost.DoEvents();
             if (_contentRendered)
             {
-                DwmFlush();
+                lastFlushResult = DwmFlush();
+                if (lastFlushResult < 0) failedFlushes++;
                 if (HasExpectedBounds(handle)
                     && points.All(point => RootAt(point) == handle)
                     && points.Select((point, index) => ColourMatches(ScreenColourAt(point), Expected[index])).All(match => match))
@@ -87,9 +92,51 @@ internal sealed class SyntheticSourceWindow : Window
                     return;
                 }
             }
-            if (DateTime.UtcNow > deadline) throw new TimeoutException(Diagnostics(handle, points));
+            if (DateTime.UtcNow > deadline)
+            {
+                var report = new StringBuilder(Diagnostics(handle, points));
+                report.AppendLine($"DwmFlush=0x{lastFlushResult?.ToString("X8") ?? "not-called"}, failed flushes={failedFlushes}.");
+                report.AppendLine($"UTC={DateTime.UtcNow:O}, process={Environment.ProcessId}, session={Process.GetCurrentProcess().SessionId}, remote={SystemParameters.IsRemoteSession}, interactive={Environment.UserInteractive}.");
+                report.AppendLine($"Loaded={IsLoaded}, active={IsActive}, state={WindowState}, actual={ActualWidth}x{ActualHeight}, render tier={RenderCapability.Tier >> 16}, render mode={(PresentationSource.FromVisual(this) as HwndSource)?.CompositionTarget?.RenderMode}.");
+                report.AppendLine($"Foreground: {Describe(GetForegroundWindow())}");
+                SaveTimeoutEvidence(report);
+                throw new TimeoutException(report.ToString());
+            }
             Thread.Sleep(15);
         }
+    }
+
+    // Diagnostic branch only: observe the failed state before offscreen rendering
+    // can change it. Diagnostic errors must not replace the original timeout.
+    private void SaveTimeoutEvidence(StringBuilder report)
+    {
+        var directory = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR");
+        if (string.IsNullOrEmpty(directory)) return;
+        var prefix = $"fixture-timeout-{Environment.ProcessId}-{DateTime.UtcNow:yyyyMMddTHHmmssfffffff}";
+        var width = (int)_physicalBounds.Width;
+        var height = (int)_physicalBounds.Height;
+        try
+        {
+            Directory.CreateDirectory(directory);
+            using var bitmap = new System.Drawing.Bitmap(width, height);
+            using var graphics = System.Drawing.Graphics.FromImage(bitmap);
+            graphics.CopyFromScreen((int)_physicalBounds.X, (int)_physicalBounds.Y, 0, 0,
+                new System.Drawing.Size(width, height), System.Drawing.CopyPixelOperation.SourceCopy);
+            bitmap.Save(Path.Combine(directory, prefix + "-screen.png"), System.Drawing.Imaging.ImageFormat.Png);
+            report.AppendLine($"Screen evidence: {prefix}-screen.png");
+        }
+        catch (Exception error) { report.AppendLine($"Screen evidence failed: {error}"); }
+        try
+        {
+            var bitmap = new RenderTargetBitmap(width, height, 96 * width / ActualWidth,
+                96 * height / ActualHeight, PixelFormats.Pbgra32);
+            bitmap.Render(this);
+            WpfTestHost.SaveEvidence(prefix + "-offscreen.png", bitmap);
+            report.AppendLine($"Offscreen evidence: {prefix}-offscreen.png");
+        }
+        catch (Exception error) { report.AppendLine($"Offscreen evidence failed: {error}"); }
+        try { WpfTestHost.SaveEvidenceText(prefix + ".txt", report.ToString()); }
+        catch (Exception error) { report.AppendLine($"Text evidence failed: {error}"); }
     }
 
     private static readonly Color[] Expected = [TopLeft, TopRight, BottomLeft, BottomRight];
@@ -180,6 +227,9 @@ internal sealed class SyntheticSourceWindow : Window
 
     [DllImport("user32.dll")]
     private static extern IntPtr WindowFromPoint(POINT point);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     [DllImport("user32.dll")]
     private static extern IntPtr GetAncestor(IntPtr window, uint flags);
