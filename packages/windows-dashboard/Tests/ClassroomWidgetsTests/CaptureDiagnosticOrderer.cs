@@ -39,7 +39,8 @@ public sealed class CaptureDiagnosticOrderer : ITestCollectionOrderer
             return index < 0 ? int.MaxValue : index;
         }).ToArray();
         var control = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL") ?? "baseline";
-        var report = $"Diagnostic order: {mode}; control={control}; process={Environment.ProcessId}; UTC={DateTime.UtcNow:O}\n"
+        var renderer = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DIAGNOSTIC_RENDERER") ?? "default";
+        var report = $"Diagnostic order: {mode}; control={control}; renderer={renderer}; process={Environment.ProcessId}; UTC={DateTime.UtcNow:O}\n"
             + string.Join("\n", ordered.Select((collection, index) => $"{index + 1}: {collection.DisplayName}"));
         Console.WriteLine(report);
         WpfTestHost.SaveEvidenceText("collection-order.txt", report);

@@ -8,6 +8,10 @@ dotnet --info | Out-File (Join-Path $EvidenceDirectory 'dotnet-info.txt')
 Get-CimInstance Win32_VideoController |
     Select-Object Name, DriverVersion, VideoModeDescription |
     ConvertTo-Json | Out-File (Join-Path $EvidenceDirectory 'video-controller.json')
+[pscustomobject]@{
+    userDisableHWAcceleration = (Get-ItemProperty 'HKCU:\SOFTWARE\Microsoft\Avalon.Graphics' -Name DisableHWAcceleration -ErrorAction SilentlyContinue).DisableHWAcceleration
+    machineDisableHWAcceleration = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Avalon.Graphics' -Name DisableHWAcceleration -ErrorAction SilentlyContinue).DisableHWAcceleration
+} | ConvertTo-Json | Out-File (Join-Path $EvidenceDirectory 'render-settings.json')
 
 dotnet build $project --configuration Release
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -17,15 +21,24 @@ $anyFailure = $false
 $originalEvidenceDirectory = $env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR
 $originalOrder = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER
 $originalControl = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL
+$originalRenderer = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_RENDERER
 try {
-    foreach ($control in @('baseline', 'activate', 'teardown', 'both')) {
-        $directory = Join-Path $EvidenceDirectory $control
+    # Prespecified ABBA sequence; fresh testhost processes, not retry-until-green.
+    $runs = @(
+        @{ name = 'default-before'; renderer = 'default' },
+        @{ name = 'software-first'; renderer = 'software' },
+        @{ name = 'software-second'; renderer = 'software' },
+        @{ name = 'default-after'; renderer = 'default' }
+    )
+    foreach ($run in $runs) {
+        $directory = Join-Path $EvidenceDirectory $run.name
         New-Item -ItemType Directory -Force $directory | Out-Null
         $env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR = $directory
         $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER = 'webview-first'
-        $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL = $control
+        $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL = 'baseline'
+        $env:CLASSROOM_WIDGETS_DIAGNOSTIC_RENDERER = $run.renderer
         $started = [DateTime]::UtcNow
-        Write-Host "::group::Full Windows suite: webview-first / $control"
+        Write-Host "::group::Full Windows suite: webview-first / $($run.name)"
         dotnet test $project --configuration Release --no-build --no-restore `
             --logger 'trx;LogFileName=windows.trx' --results-directory $directory
         $code = $LASTEXITCODE
@@ -47,7 +60,8 @@ try {
             if ($total -ne 119 -or $failed -ne 0) { $anyFailure = $true }
         } else { $anyFailure = $true }
         $summary += [pscustomobject]@{
-            order = 'webview-first'; control = $control; startedUtc = $started.ToString('O'); seconds = $seconds
+            order = 'webview-first'; control = 'baseline'; profile = $run.name; renderer = $run.renderer
+            startedUtc = $started.ToString('O'); seconds = $seconds
             exitCode = $code; total = $total; passed = $passed; failed = $failed
         }
         $summary | ConvertTo-Json | Out-File (Join-Path $EvidenceDirectory 'summary.json')
@@ -56,9 +70,10 @@ try {
     $env:CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR = $originalEvidenceDirectory
     $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER = $originalOrder
     $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL = $originalControl
+    $env:CLASSROOM_WIDGETS_DIAGNOSTIC_RENDERER = $originalRenderer
 }
 $summary | Format-Table
 # Continue collecting controls after a failure, but never turn a later pass into
-# a green result for the failed run. Existing capture assertions, skips and
-# retry behaviour are unchanged; controls additionally assert their intervention.
+# a green result for the failed run. Original readiness deadlines, pixel
+# tolerances, assertions and skips are unchanged.
 if ($anyFailure) { exit 1 }

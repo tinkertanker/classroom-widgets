@@ -41,7 +41,14 @@ internal sealed class SyntheticSourceWindow : Window
         Height = bounds.Height;
         SourceInitialized += (_, _) =>
         {
-            var fromDevice = PresentationSource.FromVisual(this)!.CompositionTarget!.TransformFromDevice;
+            var target = ((HwndSource)PresentationSource.FromVisual(this)!).CompositionTarget;
+            var renderer = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DIAGNOSTIC_RENDERER") ?? "default";
+            // Diagnostic only: change this fixture's target, never the application's
+            // windows, process-wide render mode, or machine/user registry settings.
+            if (renderer == "software") target.RenderMode = RenderMode.SoftwareOnly;
+            else if (renderer != "default") throw new InvalidOperationException($"Unknown diagnostic renderer: {renderer}");
+            Console.WriteLine($"Renderer requested={renderer}, target={target.RenderMode}, process={RenderOptions.ProcessRenderMode}, tier={RenderCapability.Tier >> 16}, bounds={_physicalBounds}.");
+            var fromDevice = target.TransformFromDevice;
             var origin = fromDevice.Transform(bounds.TopLeft);
             var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
             Left = origin.X;
