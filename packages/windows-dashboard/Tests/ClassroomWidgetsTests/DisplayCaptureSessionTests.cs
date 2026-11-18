@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ClassroomWidgets;
@@ -208,7 +209,25 @@ public sealed class DisplayCaptureSessionTests
             try
             {
                 source.Show();
-                WaitForStripesOnScreen();
+                try
+                {
+                    WaitForStripesOnScreen();
+                }
+                catch (TimeoutException)
+                {
+                    // Observe the failed source without retrying or replacing the timeout.
+                    var screen = GetDC(IntPtr.Zero);
+                    try
+                    {
+                        var target = ((HwndSource)PresentationSource.FromVisual(source)!).CompositionTarget;
+                        WpfTestHost.SaveEvidenceText("stripe-timeout.txt",
+                            $"UTC={DateTime.UtcNow:O}, process={Environment.ProcessId}, loaded={source.IsLoaded}, visible={source.IsVisible}, target={target.RenderMode}, processMode={RenderOptions.ProcessRenderMode}, tier={RenderCapability.Tier >> 16}, origin={source.PointToScreen(new Point())}, size={source.ActualWidth}x{source.ActualHeight}.\n"
+                            + $"COLORREF at (20,50)={GetPixel(screen, 20, 50):X8}, (21,50)={GetPixel(screen, 21, 50):X8}, (180,50)={GetPixel(screen, 180, 50):X8}, (181,50)={GetPixel(screen, 181, 50):X8}. Expected red=000000FF, blue=00FF0000, red, blue.\n");
+                    }
+                    catch (Exception error) { Console.WriteLine($"Stripe timeout evidence failed: {error}"); }
+                    finally { ReleaseDC(IntPtr.Zero, screen); }
+                    throw;
+                }
                 using var session = new DisplayCaptureSession(region, targetPixelSize: () => new Size(100, 50));
                 Exception? failure = null;
                 session.Failed += error => failure = error;
@@ -279,7 +298,14 @@ public sealed class DisplayCaptureSessionTests
         };
         window.SourceInitialized += (_, _) =>
         {
-            var fromDevice = PresentationSource.FromVisual(window)!.CompositionTarget!.TransformFromDevice;
+            var target = ((HwndSource)PresentationSource.FromVisual(window)!).CompositionTarget;
+            var renderer = Environment.GetEnvironmentVariable("CLASSROOM_WIDGETS_DIAGNOSTIC_RENDERER") ?? "default";
+            // Match the quadrant fixture's per-HWND diagnostic control. Do not
+            // change process-wide rendering or any application window.
+            if (renderer == "software") target.RenderMode = RenderMode.SoftwareOnly;
+            else if (renderer != "default") throw new InvalidOperationException($"Unknown diagnostic renderer: {renderer}");
+            Console.WriteLine($"Stripe renderer requested={renderer}, target={target.RenderMode}, process={RenderOptions.ProcessRenderMode}, tier={RenderCapability.Tier >> 16}, bounds={bounds}.");
+            var fromDevice = target.TransformFromDevice;
             var origin = fromDevice.Transform(bounds.TopLeft);
             var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
             window.Left = origin.X;

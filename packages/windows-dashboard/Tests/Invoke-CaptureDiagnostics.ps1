@@ -23,12 +23,13 @@ $originalOrder = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_ORDER
 $originalControl = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_CONTROL
 $originalRenderer = $env:CLASSROOM_WIDGETS_DIAGNOSTIC_RENDERER
 try {
-    # Prespecified ABBA sequence; fresh testhost processes, not retry-until-green.
+    # Reverse the prior experiment's sequence on a fresh VM. Both source types
+    # now receive the same per-HWND control; retain all failures, not retries.
     $runs = @(
-        @{ name = 'default-before'; renderer = 'default' },
-        @{ name = 'software-first'; renderer = 'software' },
-        @{ name = 'software-second'; renderer = 'software' },
-        @{ name = 'default-after'; renderer = 'default' }
+        @{ name = 'software-before'; renderer = 'software' },
+        @{ name = 'default-first'; renderer = 'default' },
+        @{ name = 'default-second'; renderer = 'default' },
+        @{ name = 'software-after'; renderer = 'software' }
     )
     foreach ($run in $runs) {
         $directory = Join-Path $EvidenceDirectory $run.name
