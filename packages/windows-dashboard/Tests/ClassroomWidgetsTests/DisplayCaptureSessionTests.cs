@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ClassroomWidgets;
@@ -279,7 +280,10 @@ public sealed class DisplayCaptureSessionTests
         };
         window.SourceInitialized += (_, _) =>
         {
-            var fromDevice = PresentationSource.FromVisual(window)!.CompositionTarget!.TransformFromDevice;
+            var target = ((HwndSource)PresentationSource.FromVisual(window)!).CompositionTarget;
+            // Hosted Windows can expose desktop pixels behind an otherwise-ready fixture HWND.
+            target.RenderMode = RenderMode.SoftwareOnly;
+            var fromDevice = target.TransformFromDevice;
             var origin = fromDevice.Transform(bounds.TopLeft);
             var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
             window.Left = origin.X;
