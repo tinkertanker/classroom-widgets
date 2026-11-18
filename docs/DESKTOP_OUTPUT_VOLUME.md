@@ -35,9 +35,12 @@ CLASSROOM_WIDGETS_TEST_EVIDENCE_DIR="$PWD/../../.amp/in/artifacts/desktop-volume
   node_modules/.bin/electron --no-sandbox --force-device-scale-factor=2 test/volume.e2e.cjs
 ```
 
-The check uses isolated temporary preferences and two real Sound Effects panels.
+The check uses isolated temporary preferences, two real Sound Effects panels and
+a playing Background Music panel.
 It selects all five choices through Settings and through native-menu keyboard
-input, plays a bundled sound, checks each audio element's gain, verifies live
+input (alternating between a Sound Effects panel's menu and the music panel's),
+checks that the already-playing music takes each gain without restarting, plays
+a bundled sound, checks each audio element's gain, verifies live
 Settings/tooltip synchronization, and reloads preferences from disk. It also checks
 that a saved legacy gain of 0.75 stays Custom. It writes `volume-e2e.json` and
 screenshots to the evidence directory. Failed checks retain the JSON result and

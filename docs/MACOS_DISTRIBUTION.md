@@ -18,9 +18,9 @@ Launch Classroom Widgets from Applications or select **Open Widget Launcher** fr
 - Display, Timer, Text Banner
 - Traffic Light, Task Cue
 - Randomiser, List
-- Link Shortener, QR Code, Sound Effects
+- Link Shortener, QR Code, Sound Effects, Background Music
 
-On a fresh install the widget shortcuts are Control-Option-Command-1 to 9 in that order, and Display is Control-Option-Command-0. Installs still using the original default shortcuts move to this numbering once; any customised shortcuts are kept.
+On a fresh install the widget shortcuts are Control-Option-Command-1 to 9 in that order, and Display is Control-Option-Command-0. Background Music, tenth in the list, starts without a shortcut; assign one in Settings. Installs still using the original default shortcuts move to this numbering once; any customised shortcuts are kept.
 
 Each widget opens in its own floating window. Closing the launcher does not close the widgets or quit the app; use Command-Q or **Quit** to exit. Clicking the Dock icon reopens the launcher. Launch at login starts the app without presenting the launcher. The menu also provides **Arrange Widgets**, **Settings**, **Launch at Login**, **Check for Updates**, **About**, and **Quit**. Hold Option while the menu is open to replace **Open Widget Launcher** with **Reload Widgets**.
 

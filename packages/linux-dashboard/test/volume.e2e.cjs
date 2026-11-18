@@ -96,6 +96,28 @@ app.whenReady().then(async () => {
       void 0;
     `);
   }
+  // Background music keeps playing while the volume changes, unlike a sound
+  // effect, which reads the gain when it starts.
+  const musicType = host.widgetOptions.find(option => option.title === 'Background Music').widgetType;
+  await host.addWidget(musicType);
+  const musicWindow = await until(() => BrowserWindow.getAllWindows().find(win =>
+    win.webContents.getURL().endsWith('panel-chrome.html') && !panelWindows.includes(win)), 'background music panel');
+  const musicView = musicWindow.contentView.children[0].webContents;
+  await until(() => musicView.executeJavaScript("!!document.querySelector('button[title=\"Play\"]')"), 'music controls');
+  await musicView.executeJavaScript(`
+    window.playedAudio = [];
+    const originalPlay = HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play = function (...args) {
+      window.playedAudio.push(this);
+      return originalPlay.apply(this, args);
+    };
+    document.querySelector('button[title="Play"]').click();
+  `);
+  const music = () => musicView.executeJavaScript(`(() => {
+    const audio = window.playedAudio[0];
+    return audio && { volume: audio.volume, playing: !audio.paused, time: audio.currentTime };
+  })()`);
+  await until(async () => (await music())?.time > 0.2, 'background music playing');
   openSettingsWindow(settings, shortcuts, 'volume-e2e');
   const settingsWindow = await until(() => BrowserWindow.getAllWindows().find(win => win.webContents.getURL().endsWith('settings.html')), 'settings window');
   const settingsView = settingsWindow.webContents;
@@ -113,6 +135,13 @@ app.whenReady().then(async () => {
   assert.deepEqual(options, expected);
 
   async function verifyAudio(label, gain) {
+    const observedMusic = await until(async () => {
+      const state = await music();
+      return state.volume === gain && state.playing && state;
+    }, `${label} reaches the playing background music`);
+    record(`${label} applies to background music already playing`, observedMusic);
+    // Keep the music out of the sound-effect playback and PCM measurement below.
+    await musicView.executeJavaScript('window.playedAudio[0].pause()');
     for (const [index, view] of soundViews.entries()) {
       await until(() => view.executeJavaScript(`window.__CLASSROOM_WIDGETS_AUDIO_VOLUME__ === ${gain}`), 'live native audio setting');
       let recorder, recording, recorded;
@@ -154,7 +183,8 @@ app.whenReady().then(async () => {
     }
     assert.equal(DashboardSettings.load().outputVolume, gain);
     assert.deepEqual(await choice(), { label, value: gain });
-    for (const win of panelWindows) {
+    await musicView.executeJavaScript('window.playedAudio[0].play()');
+    for (const win of [...panelWindows, musicWindow]) {
       const name = await win.webContents.executeJavaScript("document.getElementById('volume').getAttribute('aria-label')");
       assert.equal(name, `Output volume: ${label}`);
     }
@@ -169,7 +199,8 @@ app.whenReady().then(async () => {
     if (gain === 0 || gain === 0.1) await capture(settingsWindow, gain === 0 ? 'volume-muted.png' : 'volume-level-1.png');
   }
   for (const [index, [label, gain]] of expected.entries()) {
-    const panel = panelWindows[0];
+    // Alternate between a Sound Effects panel's menu and the music panel's menu.
+    const panel = index % 2 ? musicWindow : panelWindows[0];
     panel.show();
     panel.focus();
     lastMenu = undefined;

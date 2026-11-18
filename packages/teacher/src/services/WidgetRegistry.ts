@@ -362,6 +362,12 @@ export class WidgetRegistry {
       minSize: { width: 260, height: 290 },
       category: WidgetCategory.FUN,
       description: 'Music to work along to',
+      compactPanel: {
+        supported: true,
+        menuEmoji: '🎵',
+        preferredSize: { width: 320, height: 330 },
+        minimumSize: { width: 260, height: 290 }
+      },
       columnSizing: 'fixed',
       features: {
         hasAudioPlayback: true,
