@@ -184,6 +184,7 @@ classroom-widgets/
 - **Image Display** - Image viewer
 - **QR Code** - Generate QR codes
 - **Sound Effects** - Audio playback
+- **Background Music** - Chill, upbeat, calm or jazz music to work along to
 - **Sticker** - Decorative stickers
 - **Visualiser** - Audio visualizer
 

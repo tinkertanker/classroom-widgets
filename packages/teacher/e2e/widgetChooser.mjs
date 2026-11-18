@@ -13,7 +13,7 @@ const groups = {
   'Run the class': ['Randomiser', 'Timer', 'List', 'Task Cue', 'Traffic Light', 'Volume Monitor'],
   Present: ['Text Banner', 'Image', 'QR Code'],
   'With students': ['Poll', 'Drop Box', 'RT Feedback', 'Questions & Comments', 'Handout', 'Fill in the Blanks', 'Code Fill-in-the-Blanks'],
-  Extras: ['Sound Effects', 'Sticker', 'Visualiser'],
+  Extras: ['Sound Effects', 'Background Music', 'Sticker', 'Visualiser'],
 };
 let stack;
 let browser;

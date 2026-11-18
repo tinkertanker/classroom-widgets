@@ -47,7 +47,8 @@ export enum WidgetType {
   SORTING = 22,
   SEQUENCING = 23,
   MATCHING = 24,
-  CODE_FILL_BLANK = 25
+  CODE_FILL_BLANK = 25,
+  BACKGROUND_MUSIC = 26
 }
 
 // Column layout sizing strategy
