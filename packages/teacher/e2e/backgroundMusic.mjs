@@ -179,6 +179,8 @@ try {
   await page.getByText(/^(Now playing|Up next):/).hover();
   await page.screenshot({ path: join(evidence, '3-dark.png') });
 
+  // The reload below resets this counter, so check it here as well.
+  assert.equal(await page.evaluate(() => window.__blockedPlays), 0, 'no play() was refused before the reload');
   await page.reload();
   await mood('Calm').waitFor();
   assert.equal(await mood('Calm').getAttribute('aria-pressed'), 'true', 'mood survives a reload');
@@ -196,7 +198,7 @@ try {
   assert.ok(await page.evaluate(() => window.__music.paused), 'deleting the widget stops the music');
   step('PASS: deleting the widget while playing stops the music');
 
-  assert.equal(await page.evaluate(() => window.__blockedPlays), 0, 'no play() was refused under Safari\'s autoplay rule');
+  assert.equal(await page.evaluate(() => window.__blockedPlays), 0, 'no play() was refused after the reload');
   assert.deepEqual(errors, [], 'no browser errors');
 } catch (error) {
   step(`FAIL: ${error.stack || error.message}`);

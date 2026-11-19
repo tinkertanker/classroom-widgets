@@ -120,6 +120,8 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
         // let this track finish and start the next one on its own player.
         crossfadeRef.current = null;
         activeRef.current = outgoing;
+        // A crossfade always moves to the following track, so this one is still playing.
+        setTrackIndex((index + tracks.length - 1) % tracks.length);
         const previous = playersRef.current[outgoing];
         previous.ontimeupdate = null;
         previous.onended = () => playTrack(moodId, index);
