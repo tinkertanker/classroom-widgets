@@ -127,7 +127,7 @@ try {
     for (let i = 0; i < 110; i++) {
       await new Promise(resolve => setTimeout(resolve, 100));
       const playingNow = tracks().filter(e => !e.paused);
-      samples.push({ playing: playingNow.length, audible: playingNow.reduce((sum, e) => sum + e.volume, 0) });
+      samples.push({ playing: playingNow.length, power: playingNow.reduce((sum, e) => sum + e.volume ** 2, 0) });
     }
     const incoming = window.__lastPlayed;
     return {
@@ -140,13 +140,14 @@ try {
   assert.ok(handover.samples.every(sample => sample.playing >= 1), 'music plays at every sample through the handover');
   const overlap = handover.samples.filter(sample => sample.playing === 2).length;
   assert.ok(overlap >= 40, `both tracks play together for most of the 6 s fade (${overlap} samples)`);
-  // Equal-power fade at 30% app volume: the summed gains stay between 0.3 and 0.3·√2.
-  assert.ok(handover.samples.every(sample => sample.audible >= 0.29 && sample.audible <= 0.43), 'loudness holds through the fade');
+  // Equal-power fade at 30% app volume: the summed squared gains stay at 0.3²
+  // (a linear fade would dip to half that at its midpoint).
+  assert.ok(handover.samples.every(sample => Math.abs(sample.power - 0.09) < 0.005), 'loudness holds through the fade');
   assert.ok(handover.outgoingPaused, 'the finished track stops after the fade');
   assert.ok(!handover.incoming.paused && handover.incoming.time > 4, 'the next track keeps playing from its start');
   assert.equal(handover.incoming.volume.toFixed(2), '0.30', 'the next track ends the fade at the app volume');
   assert.match(await nowPlaying(), /Now playing: Fresh Focus/);
-  step(`PASS: "Funshine" crossfades into "Fresh Focus": music in all ${handover.samples.length} samples, both playing in ${overlap}, summed gain ${Math.min(...handover.samples.map(s => s.audible)).toFixed(2)}–${Math.max(...handover.samples.map(s => s.audible)).toFixed(2)}`);
+  step(`PASS: "Funshine" crossfades into "Fresh Focus": music in all ${handover.samples.length} samples, both playing in ${overlap}, summed power ${Math.min(...handover.samples.map(s => s.power)).toFixed(3)}–${Math.max(...handover.samples.map(s => s.power)).toFixed(3)} (0.3² = 0.090)`);
   await page.evaluate(() => { for (const e of window.__media) if (!e.paused) e.currentTime = e.duration - 0.5; });
   await waitForPlayback('funshine');
   step('PASS: after the last Upbeat track the first one follows again');
@@ -155,7 +156,15 @@ try {
   await waitForPlayback('fresh-focus');
   step('PASS: Next skips to "Fresh Focus"');
 
+  // A paused player still fires timeupdate, for example when it is moved
+  // into the last seconds of a track; that must not start the next track.
   await press('Pause');
+  await page.evaluate(() => { window.__lastPlayed.currentTime = window.__lastPlayed.duration - 3; });
+  await page.waitForTimeout(1500);
+  assert.ok((await music()).every(e => e.paused), 'nothing plays after Pause near the end of a track');
+  assert.match(await nowPlaying(), /^Up next: Fresh Focus/);
+  step('PASS: a paused track moved into its last 3 s stays paused and does not start the next track');
+
   await mood('Calm').click();
   await page.waitForTimeout(600);
   assert.ok((await playing()).paused, 'choosing a mood while paused does not start the music');

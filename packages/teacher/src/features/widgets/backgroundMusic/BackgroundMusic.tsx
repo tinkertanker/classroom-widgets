@@ -36,7 +36,12 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
   const activeRef = useRef(0);
   // Each player's crossfade gain, applied on top of the app volume.
   const fadesRef = useRef([1, 1]);
-  const crossfadeRef = useRef<number | null>(null);
+  // The crossfade under way: the player fading out, and the timer driving
+  // the fade once the incoming track has actually started.
+  const crossfadeRef = useRef<{ outgoing: number; timer: number | null } | null>(null);
+  // Bumped by every play or pause, so a late play() result from an earlier
+  // action cannot undo a newer one.
+  const playIdRef = useRef(0);
   // The mood whose track is loaded in the active player, so Play resumes it.
   const loadedMoodRef = useRef<MoodId | null>(null);
 
@@ -48,41 +53,57 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
 
   // Ends a crossfade at once: the incoming track carries on at full volume.
   const finishCrossfade = useCallback(() => {
-    if (crossfadeRef.current === null) return;
-    window.clearInterval(crossfadeRef.current);
+    const crossfade = crossfadeRef.current;
+    if (crossfade === null) return;
+    if (crossfade.timer !== null) window.clearInterval(crossfade.timer);
     crossfadeRef.current = null;
-    playersRef.current[1 - activeRef.current]?.pause();
+    playersRef.current[crossfade.outgoing]?.pause();
     setFade(activeRef.current, 1);
   }, [setFade]);
 
   const playTrack = useCallback((moodId: MoodId, index: number, crossfade = false) => {
     const tracks = getMood(moodId).tracks;
     finishCrossfade();
+    const playId = ++playIdRef.current;
     const outgoing = activeRef.current;
     const player = crossfade ? 1 - outgoing : outgoing;
     const audio = playersRef.current[player] ?? (playersRef.current[player] = new Audio());
     const following = (index + 1) % tracks.length;
-    audio.src = tracks[index].src;
-    // Play the mood's tracks in turn, looping back to the first.
+    // The idle player usually has this track loaded already (see below).
+    if (audio.getAttribute('src') === tracks[index].src) {
+      audio.currentTime = 0;
+    } else {
+      audio.src = tracks[index].src;
+    }
+    // Play the mood's tracks in turn, looping back to the first. A paused
+    // player still reports a final timeupdate, which must not start the next.
     audio.ontimeupdate = () => {
-      if (activeRef.current === player && crossfadeRef.current === null
+      if (activeRef.current === player && !audio.paused && crossfadeRef.current === null
         && audio.duration - audio.currentTime <= CROSSFADE_SECONDS) {
         playTrack(moodId, following, true);
       }
     };
     // Fallback for a track too short or unloaded to report its duration.
     audio.onended = () => {
-      if (activeRef.current === player) playTrack(moodId, following);
+      if (activeRef.current === player && crossfadeRef.current === null) playTrack(moodId, following);
     };
     activeRef.current = player;
-    if (crossfade) {
+    const fade = crossfade ? { outgoing, timer: null as number | null } : null;
+    crossfadeRef.current = fade;
+    setFade(player, crossfade ? 0 : 1);
+    loadedMoodRef.current = moodId;
+    setTrackIndex(index);
+    setIsPlaying(true);
+    audio.play().then(() => {
+      // Fade only once the incoming track is audible, so a slow load leaves
+      // the outgoing track playing rather than fading into silence.
+      if (!fade || crossfadeRef.current !== fade) return;
       const previous = playersRef.current[outgoing];
       const length = Math.min(CROSSFADE_SECONDS, Math.max(0.5, previous.duration - previous.currentTime || 0));
       const startedAt = performance.now();
-      setFade(player, 0);
       // Wall-clock progress, so a throttled background timer only makes the
       // steps coarser, never the fade longer.
-      crossfadeRef.current = window.setInterval(() => {
+      fade.timer = window.setInterval(() => {
         const progress = Math.min(1, (performance.now() - startedAt) / (length * 1000));
         if (progress >= 1) {
           finishCrossfade();
@@ -92,23 +113,14 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
         setFade(player, Math.sin(progress * Math.PI / 2));
         setFade(outgoing, Math.cos(progress * Math.PI / 2));
       }, 50);
-    } else {
-      setFade(player, 1);
-    }
-    loadedMoodRef.current = moodId;
-    setTrackIndex(index);
-    setIsPlaying(true);
-    audio.play().catch((error: unknown) => {
-      // A newer track interrupting this one is not a failure to play.
-      if ((error as Error)?.name === 'AbortError') return;
-      const previous = playersRef.current[outgoing];
-      if (crossfade && (error as Error)?.name === 'NotAllowedError' && crossfadeRef.current !== null) {
+    }, (error: unknown) => {
+      if (playIdRef.current !== playId || (error as Error)?.name === 'AbortError') return;
+      if (fade && crossfadeRef.current === fade && (error as Error)?.name === 'NotAllowedError') {
         // The browser would not start the idle player without a click, so
         // let this track finish and start the next one on its own player.
-        window.clearInterval(crossfadeRef.current);
         crossfadeRef.current = null;
         activeRef.current = outgoing;
-        setFade(outgoing, 1);
+        const previous = playersRef.current[outgoing];
         previous.ontimeupdate = null;
         previous.onended = () => playTrack(moodId, index);
         return;
@@ -117,7 +129,7 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
     });
     // Safari lets a media element play only after a click has played it, so
     // play the idle player silently while this call may still be inside one.
-    // It also starts loading the next track before the crossfade needs it.
+    // It also loads the next track well before the crossfade needs it.
     if (!crossfade) {
       const idle = 1 - player;
       const next = playersRef.current[idle] ?? (playersRef.current[idle] = new Audio());
@@ -148,7 +160,8 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
   }, [masterVolume]);
 
   useEffect(() => () => {
-    if (crossfadeRef.current !== null) window.clearInterval(crossfadeRef.current);
+    const timer = crossfadeRef.current?.timer;
+    if (timer != null) window.clearInterval(timer);
     for (const audio of playersRef.current) {
       audio.ontimeupdate = null;
       audio.onended = null;
@@ -161,12 +174,16 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
   const togglePlay = useCallback(() => {
     const audio = playersRef.current[activeRef.current];
     if (isPlaying) {
+      playIdRef.current++;
       finishCrossfade();
       audio?.pause();
       setIsPlaying(false);
     } else if (audio && loadedMoodRef.current === state.mood) {
+      const playId = ++playIdRef.current;
       setIsPlaying(true);
-      audio.play().catch(() => setIsPlaying(false));
+      audio.play().catch(() => {
+        if (playIdRef.current === playId) setIsPlaying(false);
+      });
     } else {
       playTrack(state.mood, trackIndex);
     }
