@@ -99,6 +99,12 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
       // the outgoing track playing rather than fading into silence.
       if (!fade || crossfadeRef.current !== fade) return;
       const previous = playersRef.current[outgoing];
+      // If loading took longer than the outgoing track had left, there is
+      // nothing to fade from: bring the new track straight in.
+      if (previous.ended) {
+        finishCrossfade();
+        return;
+      }
       const length = Math.min(CROSSFADE_SECONDS, Math.max(0.5, previous.duration - previous.currentTime || 0));
       const startedAt = performance.now();
       // Wall-clock progress, so a throttled background timer only makes the
