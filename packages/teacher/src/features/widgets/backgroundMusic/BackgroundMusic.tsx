@@ -115,9 +115,10 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
       }, 50);
     }, (error: unknown) => {
       if (playIdRef.current !== playId || (error as Error)?.name === 'AbortError') return;
-      if (fade && crossfadeRef.current === fade && (error as Error)?.name === 'NotAllowedError') {
-        // The browser would not start the idle player without a click, so
-        // let this track finish and start the next one on its own player.
+      if (fade && crossfadeRef.current === fade) {
+        // The incoming track could not start: Safari refuses a player no click
+        // has unlocked, or the track failed to load. Let this track finish and
+        // try the next one on this player; if that fails too, playback stops.
         crossfadeRef.current = null;
         activeRef.current = outgoing;
         // A crossfade always moves to the following track, so this one is still playing.
