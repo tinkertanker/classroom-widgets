@@ -125,7 +125,9 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
         setTrackIndex((index + tracks.length - 1) % tracks.length);
         const previous = playersRef.current[outgoing];
         previous.ontimeupdate = null;
-        previous.onended = () => playTrack(moodId, index);
+        // It may already have ended while the incoming play() was pending.
+        if (previous.ended) playTrack(moodId, index);
+        else previous.onended = () => playTrack(moodId, index);
         return;
       }
       setIsPlaying(false);
