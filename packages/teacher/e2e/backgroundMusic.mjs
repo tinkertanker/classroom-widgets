@@ -6,6 +6,8 @@
 // next; Pause does not resume where it stopped; the app's
 // master volume is ignored; the mood is lost on reload; a deleted widget keeps
 // playing.
+// Runs under Safari's per-element autoplay rule, emulated below, so a
+// crossfade onto a player no click has unlocked fails here too.
 // Evidence: steps.txt, 1-playing.png, 2-upbeat.png, 3-dark.png (failure.png on failure)
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -22,14 +24,29 @@ try {
   stack = await startStack();
   browser = await chromium.launch({ executablePath: process.env.CHROME_BIN });
   const context = await newTeacherContext(browser, { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 });
-  // The widget's audio element is never in the DOM, so record every element
-  // that is asked to play.
+  // The widget's audio elements are never in the DOM, so record every element
+  // that is asked to play. Apply Safari's autoplay rule as well: an element may
+  // play only once a play() call made during a click has unlocked it.
   await context.addInitScript(() => {
     window.__media = new Set();
+    window.__blockedPlays = 0;
+    const unlocked = new WeakSet();
+    // Real clicks and key presses, not navigator.userActivation: Playwright's
+    // evaluate() counts as a user gesture, which would unlock every element.
+    let lastGesture = -Infinity;
+    for (const type of ['click', 'keydown']) {
+      addEventListener(type, event => { if (event.isTrusted) lastGesture = performance.now(); }, true);
+    }
     const play = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function () {
+      if (performance.now() - lastGesture < 1000) unlocked.add(this);
+      if (!unlocked.has(this)) {
+        window.__blockedPlays++;
+        return Promise.reject(new DOMException('Not allowed without a click', 'NotAllowedError'));
+      }
       window.__media.add(this);
-      window.__lastPlayed = this;
+      // The widget also plays its idle player muted to unlock it; skip that.
+      if (!this.muted) window.__lastPlayed = this;
       return play.call(this);
     };
   });
@@ -50,7 +67,7 @@ try {
     });
   };
   const waitForPlayback = async (file) => {
-    await page.waitForFunction(name => [...window.__media].some(e => e.src.includes(name) && !e.paused && e.currentTime > 0.3), file, { timeout: 15000 });
+    await page.waitForFunction(name => [...window.__media].some(e => e.src.includes(name) && !e.muted && !e.paused && e.currentTime > 0.3), file, { timeout: 15000 });
   };
   const nowPlaying = () => page.getByText(/^(Now playing|Up next):/).textContent();
   const mood = name => page.getByRole('button', { name: new RegExp(`^${name}`) });
@@ -99,6 +116,9 @@ try {
   // Jump to 8 s before the end and sample both players every 100 ms until the
   // handover is over: the next track must fade in while this one fades out,
   // with music playing at every sample.
+  // Let the last click's activation lapse first, as it will long before a real
+  // track ends, so only an already-unlocked player can take over.
+  await page.waitForTimeout(1200);
   const handover = await page.evaluate(async () => {
     const tracks = () => [...window.__media].filter(e => e.src.includes('/tracks/'));
     const outgoing = window.__lastPlayed;
@@ -159,7 +179,7 @@ try {
   await press('Play');
   await waitForPlayback('wisdom-in-the-sun');
   // Deleting plays the app's own trash sound, so watch only the music element.
-  await page.evaluate(() => { window.__music = [...window.__media].find(e => e.src.includes('/tracks/')); });
+  await page.evaluate(() => { window.__music = window.__lastPlayed; });
   await mood('Calm').hover();
   await page.getByRole('button', { name: 'Delete widget' }).click();
   await mood('Calm').waitFor({ state: 'detached' });
@@ -167,6 +187,7 @@ try {
   assert.ok(await page.evaluate(() => window.__music.paused), 'deleting the widget stops the music');
   step('PASS: deleting the widget while playing stops the music');
 
+  assert.equal(await page.evaluate(() => window.__blockedPlays), 0, 'no play() was refused under Safari\'s autoplay rule');
   assert.deepEqual(errors, [], 'no browser errors');
 } catch (error) {
   step(`FAIL: ${error.stack || error.message}`);

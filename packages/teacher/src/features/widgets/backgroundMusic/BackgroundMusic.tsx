@@ -100,8 +100,33 @@ function BackgroundMusic({ savedState, onStateChange }: BackgroundMusicProps) {
     setIsPlaying(true);
     audio.play().catch((error: unknown) => {
       // A newer track interrupting this one is not a failure to play.
-      if ((error as Error)?.name !== 'AbortError') setIsPlaying(false);
+      if ((error as Error)?.name === 'AbortError') return;
+      const previous = playersRef.current[outgoing];
+      if (crossfade && (error as Error)?.name === 'NotAllowedError' && crossfadeRef.current !== null) {
+        // The browser would not start the idle player without a click, so
+        // let this track finish and start the next one on its own player.
+        window.clearInterval(crossfadeRef.current);
+        crossfadeRef.current = null;
+        activeRef.current = outgoing;
+        setFade(outgoing, 1);
+        previous.ontimeupdate = null;
+        previous.onended = () => playTrack(moodId, index);
+        return;
+      }
+      setIsPlaying(false);
     });
+    // Safari lets a media element play only after a click has played it, so
+    // play the idle player silently while this call may still be inside one.
+    // It also starts loading the next track before the crossfade needs it.
+    if (!crossfade) {
+      const idle = 1 - player;
+      const next = playersRef.current[idle] ?? (playersRef.current[idle] = new Audio());
+      next.src = tracks[following].src;
+      next.muted = true;
+      next.play().then(() => {
+        if (activeRef.current !== idle) next.pause();
+      }, () => undefined).finally(() => { next.muted = false; });
+    }
   }, [finishCrossfade, setFade]);
 
   // Follow mood changes, whether from the selector or a restored board.
