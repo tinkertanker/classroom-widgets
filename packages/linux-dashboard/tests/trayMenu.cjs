@@ -82,7 +82,9 @@ app.whenReady().then(async () => {
       '⏱️  Timer Ctrl+Alt+Shift+1', '🔤  Text Banner Ctrl+Alt+Shift+2', '---',
       '🚦  Traffic Light Ctrl+Alt+Shift+3', '📋  Task Cue Ctrl+Alt+Shift+4', '---',
       '🎲  Randomiser Ctrl+Alt+Shift+5', '✅  List Ctrl+Alt+Shift+6', '---',
-      '🔗  Link Shortener Ctrl+Alt+Shift+7', '🔳  QR Code Ctrl+Alt+Shift+8', '🔊  Sound Effects Ctrl+Alt+Shift+9', '---',
+      '🔗  Link Shortener Ctrl+Alt+Shift+7', '🔳  QR Code Ctrl+Alt+Shift+8', '🔊  Sound Effects Ctrl+Alt+Shift+9',
+      // Shortcuts 1–9 are taken, so a tenth widget starts without one.
+      '🎵  Background Music null', '---',
     ]);
     assert.deepEqual(loaded.items.slice(widgetRows.length).map((entry) => entry.type === 'separator' ? '---' : entry.label), [
       'Arrange Widgets', 'Open Widget Launcher', '---',

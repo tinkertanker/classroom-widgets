@@ -22,7 +22,8 @@ import {
   FaInbox,
   FaFileLines,
   FaPenNib,
-  FaCode
+  FaCode,
+  FaRadio
 } from 'react-icons/fa6';
 import { GiSnake } from 'react-icons/gi';
 
@@ -43,6 +44,7 @@ const widgetImports = {
   TextBanner: () => import('../features/widgets/textBanner'),
   ImageDisplay: () => import('../features/widgets/imageDisplay'),
   SoundEffects: () => import('../features/widgets/soundEffects'),
+  BackgroundMusic: () => import('../features/widgets/backgroundMusic'),
   Sticker: () => import('../features/widgets/sticker'),
   Poll: () => import('../features/widgets/poll'),
   QRCodeWidget: () => import('../features/widgets/qrcode'),
@@ -68,6 +70,7 @@ const LazyWidgets = {
   TextBanner: lazy(widgetImports.TextBanner),
   ImageDisplay: lazy(widgetImports.ImageDisplay),
   SoundEffects: lazy(widgetImports.SoundEffects),
+  BackgroundMusic: lazy(widgetImports.BackgroundMusic),
   Sticker: lazy(widgetImports.Sticker),
   Poll: lazy(widgetImports.Poll),
   QRCodeWidget: lazy(widgetImports.QRCodeWidget),
@@ -343,6 +346,29 @@ export class WidgetRegistry {
         minimumSize: { width: 160, height: 240 }
       },
       columnSizing: 'content',
+      features: {
+        hasAudioPlayback: true,
+        isResizable: true
+      }
+    });
+
+    // Background Music
+    this.register({
+      type: WidgetType.BACKGROUND_MUSIC,
+      name: 'Background Music',
+      icon: FaRadio,
+      component: LazyWidgets.BackgroundMusic,
+      defaultSize: { width: 320, height: 330 },
+      minSize: { width: 260, height: 290 },
+      category: WidgetCategory.FUN,
+      description: 'Music to work along to',
+      compactPanel: {
+        supported: true,
+        menuEmoji: '🎵',
+        preferredSize: { width: 320, height: 330 },
+        minimumSize: { width: 260, height: 290 }
+      },
+      columnSizing: 'fixed',
       features: {
         hasAudioPlayback: true,
         isResizable: true

@@ -13,7 +13,7 @@ const groups = {
   'Run the class': ['Randomiser', 'Timer', 'List', 'Task Cue', 'Traffic Light', 'Volume Monitor'],
   Present: ['Text Banner', 'Image', 'QR Code'],
   'With students': ['Poll', 'Drop Box', 'RT Feedback', 'Questions & Comments', 'Handout', 'Fill in the Blanks', 'Code Fill-in-the-Blanks'],
-  Extras: ['Sound Effects', 'Sticker', 'Visualiser'],
+  Extras: ['Sound Effects', 'Background Music', 'Sticker', 'Visualiser'],
 };
 let stack;
 let browser;
@@ -149,7 +149,7 @@ try {
   await desktop.getByRole('heading', { name: 'Add a widget', exact: true }).waitFor();
   assert.equal(await desktop.getByRole('region').count(), 3);
   assert.deepEqual(await desktop.getByRole('region', { name: 'Present', exact: true }).getByRole('button').evaluateAll(elements => elements.map(e => e.getAttribute('aria-label'))), ['Link Shortener', 'Text Banner', 'QR Code', 'Display']);
-  assert.equal(await desktop.getByRole('region').getByRole('button').count(), 10);
+  assert.equal(await desktop.getByRole('region').getByRole('button').count(), 11);
   assert.ok(await desktop.getByRole('group').evaluateAll(elements => elements.every(e => e.scrollHeight <= e.clientHeight + 1)), 'all desktop entries fit');
   await desktop.screenshot({ path: join(evidence, 'desktop.png') });
   await desktop.emulateMedia({ colorScheme: 'dark' });

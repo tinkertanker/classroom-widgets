@@ -15,7 +15,7 @@ Launching the app from the desktop application menu opens a searchable widget la
 
 | Menu item | What it does |
 | --- | --- |
-| **Display** and the widgets | Opens Display or a floating panel for a widget. Widgets are listed most used first, in separator-delimited groups: Timer and Text Banner (with Display); Traffic Light and Task Cue; Randomiser and List; Link Shortener, QR Code and Sound Effects. Each item shows its global Show shortcut when one is assigned and not held by another application. |
+| **Display** and the widgets | Opens Display or a floating panel for a widget. Widgets are listed most used first, in separator-delimited groups: Timer and Text Banner (with Display); Traffic Light and Task Cue; Randomiser and List; Link Shortener, QR Code, Sound Effects and Background Music. Each item shows its global Show shortcut when one is assigned and not held by another application. |
 | **Arrange Widgets ▸** | Free Placement (restores remembered positions), Arrange in a Row, Arrange in a Column. A row or column goes on the display of the panel you last used; a panel's own arrange button uses that panel's display. Greyed out when no widget is on screen. |
 | **Open Widget Launcher** | Opens or focuses the searchable launcher window. |
 | **Settings…** | Always on top, launch at login, widget background opacity, customizable global widget shortcuts, reset remembered positions. |
