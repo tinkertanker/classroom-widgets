@@ -39,7 +39,10 @@ internal sealed class SyntheticSourceWindow : Window
         Height = bounds.Height;
         SourceInitialized += (_, _) =>
         {
-            var fromDevice = PresentationSource.FromVisual(this)!.CompositionTarget!.TransformFromDevice;
+            var target = ((HwndSource)PresentationSource.FromVisual(this)!).CompositionTarget;
+            // Hosted Windows can expose desktop pixels behind an otherwise-ready fixture HWND.
+            target.RenderMode = RenderMode.SoftwareOnly;
+            var fromDevice = target.TransformFromDevice;
             var origin = fromDevice.Transform(bounds.TopLeft);
             var size = fromDevice.Transform(new Vector(bounds.Width, bounds.Height));
             Left = origin.X;
