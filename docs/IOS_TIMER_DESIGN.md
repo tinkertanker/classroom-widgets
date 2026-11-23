@@ -77,12 +77,16 @@ system typography. Do not draw the device chrome in the app.
 | Controls | 56 pt primary / restart row, 48 pt quick add row, 44 pt or larger edit and sound controls |
 | Bottom | Place the action row 14 pt above the bottom safe area; use 24 pt between the quick add and action rows |
 
-Use [the product palette](./COLOR_AND_BORDER_STANDARDS.md), with primary
-white-on-sage at Sage 600 for light mode. The arc has a fixed diagonal
-gradient and shrinks from the far end toward the top. It represents
+The arc has a fixed diagonal gradient and shrinks from the far end toward
+the top. It represents
 remaining time as a fraction of the current run, not wall-clock time. Use
 the existing hamster art for the runner; keep it off the digits and hide or
 freeze it with Reduce Motion. Do not shake or flash the screen on finish.
+
+Use the table below for iOS color roles. It draws from the [shared color
+tokens](../packages/shared/constants/colors.ts) without inheriting the web
+style assignments. In particular, the light primary button uses Sage 600
+by default for 5.56:1 contrast with white text; Sage 500 yields 3.90:1.
 
 | Role | Light | Dark |
 | --- | --- | --- |
