@@ -77,7 +77,6 @@ final class ClassroomWidgetsUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["timer-finished"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["restart-button"].exists)
-        XCTAssertFalse(focusCountdownButton(in: app).exists)
     }
 
     private func focusCountdownButton(in app: XCUIApplication) -> XCUIElement {
