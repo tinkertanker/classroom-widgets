@@ -99,7 +99,11 @@ struct TimerScreen: View {
             .onChange(of: scenePhase) { _, phase in
                 handleScenePhase(phase)
             }
-            .task {
+            .task(id: TimerUpdateLoopKey(
+                scenePhase: scenePhase,
+                voiceOverEnabled: voiceOverEnabled,
+                reduceMotion: reduceMotion
+            )) {
                 await updateTimerAndFocusUntilCancelled()
             }
         }
@@ -427,6 +431,12 @@ private enum ActiveSheet: String, Identifiable {
     case sound
 
     var id: String { rawValue }
+}
+
+private struct TimerUpdateLoopKey: Equatable {
+    let scenePhase: ScenePhase
+    let voiceOverEnabled: Bool
+    let reduceMotion: Bool
 }
 
 private struct QuickAddOption: Identifiable {
