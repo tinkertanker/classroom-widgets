@@ -22,6 +22,8 @@ struct TimerSetupSheet: View {
     @State private var endHour: Int
     @State private var endMinute: Int
     @State private var endPeriod: ClockPeriod
+    @State private var previewUpdatedAt = Date()
+    @State private var confirmsEndTimeRollover = false
 
     init(
         initialDuration: TimeInterval,
@@ -101,6 +103,29 @@ struct TimerSetupSheet: View {
         .padding(.bottom, 18)
         .presentationDetents([.height(450), .large])
         .presentationDragIndicator(.visible)
+        .onChange(of: selectedEndTime) { _, _ in
+            previewUpdatedAt = Date()
+        }
+        .task(id: tab) {
+            guard tab == .endAt else { return }
+            while !Task.isCancelled {
+                previewUpdatedAt = Date()
+                do {
+                    try await Task.sleep(nanoseconds: 1_000_000_000)
+                } catch {
+                    return
+                }
+            }
+        }
+        .alert("End time has passed", isPresented: $confirmsEndTimeRollover) {
+            Button("Use next occurrence") {
+                onApplyEndAt(selectedEndTime)
+                dismiss()
+            }
+            Button("Keep editing", role: .cancel) {}
+        } message: {
+            Text("The selected clock time passed while the preview was showing. Set a countdown to its next occurrence instead?")
+        }
     }
 
     private var durationPicker: some View {
@@ -152,7 +177,7 @@ struct TimerSetupSheet: View {
                 .accessibilityIdentifier("end-time-hour")
 
                 Picker("Minute", selection: $endMinute) {
-                    ForEach(stride(from: 0, to: 60, by: 5), id: \.self) { value in
+                    ForEach(Array(stride(from: 0, to: 60, by: 5)), id: \.self) { value in
                         Text(String(format: "%02d", value)).tag(value)
                     }
                 }
@@ -180,10 +205,9 @@ struct TimerSetupSheet: View {
     }
 
     private var endAtPreview: some View {
-        let now = Date()
-        let target = nextClockTime(selectedEndTime, after: now)
+        let target = nextClockTime(selectedEndTime, after: previewUpdatedAt)
         let label = Calendar.current.isDateInToday(target) ? "Today" : "Tomorrow"
-        return Text("\(label) · about \(approximateDuration(target.timeIntervalSince(now)))")
+        return Text("\(label) · about \(approximateDuration(target.timeIntervalSince(previewUpdatedAt)))")
     }
 
     private var applyTitle: String {
@@ -197,9 +221,17 @@ struct TimerSetupSheet: View {
     private func applySelection() {
         if tab == .duration {
             onApplyDuration(selectedDuration)
-        } else {
-            onApplyEndAt(selectedEndTime)
+            dismiss()
+            return
         }
+
+        let now = Date()
+        guard !clockTimeOccurrenceRolledOver(selectedEndTime, from: previewUpdatedAt, to: now) else {
+            confirmsEndTimeRollover = true
+            return
+        }
+
+        onApplyEndAt(selectedEndTime)
         dismiss()
     }
 

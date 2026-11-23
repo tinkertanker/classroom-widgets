@@ -57,6 +57,24 @@ final class ClockTimeTests: XCTestCase {
         )
     }
 
+    func testEndTimeOccurrenceRollsOverIfPreviewedMinutePassesBeforeApply() throws {
+        let calendar = testCalendar()
+        let previewedAt = try date(2026, 11, 23, 9, 29, calendar: calendar).addingTimeInterval(59)
+        let appliedAt = previewedAt.addingTimeInterval(2)
+        let selection = ClockTimeSelection(hour: 9, minute: 30, period: .am)
+
+        XCTAssertTrue(clockTimeOccurrenceRolledOver(selection, from: previewedAt, to: appliedAt, calendar: calendar))
+    }
+
+    func testEndTimeOccurrenceDoesNotRollOverWithinTheSameOccurrence() throws {
+        let calendar = testCalendar()
+        let previewedAt = try date(2026, 11, 23, 9, 10, calendar: calendar)
+        let appliedAt = previewedAt.addingTimeInterval(60)
+        let selection = ClockTimeSelection(hour: 9, minute: 30, period: .am)
+
+        XCTAssertFalse(clockTimeOccurrenceRolledOver(selection, from: previewedAt, to: appliedAt, calendar: calendar))
+    }
+
     func testEndTimeSelectionConvertsNoonAndMidnightCorrectly() throws {
         let calendar = testCalendar()
         let beforeNoon = try date(2026, 11, 23, 11, 0, calendar: calendar)

@@ -61,3 +61,14 @@ public func nextClockTime(
         direction: .forward
     ) ?? now.addingTimeInterval(24 * 60 * 60)
 }
+
+public func clockTimeOccurrenceRolledOver(
+    _ selection: ClockTimeSelection,
+    from previewDate: Date,
+    to applyDate: Date,
+    calendar: Calendar = .current
+) -> Bool {
+    let previewOccurrence = nextClockTime(selection, after: previewDate, calendar: calendar)
+    let applyOccurrence = nextClockTime(selection, after: applyDate, calendar: calendar)
+    return !calendar.isDate(previewOccurrence, inSameDayAs: applyOccurrence)
+}
