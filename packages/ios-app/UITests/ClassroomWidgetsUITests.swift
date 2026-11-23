@@ -61,10 +61,13 @@ final class ClassroomWidgetsUITests: XCTestCase {
         XCTAssertTrue(setTimeButton.waitForExistence(timeout: 5))
         setTimeButton.tap()
 
-        let secondsWheel = app.pickerWheels["duration-seconds"]
+        let durationWheels = app.pickerWheels
+        let hoursWheel = durationWheels.element(boundBy: 0)
+        let minutesWheel = durationWheels.element(boundBy: 1)
+        let secondsWheel = durationWheels.element(boundBy: 2)
         XCTAssertTrue(secondsWheel.waitForExistence(timeout: 3))
-        app.pickerWheels["duration-hours"].adjust(toPickerWheelValue: "00")
-        app.pickerWheels["duration-minutes"].adjust(toPickerWheelValue: "00")
+        hoursWheel.adjust(toPickerWheelValue: "00")
+        minutesWheel.adjust(toPickerWheelValue: "00")
         secondsWheel.adjust(toPickerWheelValue: "05")
         app.buttons["apply-duration-button"].tap()
         app.buttons["start-button"].tap()
