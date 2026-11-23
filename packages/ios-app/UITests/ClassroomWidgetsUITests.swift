@@ -15,7 +15,10 @@ final class ClassroomWidgetsUITests: XCTestCase {
         XCTAssertFalse(app.buttons["pause-button"].exists)
 
         let countdownBeforeReveal = focusCountdown.label
-        XCTAssertNotEqual(countdownBeforeReveal, "01:00")
+        XCTAssertTrue(countdownBeforeReveal.hasPrefix("Running, "))
+        let focusedTime = String(countdownBeforeReveal.dropFirst("Running, ".count))
+        XCTAssertTrue(focusedTime.range(of: "^\\d{2}:\\d{2}(?::\\d{2})?$", options: .regularExpression) != nil)
+        XCTAssertNotEqual(focusedTime, "01:00")
         focusCountdown.tap()
 
         let pauseButton = app.buttons["pause-button"]
