@@ -402,18 +402,18 @@ struct TimerScreen: View {
     }
 
     private func updateTimerAndFocusUntilCancelled() async {
-        while !Task.isCancelled {
-            if scenePhase == .active {
-                let didFinish = timer.update()
-                if didFinish {
-                    completeTimer(playSound: !backgroundedSinceLastActive)
-                }
+        guard scenePhase == .active else { return }
 
-                if timer.isRunning && controlsVisible && activeSheet == nil && !voiceOverEnabled
-                    && Date().timeIntervalSince(lastInteraction) >= 5 {
-                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
-                        controlsVisible = false
-                    }
+        while !Task.isCancelled {
+            let didFinish = timer.update()
+            if didFinish {
+                completeTimer(playSound: !backgroundedSinceLastActive)
+            }
+
+            if timer.isRunning && controlsVisible && activeSheet == nil && !voiceOverEnabled
+                && Date().timeIntervalSince(lastInteraction) >= 5 {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                    controlsVisible = false
                 }
             }
 
