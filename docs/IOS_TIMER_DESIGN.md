@@ -14,7 +14,7 @@ Picture is a separate follow-up; don’t ship a placeholder button for it.
 | --- | --- | --- | --- |
 | Ready | `01:00` on first launch, full ring, **Ready** | **Start** | **Set time**, **+1 min**, **+2 min**, **+5 min**, **Sound** |
 | Running | Remaining time, shrinking ring, **Counting down** | **Pause** | **Restart**, quick adds, **Sound** |
-| Running · Focus | Large remaining time only | Tap anywhere to show controls | None; countdown keeps running |
+| Running · Focus | Enlarged countdown, rainbow ring and hamster | Tap anywhere to show controls | None; countdown keeps running |
 | Paused | Frozen time and ring, **Paused** | **Resume** | **Edit remaining**, **Restart**, quick adds, **Sound** |
 | Finished | `00:00`, rose face, **Time’s up!** | **Restart** | **Sound**; no quick adds |
 
@@ -64,17 +64,18 @@ Picture is a separate follow-up; don’t ship a placeholder button for it.
   without replaying audio or posting another alert, whether the notification
   was delivered, silenced by iOS, or not authorized.
 
-## Countdown-only Focus
+## Full-screen Focus
 
 - After **Start** or **Resume**, show the full controls for five seconds.
-  After five seconds without interaction, hide the controls, header, ring,
-  runner and status bar. Focus is only a presentation of Running, not a
-  timer state: do not change the deadline or stop the countdown.
-- Center the digits on a warm charcoal canvas (`#2D2926`), with Soft White
-  digits (`#FDFCFB`). Start at 134 pt for `MM:SS` (about 88 pt for
-  `HH:MM:SS`) on the reference phone and fit to the safe area with a
-  minimum 24 pt side inset. Let iOS handle its home indicator. On first
-  entry only, briefly show **Tap to show controls** beneath the digits.
+  After five seconds without interaction, hide the controls, header and
+  status bar. Keep the countdown, rainbow ring and hamster visible and
+  moving as usual (respect Reduce Motion). Focus is only a presentation
+  of Running: do not change the deadline or stop the countdown.
+- Center and enlarge the same timer face, keeping the current light or
+  dark appearance. Use a 340 pt dial including the track on the reference
+  phone, bounded by the safe area with at least a 24 pt side inset. Let iOS
+  handle its home indicator. On first entry only, briefly show
+  **Tap to show controls** beneath the dial.
 - A tap anywhere restores the regular Running screen, without pausing or
   triggering the revealed control. Restart the five-second delay after
   each interaction, after a sheet closes, or on foreground return. Never
@@ -140,9 +141,10 @@ the dial if needed. VoiceOver reads the status and a single time value
    deadline rather than the number of UI ticks.
 4. Check the narrowest supported iPhone, dark appearance, accessibility text
    sizes, VoiceOver and Reduce Motion.
-5. Leave a running timer untouched for five seconds. Tap to bring controls
-   back; confirm the countdown never paused. Verify a sheet and VoiceOver
-   prevent the automatic transition, and zero exits Focus to **Time’s up!**.
+5. Leave a running timer untouched for five seconds. Verify the countdown,
+   ring and hamster stay visible while controls hide. Tap to bring controls
+   back without pausing. Verify a sheet and VoiceOver prevent the automatic
+   transition, and zero exits Focus to **Time’s up!**.
 6. On an iPhone with Lock Screen notifications and sounds enabled, start a
    15-second timer and lock it through zero. Expect one notification and one
    system sound. Unlock to **Time’s up!** with no replay. Repeat muted

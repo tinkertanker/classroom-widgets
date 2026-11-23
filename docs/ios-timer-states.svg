@@ -1,11 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1836" height="2186" viewBox="0 0 1836 2186" role="img" aria-labelledby="title desc">
 <title id="title">Classroom Widgets · iPhone timer</title>
-<desc id="desc">Eight screens: ready, running, countdown-only Focus, paused, finished, duration editor, end-at-time editor, and sound settings.</desc>
+<desc id="desc">Eight screens: ready, running, timer-face-only Focus (countdown, ring, and hamster), paused, finished, duration editor, end-at-time editor, and sound settings.</desc>
 <style>
   text {font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
-  .digits,.focus-digits,.picker-digit {font-variant-numeric:tabular-nums}
+  .digits,.picker-digit {font-variant-numeric:tabular-nums}
   .digits {letter-spacing:-3px}
-  .focus-digits {letter-spacing:-4px}
 </style>
 <defs>
   <clipPath id="screen"><rect width="390" height="844" rx="47"/></clipPath>
@@ -41,7 +40,7 @@
 <rect x="48" y="52" width="5" height="22" rx="2.5" fill="#39744c" stroke="none" />
 <text x="65" y="70" font-size="19" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="2.2">CLASSROOM WIDGETS</text>
 <text x="48" y="135" font-size="60" font-weight="700" fill="#2d2926" text-anchor="start" letter-spacing="-2.5">Timer for iPhone</text>
-<text x="50" y="176" font-size="23" font-weight="400" fill="#6b635a" text-anchor="start" >The familiar rainbow timer, with a countdown-only view when controls aren’t in use.</text>
+<text x="50" y="176" font-size="23" font-weight="400" fill="#6b635a" text-anchor="start" >The familiar rainbow timer, with a full-screen timer face when controls aren’t in use.</text>
 <text x="1788" y="70" font-size="16" font-weight="700" fill="#6b635a" text-anchor="end" letter-spacing="1.5">V1  /  DESIGN HANDOFF</text>
 <text x="48" y="228" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">01</text>
 <text x="83" y="230" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Ready</text>
@@ -121,13 +120,18 @@
 </g>
 <text x="948" y="228" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">03</text>
 <text x="983" y="230" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Focus</text>
-<text x="948" y="258" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >After 5 seconds idle. Tap to show controls.</text>
+<text x="948" y="258" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >Just the timer face. Tap to show controls.</text>
 <g transform="translate(948 279)" >
 <g transform="translate(0 0)" clip-path="url(#screen)">
 <rect x="0" y="0" width="390" height="844" rx="0" fill="#fdfcfb" stroke="none" />
-<rect x="0" y="0" width="390" height="844" rx="0" fill="#2d2926" stroke="none" />
-<text x="195" y="470" font-size="134" font-weight="700" fill="#fdfcfb" text-anchor="middle" class="focus-digits">03:37</text>
-<rect x="128" y="827" width="134" height="5" rx="2.5" fill="#fdfcfb" stroke="none" />
+<rect x="134" y="13" width="122" height="31" rx="15.5" fill="#141312" stroke="none" />
+<g transform="translate(195 422) scale(1.12) translate(-195 -365)">
+<circle cx="195" cy="365" r="147" fill="#fdfcfb" stroke="#e8e5e0" stroke-width="10" />
+<path d="M195 218 A147 147 0 1 1 50.06 389.52" fill="none" stroke="url(#rainbow)" stroke-width="10" stroke-linecap="round"/>
+<use href="#hamster" transform="translate(195 365) rotate(241) translate(0 -129) scale(2.8 -2.8)"/>
+<text x="195" y="397" font-size="84" font-weight="700" fill="#2d2926" text-anchor="middle" class="digits">03:37</text>
+</g>
+<rect x="128" y="827" width="134" height="5" rx="2.5" fill="#2d2926" stroke="none" />
 </g>
 <rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
 </g>
