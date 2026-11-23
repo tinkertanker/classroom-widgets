@@ -1,0 +1,48 @@
+name: iOS timer tests
+
+on:
+  pull_request:
+    paths:
+      - 'packages/ios-app/**'
+      - '.github/workflows/ios-timer-tests.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'packages/ios-app/**'
+      - '.github/workflows/ios-timer-tests.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-timer-tests-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ios:
+    name: iPhone Simulator tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Run deterministic timer tests
+        run: swift test --package-path packages/ios-app/Core
+
+      - name: Build and test the iPhone app
+        run: |
+          xcodebuild test \
+            -project packages/ios-app/ClassroomWidgets.xcodeproj \
+            -scheme ClassroomWidgets \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -resultBundlePath "$RUNNER_TEMP/ClassroomTimer.xcresult" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: classroom-timer-xcode-results
+          path: ${{ runner.temp }}/ClassroomTimer.xcresult
+          if-no-files-found: warn
