@@ -26,6 +26,11 @@ Picture is a separate follow-up; don’t ship a placeholder button for it.
   in Running or Paused without changing the state. As in the web timer, a
   quick add also increases the duration restored by Restart. Editing the
   remaining time explicitly in Paused does not change that restart duration.
+- **99:59:59** is the maximum for both remaining time and the duration
+  restored by Restart. Disable any quick add that would push either value
+  over the cap; show **Max timer: 99:59:59** when an option is disabled.
+  Don’t clamp: a button marked **+1 min** either adds a full minute or is
+  unavailable. An addition that lands exactly on the cap is allowed.
 - **Set time** opens a native sheet with a **Duration / End at** selector.
   Duration is an hours/minutes/seconds wheel (hours 0–99; minutes and
   seconds 0–59). Seed it from the displayed duration. **Set timer** applies the
@@ -41,6 +46,23 @@ Picture is a separate follow-up; don’t ship a placeholder button for it.
   selection. Default to Short with mute off; keep the choice when toggling
   mute. Changes apply immediately; **Done** closes the sheet. The button reads
   **Muted** when muted. Muting cuts off a sound that’s already playing.
+
+## Expiry on the Lock Screen or in another app
+
+- With notifications allowed, schedule one [local notification] for the
+  current deadline. It says **Time’s up!** and can appear on the Lock Screen
+  or over another app, subject to iOS notification settings and Focus.
+  **Background alerts** in the Sound sheet requests permission on tap;
+  subsequent taps open iOS notification settings. Declining does not stop
+  the timer.
+- If the app is foregrounded at zero, use the in-app finish screen and
+  selected Short or Long sound, not a second system banner. When locked or
+  backgrounded, the alert uses the standard iOS notification sound instead.
+  **Mute** makes both paths silent but leaves the notification text intact.
+- Replace the pending alert when the deadline or mute setting changes;
+  cancel it on Pause or Restart. On return after zero, show **Time’s up!**
+  without replaying audio or posting another alert, whether the notification
+  was delivered, silenced by iOS, or not authorized.
 
 ## Countdown-only Focus
 
@@ -121,7 +143,19 @@ the dial if needed. VoiceOver reads the status and a single time value
 5. Leave a running timer untouched for five seconds. Tap to bring controls
    back; confirm the countdown never paused. Verify a sheet and VoiceOver
    prevent the automatic transition, and zero exits Focus to **Time’s up!**.
+6. On an iPhone with Lock Screen notifications and sounds enabled, start a
+   15-second timer and lock it through zero. Expect one notification and one
+   system sound. Unlock to **Time’s up!** with no replay. Repeat muted
+   (notification only), with permission denied (finish on reopen only), and
+   with the app backgrounded in another app. Extend the deadline in a fresh
+   run and confirm the earlier alert does not fire.
+7. Set `99:58:59`: **+1 min** is available and reaches `99:59:59`;
+   **+2 min** and **+5 min** are disabled. At the cap all three are disabled,
+   including while running after the remaining time drops (Restart is still
+   at the cap). Confirm the picker can reopen at the exact maximum.
 
 Parity reference: [desktop/web timer view](../packages/teacher/src/features/widgets/timer/Timer.tsx),
 [countdown state](../packages/teacher/src/features/widgets/timer/hooks/useTimerCountdown.ts),
 and [clock-time calculation](../packages/teacher/src/features/widgets/timer/clockTime.ts).
+
+[local notification]: https://developer.apple.com/documentation/usernotifications/scheduling-a-notification-locally-from-your-app
