@@ -10,7 +10,7 @@ final class ClassroomWidgetsUITests: XCTestCase {
         XCTAssertTrue(startButton.waitForExistence(timeout: 5))
         startButton.tap()
 
-        let focusCountdown = focusCountdownButton(in: app)
+        let focusCountdown = focusCountdownControl(in: app)
         XCTAssertTrue(focusCountdown.waitForExistence(timeout: 7))
         XCTAssertFalse(app.buttons["pause-button"].exists)
 
@@ -25,7 +25,7 @@ final class ClassroomWidgetsUITests: XCTestCase {
         XCTAssertTrue(pauseButton.waitForExistence(timeout: 2))
         let countdownAfterReveal = app.staticTexts["timer-countdown"].label
         XCTAssertNotEqual(countdownAfterReveal, "01:00")
-        XCTAssertFalse(focusCountdownButton(in: app).exists)
+        XCTAssertFalse(focusCountdownControl(in: app).exists)
 
         sleep(2)
         XCTAssertNotEqual(app.staticTexts["timer-countdown"].label, countdownAfterReveal)
@@ -79,7 +79,9 @@ final class ClassroomWidgetsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["restart-button"].exists)
     }
 
-    private func focusCountdownButton(in app: XCUIApplication) -> XCUIElement {
-        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Running, ")).firstMatch
+    private func focusCountdownControl(in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Running, "))
+            .firstMatch
     }
 }
