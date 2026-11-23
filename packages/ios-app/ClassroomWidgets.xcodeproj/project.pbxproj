@@ -1,0 +1,166 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A40000000000000000000001 /* ClassroomWidgetsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000001 /* ClassroomWidgetsApp.swift */; };
+		A40000000000000000000002 /* TimerNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000002 /* TimerNotificationScheduler.swift */; };
+		A40000000000000000000003 /* TimerAudioPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000003 /* TimerAudioPlayer.swift */; };
+		A40000000000000000000004 /* TimerSheets.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000004 /* TimerSheets.swift */; };
+		A40000000000000000000005 /* TimerScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000005 /* TimerScreen.swift */; };
+		A40000000000000000000006 /* CountdownTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000006 /* CountdownTimer.swift */; };
+		A40000000000000000000007 /* ClockTime.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000007 /* ClockTime.swift */; };
+		A40000000000000000000008 /* TimerDisplayFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000008 /* TimerDisplayFormat.swift */; };
+		A40000000000000000000009 /* ClassroomWidgetsUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000009 /* ClassroomWidgetsUITests.swift */; };
+		A40000000000000000000010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000010 /* Assets.xcassets */; };
+		A40000000000000000000011 /* short-original.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000011 /* short-original.mp3 */; };
+		A40000000000000000000012 /* long.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000012 /* long.mp3 */; };
+		A40000000000000000000013 /* glockenspiel.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000013 /* glockenspiel.mp3 */; };
+		A40000000000000000000014 /* marimba.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000014 /* marimba.mp3 */; };
+		A40000000000000000000015 /* musicbox.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000015 /* musicbox.mp3 */; };
+		A40000000000000000000016 /* steeldrum.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000016 /* steeldrum.mp3 */; };
+		A40000000000000000000017 /* ukulele.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = A50000000000000000000017 /* ukulele.mp3 */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A70000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A20000000000000000000003 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A20000000000000000000001;
+			remoteInfo = ClassroomWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		A50000000000000000000001 /* ClassroomWidgetsApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomWidgetsApp.swift; sourceTree = "<group>"; };
+		A50000000000000000000002 /* TimerNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerNotificationScheduler.swift; sourceTree = "<group>"; };
+		A50000000000000000000003 /* TimerAudioPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerAudioPlayer.swift; sourceTree = "<group>"; };
+		A50000000000000000000004 /* TimerSheets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerSheets.swift; sourceTree = "<group>"; };
+		A50000000000000000000005 /* TimerScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerScreen.swift; sourceTree = "<group>"; };
+		A50000000000000000000006 /* CountdownTimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CountdownTimer.swift; sourceTree = "<group>"; };
+		A50000000000000000000007 /* ClockTime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockTime.swift; sourceTree = "<group>"; };
+		A50000000000000000000008 /* TimerDisplayFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerDisplayFormat.swift; sourceTree = "<group>"; };
+		A50000000000000000000009 /* ClassroomWidgetsUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassroomWidgetsUITests.swift; sourceTree = "<group>"; };
+		A50000000000000000000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A50000000000000000000011 /* short-original.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = short-original.mp3; sourceTree = "<group>"; };
+		A50000000000000000000012 /* long.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = long.mp3; sourceTree = "<group>"; };
+		A50000000000000000000013 /* glockenspiel.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = glockenspiel.mp3; sourceTree = "<group>"; };
+		A50000000000000000000014 /* marimba.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = marimba.mp3; sourceTree = "<group>"; };
+		A50000000000000000000015 /* musicbox.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = musicbox.mp3; sourceTree = "<group>"; };
+		A50000000000000000000016 /* steeldrum.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = steeldrum.mp3; sourceTree = "<group>"; };
+		A50000000000000000000017 /* ukulele.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = ukulele.mp3; sourceTree = "<group>"; };
+		A50000000000000000000018 /* ClassroomWidgets.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ClassroomWidgets.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A50000000000000000000019 /* ClassroomWidgetsUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ClassroomWidgetsUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A50000000000000000000020 /* Package.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Package.swift; sourceTree = "<group>"; };
+		A50000000000000000000021 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A30000000000000000000005 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000003 /* Sources */,
+				A10000000000000000000004 /* Core */,
+				A50000000000000000000010 /* Assets.xcassets */,
+				A10000000000000000000006 /* Timer sounds */,
+				A10000000000000000000007 /* UI Tests */,
+				A50000000000000000000020 /* Package.swift */,
+				A50000000000000000000021 /* README.md */,
+				A10000000000000000000002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A10000000000000000000002 /* Products */ = {isa = PBXGroup; children = (A50000000000000000000018 /* ClassroomWidgets.app */, A50000000000000000000019 /* ClassroomWidgetsUITests.xctest */, ); name = Products; sourceTree = "<group>"; };
+		A10000000000000000000003 /* Sources */ = {isa = PBXGroup; children = (A50000000000000000000001 /* ClassroomWidgetsApp.swift */, A50000000000000000000002 /* TimerNotificationScheduler.swift */, A50000000000000000000003 /* TimerAudioPlayer.swift */, A50000000000000000000004 /* TimerSheets.swift */, A50000000000000000000005 /* TimerScreen.swift */, ); path = Sources; sourceTree = "<group>"; };
+		A10000000000000000000004 /* Core */ = {isa = PBXGroup; children = (A50000000000000000000006 /* CountdownTimer.swift */, A50000000000000000000007 /* ClockTime.swift */, A50000000000000000000008 /* TimerDisplayFormat.swift */, ); path = Core/Sources/ClassroomTimerCore; sourceTree = "<group>"; };
+		A10000000000000000000006 /* Timer sounds */ = {isa = PBXGroup; children = (A50000000000000000000011 /* short-original.mp3 */, A50000000000000000000012 /* long.mp3 */, A50000000000000000000013 /* glockenspiel.mp3 */, A50000000000000000000014 /* marimba.mp3 */, A50000000000000000000015 /* musicbox.mp3 */, A50000000000000000000016 /* steeldrum.mp3 */, A50000000000000000000017 /* ukulele.mp3 */, ); path = Resources/TimerSounds; sourceTree = "<group>"; };
+		A10000000000000000000007 /* UI Tests */ = {isa = PBXGroup; children = (A50000000000000000000009 /* ClassroomWidgetsUITests.swift */, ); path = UITests; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A20000000000000000000001 /* ClassroomWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000000000000000000009 /* Build configuration list for PBXNativeTarget "ClassroomWidgets" */;
+			buildPhases = (A30000000000000000000001 /* Sources */, A30000000000000000000002 /* Frameworks */, A30000000000000000000003 /* Resources */, );
+			buildRules = ();
+			dependencies = ();
+			name = ClassroomWidgets;
+			productName = ClassroomWidgets;
+			productReference = A50000000000000000000018 /* ClassroomWidgets.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A20000000000000000000002 /* ClassroomWidgetsUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000000000000000000010 /* Build configuration list for PBXNativeTarget "ClassroomWidgetsUITests" */;
+			buildPhases = (A30000000000000000000004 /* Sources */, A30000000000000000000005 /* Frameworks */, A30000000000000000000006 /* Resources */, );
+			buildRules = ();
+			dependencies = (A70000000000000000000002 /* PBXTargetDependency */, );
+			name = ClassroomWidgetsUITests;
+			productName = ClassroomWidgetsUITests;
+			productReference = A50000000000000000000019 /* ClassroomWidgetsUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A20000000000000000000003 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {BuildIndependentTargetsInParallel = 1; LastUpgradeCheck = 1500; LastSwiftUpdateCheck = 1500; TargetAttributes = {A20000000000000000000001 = {CreatedOnToolsVersion = 15.0; ProvisioningStyle = Automatic; }; A20000000000000000000002 = {CreatedOnToolsVersion = 15.0; ProvisioningStyle = Automatic; TestTargetID = A20000000000000000000001; }; }; };
+			buildConfigurationList = A60000000000000000000003 /* Build configuration list for PBXProject "ClassroomWidgets" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en, Base, );
+			mainGroup = A10000000000000000000001;
+			productRefGroup = A10000000000000000000002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (A20000000000000000000001 /* ClassroomWidgets */, A20000000000000000000002 /* ClassroomWidgetsUITests */, );
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A30000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (A40000000000000000000010 /* Assets.xcassets in Resources */, A40000000000000000000011 /* short-original.mp3 in Resources */, A40000000000000000000012 /* long.mp3 in Resources */, A40000000000000000000013 /* glockenspiel.mp3 in Resources */, A40000000000000000000014 /* marimba.mp3 in Resources */, A40000000000000000000015 /* musicbox.mp3 in Resources */, A40000000000000000000016 /* steeldrum.mp3 in Resources */, A40000000000000000000017 /* ukulele.mp3 in Resources */, );
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A30000000000000000000006 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A30000000000000000000001 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A40000000000000000000001 /* ClassroomWidgetsApp.swift in Sources */, A40000000000000000000002 /* TimerNotificationScheduler.swift in Sources */, A40000000000000000000003 /* TimerAudioPlayer.swift in Sources */, A40000000000000000000004 /* TimerSheets.swift in Sources */, A40000000000000000000005 /* TimerScreen.swift in Sources */, A40000000000000000000006 /* CountdownTimer.swift in Sources */, A40000000000000000000007 /* ClockTime.swift in Sources */, A40000000000000000000008 /* TimerDisplayFormat.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		A30000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A40000000000000000000009 /* ClassroomWidgetsUITests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A70000000000000000000002 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A20000000000000000000001 /* ClassroomWidgets */; targetProxy = A70000000000000000000001 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A60000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)"; SWIFT_VERSION = 5.0; }; name = Debug; };
+		A60000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; SWIFT_VERSION = 5.0; }; name = Release; };
+		A60000000000000000000011 /* Debug app */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Classroom Timer"; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UIUserInterfaceStyle = Automatic; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = com.tinkertanker.classroomwidgets.timer; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; }; name = Debug; };
+		A60000000000000000000012 /* Release app */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Classroom Timer"; INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education"; INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UIUserInterfaceStyle = Automatic; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = com.tinkertanker.classroomwidgets.timer; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; }; name = Release; };
+		A60000000000000000000013 /* Debug UI tests */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.tinkertanker.classroomwidgets.timer.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_TARGET_NAME = ClassroomWidgets; }; name = Debug; };
+		A60000000000000000000014 /* Release UI tests */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.tinkertanker.classroomwidgets.timer.uitests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.0; TARGETED_DEVICE_FAMILY = 1; TEST_TARGET_NAME = ClassroomWidgets; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A60000000000000000000003 /* Build configuration list for PBXProject "ClassroomWidgets" */ = {isa = XCConfigurationList; buildConfigurations = (A60000000000000000000001 /* Debug */, A60000000000000000000002 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A60000000000000000000009 /* Build configuration list for PBXNativeTarget "ClassroomWidgets" */ = {isa = XCConfigurationList; buildConfigurations = (A60000000000000000000011 /* Debug app */, A60000000000000000000012 /* Release app */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A60000000000000000000010 /* Build configuration list for PBXNativeTarget "ClassroomWidgetsUITests" */ = {isa = XCConfigurationList; buildConfigurations = (A60000000000000000000013 /* Debug UI tests */, A60000000000000000000014 /* Release UI tests */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = A20000000000000000000003 /* Project object */;
+}

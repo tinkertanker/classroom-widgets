@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-11 -11 22 22">
+  <g stroke="#8B4513" stroke-width="0.5" fill="none">
+    <line x1="0" y1="-5" x2="0" y2="-8"/>
+    <line x1="3.5" y1="-3.5" x2="5.7" y2="-5.7"/>
+    <line x1="5" y1="0" x2="8" y2="0"/>
+    <line x1="3.5" y1="3.5" x2="5.7" y2="5.7"/>
+    <line x1="0" y1="5" x2="0" y2="8"/>
+    <line x1="-3.5" y1="3.5" x2="-5.7" y2="5.7"/>
+    <line x1="-5" y1="0" x2="-8" y2="0"/>
+    <line x1="-3.5" y1="-3.5" x2="-5.7" y2="-5.7"/>
+    <line x1="2.5" y1="-4.3" x2="3.5" y2="-6.5"/>
+    <line x1="4.3" y1="-2.5" x2="6.5" y2="-3.5"/>
+    <line x1="-2.5" y1="-4.3" x2="-3.5" y2="-6.5"/>
+    <line x1="-4.3" y1="-2.5" x2="-6.5" y2="-3.5"/>
+  </g>
+  <ellipse cx="0" cy="0" rx="6" ry="4.5" fill="#D2691E" stroke="#8B4513" stroke-width="0.8"/>
+  <circle cx="-4" cy="-1.5" r="5" fill="#DEB887" stroke="#8B4513" stroke-width="0.8"/>
+  <circle cx="-6.5" cy="-4.5" r="1.8" fill="#D2691E"/>
+  <circle cx="-1.5" cy="-4.5" r="1.8" fill="#D2691E"/>
+  <circle cx="-5.5" cy="-1.5" r="1.2" fill="#fff"/>
+  <circle cx="-2.5" cy="-1.5" r="1.2" fill="#fff"/>
+  <circle cx="-5.5" cy="-1.5" r="0.8" fill="#000"/>
+  <circle cx="-2.5" cy="-1.5" r="0.8" fill="#000"/>
+  <ellipse cx="-4" cy="1" rx="0.8" ry="1.2" fill="#000"/>
+</svg>

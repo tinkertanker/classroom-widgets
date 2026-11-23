@@ -12,6 +12,8 @@ node_modules
 packages/teacher/build
 dist/
 packages/macos-dashboard/.build/
+packages/ios-app/Core/.build/
+packages/ios-app/Core/.swiftpm/
 packages/windows-dashboard/bin/
 packages/windows-dashboard/obj/
 packages/windows-dashboard/dist/
