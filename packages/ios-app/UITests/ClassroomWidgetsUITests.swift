@@ -33,6 +33,25 @@ final class ClassroomWidgetsUITests: XCTestCase {
         XCTAssertEqual(app.staticTexts["timer-countdown"].label, pausedTime)
     }
 
+    func testSoundSheetKeepsControlsVisibleAndResetsFocusIdleTimer() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing"]
+        app.launch()
+
+        app.buttons["start-button"].tap()
+        app.buttons["sound-settings-button"].tap()
+        let doneButton = app.buttons["sound-done-button"]
+        XCTAssertTrue(doneButton.waitForExistence(timeout: 3))
+
+        sleep(6)
+        doneButton.tap()
+
+        let pauseButton = app.buttons["pause-button"]
+        XCTAssertTrue(pauseButton.waitForExistence(timeout: 2))
+        sleep(2)
+        XCTAssertTrue(pauseButton.exists)
+    }
+
     func testControlsReturnWhenCountdownFinishes() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]

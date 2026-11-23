@@ -4,6 +4,7 @@ import UIKit
 @MainActor
 struct TimerScreen: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.scenePhase) private var scenePhase
     @AppStorage("classroom.timer.sound-mode") private var soundMode = "short"
@@ -82,6 +83,14 @@ struct TimerScreen: View {
                 if state == .finished {
                     completeTimer(playSound: !backgroundedSinceLastActive)
                 }
+            }
+            .onChange(of: activeSheet) { _, _ in
+                controlsVisible = true
+                lastInteraction = Date()
+            }
+            .onChange(of: voiceOverEnabled) { _, _ in
+                controlsVisible = true
+                lastInteraction = Date()
             }
             .onChange(of: isMuted) { _, muted in
                 if muted { audioPlayer.stop() }
@@ -365,7 +374,7 @@ struct TimerScreen: View {
         guard phase == .active else { return }
 
         if timer.update() {
-            completeTimer(playSound: false)
+            completeTimer(playSound: !backgroundedSinceLastActive)
         } else if timer.isRunning {
             backgroundedSinceLastActive = false
             scheduleNotification()
@@ -373,6 +382,7 @@ struct TimerScreen: View {
             backgroundedSinceLastActive = false
         }
         controlsVisible = true
+        lastInteraction = Date()
     }
 
     private func completeTimer(playSound: Bool) {
@@ -395,7 +405,8 @@ struct TimerScreen: View {
                     completeTimer(playSound: !backgroundedSinceLastActive)
                 }
 
-                if timer.isRunning && controlsVisible && Date().timeIntervalSince(lastInteraction) >= 5 {
+                if timer.isRunning && controlsVisible && activeSheet == nil && !voiceOverEnabled
+                    && Date().timeIntervalSince(lastInteraction) >= 5 {
                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
                         controlsVisible = false
                     }

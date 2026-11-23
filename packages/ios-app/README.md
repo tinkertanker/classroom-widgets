@@ -17,4 +17,4 @@ xcodebuild test \
   CODE_SIGNING_ALLOWED=NO
 ```
 
-The Swift package tests countdown state, deadline restoration, duration edits, quick-add limits, end-time selection, and display formatting. The Xcode UI tests exercise countdown-only focus mode and controls returning at expiry.
+The Swift package tests countdown state, deadline restoration, duration edits, quick-add limits, end-time selection, notification scheduling delays, and display formatting. The Xcode UI tests exercise full-face focus mode, controls staying visible through a sound sheet, and controls returning at expiry.
