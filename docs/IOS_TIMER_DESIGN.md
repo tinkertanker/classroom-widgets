@@ -6,7 +6,7 @@ runner; move the main controls within thumb reach. This is the regular
 single timer, not a new widget browser. Floating over other apps / Picture in
 Picture is a separate follow-up; don’t ship a placeholder button for it.
 
-![Ready, running, paused, finished, and two timer editor sheets](./ios-timer-states.svg)
+![Ready, running, Focus, paused, finished, and timer editor and sound sheets](./ios-timer-states.svg)
 
 ## Screen contract
 
@@ -14,6 +14,7 @@ Picture is a separate follow-up; don’t ship a placeholder button for it.
 | --- | --- | --- | --- |
 | Ready | `01:00` on first launch, full ring, **Ready** | **Start** | **Set time**, **+1 min**, **+2 min**, **+5 min**, **Sound** |
 | Running | Remaining time, shrinking ring, **Counting down** | **Pause** | **Restart**, quick adds, **Sound** |
+| Running · Focus | Large remaining time only | Tap anywhere to show controls | None; countdown keeps running |
 | Paused | Frozen time and ring, **Paused** | **Resume** | **Edit remaining**, **Restart**, quick adds, **Sound** |
 | Finished | `00:00`, rose face, **Time’s up!** | **Restart** | **Sound**; no quick adds |
 
@@ -38,12 +39,32 @@ Picture is a separate follow-up; don’t ship a placeholder button for it.
   **Edit remaining** reuses only the Duration editor and returns to Paused.
 - **Sound** opens a small sheet with a **Mute** toggle and **Short / Long**
   selection. Default to Short with mute off; keep the choice when toggling
-  mute. The button reads **Muted** when muted. Muting cuts off a sound that’s
-  already playing; closing the sheet never pauses the timer.
+  mute. Changes apply immediately; **Done** closes the sheet. The button reads
+  **Muted** when muted. Muting cuts off a sound that’s already playing.
+
+## Countdown-only Focus
+
+- After **Start** or **Resume**, show the full controls for five seconds.
+  After five seconds without interaction, hide the controls, header, ring,
+  runner and status bar. Focus is only a presentation of Running, not a
+  timer state: do not change the deadline or stop the countdown.
+- Center the digits on a warm charcoal canvas (`#2D2926`), with Soft White
+  digits (`#FDFCFB`). Start at 134 pt for `MM:SS` (about 88 pt for
+  `HH:MM:SS`) on the reference phone and fit to the safe area with a
+  minimum 24 pt side inset. Let iOS handle its home indicator. On first
+  entry only, briefly show **Tap to show controls** beneath the digits.
+- A tap anywhere restores the regular Running screen, without pausing or
+  triggering the revealed control. Restart the five-second delay after
+  each interaction, after a sheet closes, or on foreground return. Never
+  auto-hide while a sheet is open or assistive navigation is active.
+  Reduce Motion replaces any transition with an immediate change.
+- At zero, return to the regular **Time’s up!** screen. Ready and Paused
+  always show their controls. A countdown that finishes within the delay
+  never enters Focus.
 
 ## SwiftUI layout
 
-The references are light-mode designs at 390 × 844 pt, not Simulator
+The references are designs at 390 × 844 pt, not Simulator
 screenshots. Use the iOS status bar, home indicator, native sheet and
 system typography. Do not draw the device chrome in the app.
 
@@ -93,6 +114,9 @@ the dial if needed. VoiceOver reads the status and a single time value
    deadline rather than the number of UI ticks.
 4. Check the narrowest supported iPhone, dark appearance, accessibility text
    sizes, VoiceOver and Reduce Motion.
+5. Leave a running timer untouched for five seconds. Tap to bring controls
+   back; confirm the countdown never paused. Verify a sheet and VoiceOver
+   prevent the automatic transition, and zero exits Focus to **Time’s up!**.
 
 Parity reference: [desktop/web timer view](../packages/teacher/src/features/widgets/timer/Timer.tsx),
 [countdown state](../packages/teacher/src/features/widgets/timer/hooks/useTimerCountdown.ts),

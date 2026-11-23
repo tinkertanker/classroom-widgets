@@ -1,10 +1,11 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1386" height="2186" viewBox="0 0 1386 2186" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1836" height="2186" viewBox="0 0 1836 2186" role="img" aria-labelledby="title desc">
 <title id="title">Classroom Widgets · iPhone timer</title>
-<desc id="desc">Six light-mode screens, showing the ready, running, paused and finished countdown, and the duration and end-at-time editor sheets.</desc>
+<desc id="desc">Eight screens: ready, running, countdown-only Focus, paused, finished, duration editor, end-at-time editor, and sound settings.</desc>
 <style>
   text {font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
-  .digits,.picker-digit {font-variant-numeric:tabular-nums}
+  .digits,.focus-digits,.picker-digit {font-variant-numeric:tabular-nums}
   .digits {letter-spacing:-3px}
+  .focus-digits {letter-spacing:-4px}
 </style>
 <defs>
   <clipPath id="screen"><rect width="390" height="844" rx="47"/></clipPath>
@@ -36,12 +37,12 @@
     <path d="M 4.5 0 Q 7 -1.5 8.5 1" stroke="#8B4513" stroke-width="1.2" fill="none" stroke-linecap="round" />
   </g>
 </defs>
-<rect x="0" y="0" width="1386" height="2186" rx="0" fill="#f5f3f0" stroke="none" />
+<rect x="0" y="0" width="1836" height="2186" rx="0" fill="#f5f3f0" stroke="none" />
 <rect x="48" y="52" width="5" height="22" rx="2.5" fill="#39744c" stroke="none" />
 <text x="65" y="70" font-size="19" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="2.2">CLASSROOM WIDGETS</text>
 <text x="48" y="135" font-size="60" font-weight="700" fill="#2d2926" text-anchor="start" letter-spacing="-2.5">Timer for iPhone</text>
-<text x="50" y="176" font-size="23" font-weight="400" fill="#6b635a" text-anchor="start" >The familiar rainbow countdown with controls within reach of your thumb.</text>
-<text x="1338" y="70" font-size="16" font-weight="700" fill="#6b635a" text-anchor="end" letter-spacing="1.5">V1  /  DESIGN HANDOFF</text>
+<text x="50" y="176" font-size="23" font-weight="400" fill="#6b635a" text-anchor="start" >The familiar rainbow timer, with a countdown-only view when controls aren’t in use.</text>
+<text x="1788" y="70" font-size="16" font-weight="700" fill="#6b635a" text-anchor="end" letter-spacing="1.5">V1  /  DESIGN HANDOFF</text>
 <text x="48" y="228" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">01</text>
 <text x="83" y="230" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Ready</text>
 <text x="48" y="258" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >Set a duration or start the default minute.</text>
@@ -119,9 +120,21 @@
 <rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
 </g>
 <text x="948" y="228" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">03</text>
-<text x="983" y="230" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Paused</text>
-<text x="948" y="258" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >Resume, edit remaining time or restart.</text>
+<text x="983" y="230" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Focus</text>
+<text x="948" y="258" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >After 5 seconds idle. Tap to show controls.</text>
 <g transform="translate(948 279)" >
+<g transform="translate(0 0)" clip-path="url(#screen)">
+<rect x="0" y="0" width="390" height="844" rx="0" fill="#fdfcfb" stroke="none" />
+<rect x="0" y="0" width="390" height="844" rx="0" fill="#2d2926" stroke="none" />
+<text x="195" y="470" font-size="134" font-weight="700" fill="#fdfcfb" text-anchor="middle" class="focus-digits">03:37</text>
+<rect x="128" y="827" width="134" height="5" rx="2.5" fill="#fdfcfb" stroke="none" />
+</g>
+<rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
+</g>
+<text x="1398" y="228" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">04</text>
+<text x="1433" y="230" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Paused</text>
+<text x="1398" y="258" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >Resume, edit remaining time or restart.</text>
+<g transform="translate(1398 279)" >
 <g transform="translate(0 0)" clip-path="url(#screen)">
 <rect x="0" y="0" width="390" height="844" rx="0" fill="#fdfcfb" stroke="none" />
 <text x="37" y="36" font-size="16" font-weight="650" fill="#2d2926" text-anchor="start" >9:41</text>
@@ -158,7 +171,7 @@
 </g>
 <rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
 </g>
-<text x="48" y="1189" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">04</text>
+<text x="48" y="1189" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">05</text>
 <text x="83" y="1191" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Finished</text>
 <text x="48" y="1219" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >Time’s up. Restart returns to Ready.</text>
 <g transform="translate(48 1240)" >
@@ -184,7 +197,7 @@
 </g>
 <rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
 </g>
-<text x="498" y="1189" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">05</text>
+<text x="498" y="1189" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">06</text>
 <text x="533" y="1191" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Set duration</text>
 <text x="498" y="1219" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >Set a duration without starting the timer.</text>
 <g transform="translate(498 1240)" >
@@ -246,7 +259,7 @@
 </g>
 <rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
 </g>
-<text x="948" y="1189" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">06</text>
+<text x="948" y="1189" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">07</text>
 <text x="983" y="1191" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Set end time</text>
 <text x="948" y="1219" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >See when the clock time next occurs.</text>
 <g transform="translate(948 1240)" >
@@ -309,6 +322,58 @@
 </g>
 <rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
 </g>
-<text x="48" y="2146" font-size="18" font-weight="500" fill="#6b635a" text-anchor="start" >390 × 844 pt reference · light appearance · not a simulator capture</text>
-<text x="1338" y="2146" font-size="15" font-weight="700" fill="#6b635a" text-anchor="end" letter-spacing="1.6">REGULAR COUNTDOWN ONLY</text>
+<text x="1398" y="1189" font-size="16" font-weight="700" fill="#39744c" text-anchor="start" letter-spacing="1">08</text>
+<text x="1433" y="1191" font-size="24" font-weight="700" fill="#2d2926" text-anchor="start" >Timer sound</text>
+<text x="1398" y="1219" font-size="18" font-weight="400" fill="#6b635a" text-anchor="start" >Choose a sound or mute it for quiet work.</text>
+<g transform="translate(1398 1240)" >
+<g transform="translate(0 0)" clip-path="url(#screen)">
+<rect x="0" y="0" width="390" height="844" rx="0" fill="#fdfcfb" stroke="none" />
+<text x="37" y="36" font-size="16" font-weight="650" fill="#2d2926" text-anchor="start" >9:41</text>
+<rect x="134" y="13" width="122" height="31" rx="15.5" fill="#141312" stroke="none" />
+<use href="#signal" x="299" y="23" width="18" height="18" color="#2d2926"/>
+<use href="#wifi" x="320" y="23" width="18" height="18" color="#2d2926"/>
+<use href="#battery" x="343" y="22" width="23" height="23" color="#2d2926"/>
+<text x="24" y="86" font-size="15" font-weight="650" fill="#6b635a" text-anchor="start" >Classroom Widgets</text>
+<text x="23" y="131" font-size="42" font-weight="700" fill="#2d2926" text-anchor="start" letter-spacing="-1.5">Timer</text>
+<rect x="258" y="91" width="108" height="44" rx="22" fill="#f5f3f0" stroke="none" />
+<use href="#sound" x="270" y="103" width="20" height="20" color="#2d2926"/>
+<text x="298" y="119" font-size="16" font-weight="650" fill="#2d2926" text-anchor="start" >Sound</text>
+<circle cx="195" cy="365" r="147" fill="#fdfcfb" stroke="#e8e5e0" stroke-width="10" />
+<circle cx="195" cy="365" r="147" fill="none" stroke="url(#rainbow)" stroke-width="10" />
+<rect x="162.0" y="290" width="66" height="28" rx="14" fill="#f5f3f0" stroke="none" />
+<text x="195" y="309" font-size="14" font-weight="650" fill="#6b635a" text-anchor="middle" >Ready</text>
+<text x="195" y="397" font-size="84" font-weight="700" fill="#2d2926" text-anchor="middle" class="digits">01:00</text>
+<rect x="119" y="418" width="152" height="44" rx="14" fill="#eef1ef" stroke="none" />
+<text x="195.0" y="446.0" font-size="17" font-weight="650" fill="#39744c" text-anchor="middle" >Set time</text>
+<text x="24" y="654" font-size="16" font-weight="650" fill="#6b635a" text-anchor="start" >Add time</text>
+<rect x="24" y="668" width="110" height="48" rx="14" fill="#f5f3f0" stroke="none" />
+<text x="79.0" y="698.0" font-size="17" font-weight="650" fill="#2d2926" text-anchor="middle" >+1 min</text>
+<rect x="140" y="668" width="110" height="48" rx="14" fill="#f5f3f0" stroke="none" />
+<text x="195.0" y="698.0" font-size="17" font-weight="650" fill="#2d2926" text-anchor="middle" >+2 min</text>
+<rect x="256" y="668" width="110" height="48" rx="14" fill="#f5f3f0" stroke="none" />
+<text x="311.0" y="698.0" font-size="17" font-weight="650" fill="#2d2926" text-anchor="middle" >+5 min</text>
+<rect x="24" y="740" width="342" height="56" rx="16" fill="#39744c" stroke="none" />
+<use href="#play" x="163.0" y="759.0" width="18" height="18" color="#fff"/>
+<text x="208.0" y="774.0" font-size="17" font-weight="650" fill="#fff" text-anchor="middle" >Start</text>
+<rect x="128" y="827" width="134" height="5" rx="2.5" fill="#2d2926" stroke="none" />
+<rect x="0" y="0" width="390" height="844" rx="0" fill="#2d2926" stroke="none" opacity=".31"/>
+<rect x="0" y="533" width="390" height="338" rx="30" fill="#fdfcfb" stroke="none" />
+<rect x="177" y="541" width="36" height="4" rx="2" fill="#b8b2a8" stroke="none" />
+<text x="24" y="586" font-size="26" font-weight="700" fill="#2d2926" text-anchor="start" letter-spacing="-.5">Timer sound</text>
+<text x="24" y="632" font-size="17" font-weight="650" fill="#2d2926" text-anchor="start" >Mute</text>
+<rect x="314" y="608" width="52" height="32" rx="16" fill="#d6d2cc" stroke="none" />
+<circle cx="330" cy="624" r="13" fill="#fdfcfb" stroke="none" stroke-width="1" />
+<text x="24" y="667" font-size="15" font-weight="650" fill="#6b635a" text-anchor="start" >End sound</text>
+<rect x="24" y="682" width="342" height="44" rx="12" fill="#f5f3f0" stroke="none" />
+<rect x="27" y="685" width="167" height="38" rx="10" fill="#fdfcfb" stroke="#e8e5e0" />
+<text x="110" y="710" font-size="16" font-weight="650" fill="#2d2926" text-anchor="middle" >Short</text>
+<text x="280" y="710" font-size="16" font-weight="650" fill="#6b635a" text-anchor="middle" >Long</text>
+<rect x="24" y="740" width="342" height="56" rx="16" fill="#39744c" stroke="none" />
+<text x="195.0" y="774.0" font-size="17" font-weight="650" fill="#fff" text-anchor="middle" >Done</text>
+<rect x="128" y="827" width="134" height="5" rx="2.5" fill="#2d2926" stroke="none" />
+</g>
+<rect x="0.5" y="0.5" width="389" height="843" rx="46.5" fill="none" stroke="#c6c0b9" />
+</g>
+<text x="48" y="2146" font-size="18" font-weight="500" fill="#6b635a" text-anchor="start" >390 × 844 pt reference · not a simulator capture</text>
+<text x="1788" y="2146" font-size="15" font-weight="700" fill="#6b635a" text-anchor="end" letter-spacing="1.6">REGULAR COUNTDOWN ONLY</text>
 </svg>
