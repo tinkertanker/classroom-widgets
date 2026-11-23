@@ -131,6 +131,7 @@ struct TimerScreen: View {
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
+            .accessibilityHidden(true)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
