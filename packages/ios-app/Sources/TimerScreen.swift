@@ -57,7 +57,7 @@ struct TimerScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .contentShape(Rectangle())
-            .simultaneousGesture(TapGesture().onEnded(registerInteraction))
+            .simultaneousGesture(TapGesture().onEnded { _ in registerInteraction() })
             .sheet(item: $activeSheet) { sheet in
                 switch sheet {
                 case .setup:
@@ -97,7 +97,7 @@ struct TimerScreen: View {
     }
 
     private func focusView(in size: CGSize) -> some View {
-        let dialSize = min(360, size.width - 32, size.height - 32)
+        let dialSize = min(360, min(size.width - 32, size.height - 32))
         return Button {
             registerInteraction()
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
@@ -127,7 +127,7 @@ struct TimerScreen: View {
     }
 
     private func timerControls(in size: CGSize) -> some View {
-        let dialSize = min(304, size.width - 48, size.height * 0.42)
+        let dialSize = min(304, min(size.width - 48, size.height * 0.42))
         return VStack(spacing: 0) {
             header
                 .padding(.top, 7)
@@ -518,8 +518,8 @@ private struct HamsterRunner: View {
             let angle = -context.date.timeIntervalSince(startedAt) * 120
             let radians = (angle - 90) * .pi / 180
             let radius = size * 0.37
-            let centerX = size / 2 + cos(radians) * radius
-            let centerY = size / 2 + sin(radians) * radius
+            let centerX = size / 2 + CGFloat(cos(radians)) * radius
+            let centerY = size / 2 + CGFloat(sin(radians)) * radius
             let art = isOnColoredArc(angle: angle, progress: progress) ? "HamsterCalm" : "HamsterShocked"
 
             Image(art)
